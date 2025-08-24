@@ -1,0 +1,142 @@
+﻿{
+   "CodeGenerationMode": 4,
+   "ContextClassName": "ASA-TENANT-DBContext",
+   "ContextNamespace": null,
+   "FilterSchemas": false,
+   "IncludeConnectionString": true,
+   "MinimumProductVersion": "2.6.0",
+   "ModelNamespace": null,
+   "OutputContextPath": null,
+   "OutputPath": "Models",
+   "PreserveCasingWithRegex": true,
+   "ProjectRootNamespace": "ASA_TENANT_REPO",
+   "Schemas": null,
+   "SelectedHandlebarsLanguage": 2,
+   "SelectedToBeGenerated": 0,
+   "T4TemplatePath": null,
+   "Tables": [
+      {
+         "Name": "public.category",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.chat_message",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.customer",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.fcm",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.inventory_transaction",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.log_activity",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.nfc",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.notification",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.order",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.order_detail",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.product",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.product_unit",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.promotion",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.promotion_product",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.prompt",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.report",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.report_detail",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.shift",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.shop",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.transaction",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.unit",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.user",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.voucher",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.zalopay",
+         "ObjectType": 0
+      }
+   ],
+   "UiHint": null,
+   "UncountableWords": null,
+   "UseAsyncStoredProcedureCalls": true,
+   "UseBoolPropertiesWithoutDefaultSql": false,
+   "UseDatabaseNames": false,
+   "UseDatabaseNamesForRoutines": true,
+   "UseDateOnlyTimeOnly": true,
+   "UseDbContextSplitting": false,
+   "UseDecimalDataAnnotationForSprocResult": true,
+   "UseFluentApiOnly": true,
+   "UseHandleBars": false,
+   "UseHierarchyId": false,
+   "UseInflector": true,
+   "UseInternalAccessModifiersForSprocsAndFunctions": false,
+   "UseLegacyPluralizer": false,
+   "UseManyToManyEntity": false,
+   "UseNoDefaultConstructor": false,
+   "UseNoNavigations": false,
+   "UseNoObjectFilter": false,
+   "UseNodaTime": false,
+   "UseNullableReferences": false,
+   "UsePrefixNavigationNaming": false,
+   "UseSchemaFolders": false,
+   "UseSchemaNamespaces": false,
+   "UseSpatial": false,
+   "UseT4": false,
+   "UseT4Split": false
+}

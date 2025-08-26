@@ -7,7 +7,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
-
+// Cấu hình để chạy trên Docker/Render
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.ListenAnyIP(8080); // Render yêu cầu chạy ở port 8080
+});
 
 Console.WriteLine("🌍 ENVIRONMENT = " + builder.Environment.EnvironmentName);
 Console.WriteLine("🔌 CONNECTION = " + builder.Configuration.GetConnectionString("DefaultConnection"));

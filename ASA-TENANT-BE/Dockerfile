@@ -1,15 +1,22 @@
+# Sử dụng .NET SDK để build
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
+
+# Copy toàn bộ solution (bao gồm tất cả projects)
 COPY . .
 
-# Restore từ solution file (cách an toàn hơn)
+# Restore packages (đường dẫn tới solution đúng)
 RUN dotnet restore ASA-TENANT-BE.sln
 
-# Publish bằng cách chỉ định rõ đường dẫn csproj
-RUN dotnet publish ASA-TENANT-BE/ASA-TENANT-BE/ASA-TENANT-BE.csproj -c Release -o /app/out
+# Publish project chính
+RUN dotnet publish ASA-TENANT-BE/ASA-TENANT-BE.csproj -c Release -o /app/out
 
+# Sử dụng runtime
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 COPY --from=build /app/out .
+
 EXPOSE 8080
+
+# Thiết lập entry point
 ENTRYPOINT ["dotnet", "ASA-TENANT-BE.dll"]

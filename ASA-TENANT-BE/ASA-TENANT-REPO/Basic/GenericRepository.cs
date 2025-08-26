@@ -36,6 +36,7 @@ namespace EDUConnect_Repositories.Basic
             _context.Add(entity);
             return await _context.SaveChangesAsync();
         }
+
         public void Update(T entity)
         {
             //// Turning off Tracking for UpdateAsync in Entity Framework
@@ -68,12 +69,12 @@ namespace EDUConnect_Repositories.Basic
             return true;
         }
 
-        public T GetById(int id)
+        public T GetById(long id)
         {
             return _context.Set<T>().Find(id);
         }
 
-        public async Task<T> GetByIdAsync(int? id)
+        public async Task<T> GetByIdAsync(long? id)
         {
             return await _context.Set<T>().FindAsync(id);
         }

@@ -14,5 +14,19 @@ namespace ASA_TENANT_REPO.Repository
         public CategoryRepo(ASATENANTDBContext context) : base(context)
         {
         }
+        public IQueryable<Category> GetFiltered(Category filter)
+        {
+            var query = _context.Categories.AsQueryable();
+
+            if (filter.CategoryId > 0)
+                query = query.Where(c => c.CategoryId == filter.CategoryId);
+            if (!string.IsNullOrEmpty(filter.CategoryName))
+                query = query.Where(c => c.CategoryName.Contains(filter.CategoryName));
+
+            if (filter.ShopId > 0)
+                query = query.Where(c => c.ShopId == filter.ShopId);
+
+            return  query.OrderBy(c => c.CategoryId);
+        }
     }
 }

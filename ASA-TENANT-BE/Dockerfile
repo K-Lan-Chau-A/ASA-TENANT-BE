@@ -2,12 +2,13 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copy file project và restore dependencies
-COPY *.csproj .
-RUN dotnet restore
+# Copy file project từ thư mục con và restore dependencies
+COPY ASA-TENANT-BE/*.csproj ./ASA-TENANT-BE/
+RUN dotnet restore ASA-TENANT-BE/ASA-TENANT-BE.csproj
 
 # Copy toàn bộ source code và build
-COPY . .
+COPY ASA-TENANT-BE/. ./ASA-TENANT-BE/
+WORKDIR /src/ASA-TENANT-BE
 RUN dotnet publish -c Release -o /app/publish
 
 # Sử dụng runtime image

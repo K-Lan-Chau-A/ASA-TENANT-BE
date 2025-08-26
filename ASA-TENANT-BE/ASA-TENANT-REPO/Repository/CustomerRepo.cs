@@ -14,5 +14,27 @@ namespace ASA_TENANT_REPO.Repository
         public CustomerRepo(ASATENANTDBContext context) : base(context)
         {
         }
+
+        public IQueryable<Customer> GetFiltered(Customer filter)
+        {
+            var query = _context.Customers.AsQueryable();
+
+            if (filter.CustomerId > 0)
+                query = query.Where(c => c.CustomerId == filter.CustomerId);
+            if (!string.IsNullOrEmpty(filter.FullName))
+                query = query.Where(c => c.FullName.ToLower().Contains(filter.FullName.ToLower()));
+            if (!string.IsNullOrEmpty(filter.Phone))
+                query = query.Where(c => c.Phone.Contains(filter.Phone));
+            if(!string.IsNullOrEmpty(filter.Email))
+                query = query.Where(c => c.Email.Contains(filter.Email));
+            if (!string.IsNullOrEmpty(filter.Rank))
+                query = query.Where(c => c.Rank.Contains(filter.Rank));
+            if (filter.Spent >0 )
+                query = query.Where(c => c.Spent == filter.Spent);
+            if (filter.ShopId > 0)
+                query = query.Where(c => c.ShopId == filter.ShopId);
+
+            return query.OrderBy(c => c.CustomerId);
+        }         
     }
 }

@@ -19,6 +19,11 @@ namespace ASA_TENANT_SERVICE.Mapping
             CreateMap<CategoryRequest, Category>().ReverseMap();
             CreateMap<CategoryGetRequest, Category>().ReverseMap();
 
+            //Customer Mappings
+            CreateMap<Customer, CustomerResponse>().ReverseMap();
+            CreateMap<CustomerRequest, Customer>().ReverseMap();
+            CreateMap<CustomerGetRequest, Customer>().ReverseMap();
+
 
         }
     }

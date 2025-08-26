@@ -1,0 +1,25 @@
+﻿using ASA_TENANT_REPO.Models;
+using ASA_TENANT_SERVICE.DTOs.Request;
+using ASA_TENANT_SERVICE.DTOs.Response;
+using AutoMapper;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ASA_TENANT_SERVICE.Mapping
+{
+    public class MappingProfile : Profile
+    {
+        public MappingProfile()
+        {
+            //Category Mappings
+            CreateMap<Category, CategoryResponse>().ReverseMap();
+            CreateMap<CategoryRequest, Category>().ReverseMap();
+            CreateMap<CategoryGetRequest, Category>().ReverseMap();
+
+
+        }
+    }
+}

@@ -30,6 +30,11 @@ namespace ASA_TENANT_SERVICE.Mapping
                 .ReverseMap();
             CreateMap<ProductRequest, Product>().ReverseMap();
             CreateMap<ProductGetRequest, Product>().ReverseMap();
+
+            // User Mappings
+            CreateMap<User, UserResponse>().ReverseMap();
+            CreateMap<UserRequest, User>().ReverseMap();
+            CreateMap<UserGetRequest, User>().ReverseMap();
         }
     }
 }

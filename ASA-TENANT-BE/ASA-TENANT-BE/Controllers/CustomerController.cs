@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ASA_TENANT_BE.Controllers
 {
-    [Route("api/customer")]
+    [Route("api/customers")]
     [ApiController]
     public class CustomerController : ControllerBase
     {

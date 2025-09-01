@@ -55,6 +55,11 @@ namespace ASA_TENANT_SERVICE.Mapping
             CreateMap<LogActivity, LogActivityResponse>().ReverseMap();
             CreateMap<LogActivityRequest, LogActivity>().ReverseMap();
             CreateMap<LogActivityGetRequest, LogActivity>().ReverseMap();
+
+            // Unit Mappings
+            CreateMap<Unit, UnitResponse>().ReverseMap();
+            CreateMap<UnitRequest, Unit>().ReverseMap();
+            CreateMap<UnitGetRequest, Unit>().ReverseMap();
         }
     }
 }

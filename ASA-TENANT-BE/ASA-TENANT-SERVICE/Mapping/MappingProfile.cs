@@ -45,6 +45,11 @@ namespace ASA_TENANT_SERVICE.Mapping
             CreateMap<InventoryTransaction, InventoryTransactionResponse>().ReverseMap();
             CreateMap<InventoryTransactionRequest, InventoryTransaction>().ReverseMap();
             CreateMap<InventoryTransactionGetRequest, InventoryTransaction>().ReverseMap();
+
+            // Promotion Mappings
+            CreateMap<Promotion, PromotionResponse>().ReverseMap();
+            CreateMap<PromotionRequest, Promotion>().ReverseMap();
+            CreateMap<PromotionGetRequest, Promotion>().ReverseMap();
         }
     }
 }

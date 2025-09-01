@@ -14,5 +14,17 @@ namespace ASA_TENANT_REPO.Repository
         public UnitRepo(ASATENANTDBContext context) : base(context)
         {
         }
+
+        public IQueryable<Unit> GetFiltered(Unit filter)
+        {
+            var query = _context.Units.AsQueryable();
+            if (filter.UnitId > 0)
+                query = query.Where(u => u.UnitId == filter.UnitId);
+            if (!string.IsNullOrEmpty(filter.Name))
+                query = query.Where(u => u.Name.Contains(filter.Name));
+            if (filter.ShopId > 0)
+                query = query.Where(u => u.ShopId == filter.ShopId);
+            return query.OrderBy(u => u.UnitId);
+        }
     }
 }

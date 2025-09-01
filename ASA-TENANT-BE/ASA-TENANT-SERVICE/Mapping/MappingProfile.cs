@@ -50,6 +50,11 @@ namespace ASA_TENANT_SERVICE.Mapping
             CreateMap<Promotion, PromotionResponse>().ReverseMap();
             CreateMap<PromotionRequest, Promotion>().ReverseMap();
             CreateMap<PromotionGetRequest, Promotion>().ReverseMap();
+
+            // LogActivity Mappings
+            CreateMap<LogActivity, LogActivityResponse>().ReverseMap();
+            CreateMap<LogActivityRequest, LogActivity>().ReverseMap();
+            CreateMap<LogActivityGetRequest, LogActivity>().ReverseMap();
         }
     }
 }

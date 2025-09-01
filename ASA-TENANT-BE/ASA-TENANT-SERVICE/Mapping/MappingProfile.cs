@@ -40,6 +40,16 @@ namespace ASA_TENANT_SERVICE.Mapping
             CreateMap<Shop, ShopResponse>().ReverseMap();
             CreateMap<ShopRequest, Shop>().ReverseMap();
             CreateMap<ShopGetRequest, Shop>().ReverseMap();
+
+            // InventoryTransaction Mappings
+            CreateMap<InventoryTransaction, InventoryTransactionResponse>().ReverseMap();
+            CreateMap<InventoryTransactionRequest, InventoryTransaction>().ReverseMap();
+            CreateMap<InventoryTransactionGetRequest, InventoryTransaction>().ReverseMap();
+
+            // Promotion Mappings
+            CreateMap<Promotion, PromotionResponse>().ReverseMap();
+            CreateMap<PromotionRequest, Promotion>().ReverseMap();
+            CreateMap<PromotionGetRequest, Promotion>().ReverseMap();
         }
     }
 }

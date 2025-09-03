@@ -1,4 +1,5 @@
-﻿using ASA_TENANT_SERVICE.DTOs.Common;
+﻿using ASA_TENANT_REPO.Models;
+using ASA_TENANT_SERVICE.DTOs.Common;
 using ASA_TENANT_SERVICE.DTOs.Request;
 using ASA_TENANT_SERVICE.DTOs.Response;
 using System;
@@ -15,5 +16,7 @@ namespace ASA_TENANT_SERVICE.Interface
         Task<ApiResponse<UserResponse>> CreateAsync(UserRequest request);
         Task<ApiResponse<UserResponse>> UpdateAsync(long id, UserRequest request);
         Task<ApiResponse<bool>> DeleteAsync(long id);
+        Task<User> GetUserByUsername(string username);
+        string HashPassword(string password);
     }
 }

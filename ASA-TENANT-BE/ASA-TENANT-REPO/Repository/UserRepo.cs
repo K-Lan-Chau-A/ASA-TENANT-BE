@@ -14,5 +14,25 @@ namespace ASA_TENANT_REPO.Repository
         public UserRepo(ASATENANTDBContext context) : base(context)
         {
         }
+
+        public IQueryable<User> GetFiltered(User filter)
+        {
+            var query = _context.Users.AsQueryable();
+            if (filter.UserId > 0)
+                query = query.Where(u => u.UserId == filter.UserId);
+            if (!string.IsNullOrEmpty(filter.Username))
+                query = query.Where(u => u.Username.Contains(filter.Username));
+            if (filter.ShopId.HasValue && filter.ShopId > 0)
+                query = query.Where(u => u.ShopId == filter.ShopId);
+            if (filter.Status.HasValue)
+                query = query.Where(u => u.Status == filter.Status);
+            if (filter.Role.HasValue)
+                query = query.Where(u => u.Role == filter.Role);
+            if (filter.RequestLimit.HasValue)
+                query = query.Where(u => u.RequestLimit == filter.RequestLimit.Value);
+            if (filter.AccountLimit.HasValue)
+                query = query.Where(u => u.AccountLimit == filter.AccountLimit.Value);
+            return query.OrderBy(u => u.UserId);
+        }
     }
 }

@@ -112,7 +112,7 @@ app.UseSwaggerUI(c =>
 // CORS phải đặt trước Authorization
 app.UseCors("AllowFrontend");
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
 app.UseAuthorization();
 

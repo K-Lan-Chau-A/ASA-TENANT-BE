@@ -35,6 +35,7 @@ namespace ASA_TENANT_SERVICE.Mapping
             CreateMap<User, UserResponse>().ReverseMap();
             CreateMap<UserRequest, User>().ReverseMap();
             CreateMap<UserGetRequest, User>().ReverseMap();
+            CreateMap<LoginResponse, User>().ReverseMap();
 
             // Shop Mappings
             CreateMap<Shop, ShopResponse>().ReverseMap();

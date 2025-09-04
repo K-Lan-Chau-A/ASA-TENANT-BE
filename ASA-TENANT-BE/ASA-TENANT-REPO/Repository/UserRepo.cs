@@ -1,6 +1,7 @@
 ﻿using ASA_TENANT_REPO.DBContext;
 using ASA_TENANT_REPO.Models;
 using EDUConnect_Repositories.Basic;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -33,6 +34,11 @@ namespace ASA_TENANT_REPO.Repository
             if (filter.AccountLimit.HasValue)
                 query = query.Where(u => u.AccountLimit == filter.AccountLimit.Value);
             return query.OrderBy(u => u.UserId);
+        }
+
+        public async Task<User?> GetUserByUsername(string username)
+        {
+            return await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
         }
     }
 }

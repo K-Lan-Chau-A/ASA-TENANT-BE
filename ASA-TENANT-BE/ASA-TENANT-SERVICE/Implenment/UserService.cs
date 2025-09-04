@@ -32,6 +32,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                 var entity = _mapper.Map<User>(request);
 
                 entity.CreatedAt = DateTime.UtcNow;
+                entity.Password = HashPassword(request.Password);
 
                 var affected = await _userRepo.CreateAsync(entity);
 
@@ -157,5 +158,16 @@ namespace ASA_TENANT_SERVICE.Implenment
                 };
             }
         }
+
+        public async Task<User?> GetUserByUsername(string username)
+        {
+            return await _userRepo.GetUserByUsername(username);
+        }
+
+        public string HashPassword(string password)
+        {
+            return BCrypt.Net.BCrypt.HashPassword(password);
+        }
+
     }
 }

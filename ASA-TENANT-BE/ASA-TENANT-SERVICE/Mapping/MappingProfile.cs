@@ -71,6 +71,16 @@ namespace ASA_TENANT_SERVICE.Mapping
             CreateMap<OrderDetail, OrderDetailResponse>().ReverseMap();
             CreateMap<OrderDetailRequest, OrderDetail>().ReverseMap();
             CreateMap<OrderDetailGetRequest, OrderDetail>().ReverseMap();
+
+            // Transaction Mappings
+            CreateMap<Transaction, TransactionResponse>().ReverseMap();
+            CreateMap<TransactionRequest, Transaction>().ReverseMap();
+            CreateMap<TransactionGetRequest, Transaction>().ReverseMap();
+
+            // Voucher Mappings
+            CreateMap<Voucher, VoucherResponse>().ReverseMap();
+            CreateMap<VoucherRequest, Voucher>().ReverseMap();
+            CreateMap<VoucherGetRequest, Voucher>().ReverseMap();
         }
     }
 }

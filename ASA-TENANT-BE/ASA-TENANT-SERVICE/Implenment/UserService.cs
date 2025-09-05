@@ -96,7 +96,10 @@ namespace ASA_TENANT_SERVICE.Implenment
                 };
             }
         }
-
+        public async Task<User> GetUserbyUserId(long userId)
+        {
+            return await _userRepo.GetByIdAsync(userId);
+        }
         public async Task<PagedResponse<UserResponse>> GetFilteredUsersAsync(UserGetRequest Filter, int page, int pageSize)
         {
             var filter = _mapper.Map<User>(Filter);

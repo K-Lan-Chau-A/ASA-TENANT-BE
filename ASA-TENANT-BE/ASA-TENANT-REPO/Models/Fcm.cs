@@ -9,9 +9,19 @@ public partial class Fcm
 {
     public long FcmId { get; set; }
 
+    public long? UserId { get; set; }
+
     public string FcmToken { get; set; }
 
-    public long? UserId { get; set; }
+    public string Uniqueid { get; set; }
+
+    public bool? Isactive { get; set; }
+
+    public DateTime? Lastlogin { get; set; }
+
+    public DateTime? Createdat { get; set; }
+
+    public DateTime? Updatedat { get; set; }
 
     public virtual User User { get; set; }
 }

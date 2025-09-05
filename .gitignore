@@ -149,3 +149,6 @@ mono_crash.*
 # Secrets
 secrets.json 
 SWD392_GROUP4_EDUCONNECT/appsettings.json
+# Ignore environment-specific appsettings (Development)
+appsettings.Development.json
+**/appsettings.Development.json

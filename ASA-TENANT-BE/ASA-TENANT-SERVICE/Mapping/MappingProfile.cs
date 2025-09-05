@@ -61,6 +61,16 @@ namespace ASA_TENANT_SERVICE.Mapping
             CreateMap<Unit, UnitResponse>().ReverseMap();
             CreateMap<UnitRequest, Unit>().ReverseMap();
             CreateMap<UnitGetRequest, Unit>().ReverseMap();
+
+            // ChatMessage Mappings
+            CreateMap<ChatMessage, ChatMessageResponse>().ReverseMap();
+            CreateMap<ChatMessageRequest, ChatMessage>().ReverseMap();
+            CreateMap<ChatMessageGetRequest, ChatMessage>().ReverseMap();
+
+            //Fcm Mappings
+            CreateMap<Fcm, FcmResponse>().ReverseMap();
+            CreateMap<FcmRequest, Fcm>().ReverseMap();
+            CreateMap<FcmGetRequest, Fcm>().ReverseMap();
         }
     }
 }

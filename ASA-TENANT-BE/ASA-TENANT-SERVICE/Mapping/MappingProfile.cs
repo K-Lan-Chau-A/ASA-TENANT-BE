@@ -91,6 +91,16 @@ namespace ASA_TENANT_SERVICE.Mapping
             CreateMap<Fcm, FcmResponse>().ReverseMap();
             CreateMap<FcmRequest, Fcm>().ReverseMap();
             CreateMap<FcmGetRequest, Fcm>().ReverseMap();
+
+            //Notification Mappings
+            CreateMap<Notification, NotificationResponse>().ReverseMap();
+            CreateMap<NotificationRequest, Notification>().ReverseMap();
+            CreateMap<NotificationGetRequest, Notification>().ReverseMap();
+
+            //Shift Mappings
+            CreateMap<Shift, ShiftResponse>().ReverseMap();
+            CreateMap<ShiftRequest, Shift>().ReverseMap();
+            CreateMap<ShiftGetRequest, Shift>().ReverseMap();
         }
     }
 }

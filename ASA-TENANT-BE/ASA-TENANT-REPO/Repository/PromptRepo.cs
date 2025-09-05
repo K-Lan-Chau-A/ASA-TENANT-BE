@@ -14,5 +14,18 @@ namespace ASA_TENANT_REPO.Repository
         public PromptRepo(ASATENANTDBContext context) : base(context)
         {
         }
+        public IQueryable<Prompt> GetFiltered(Prompt filter)
+        {
+            var query = _context.Prompts.AsQueryable();
+            if (filter.PromptId > 0)
+                query = query.Where(p => p.PromptId == filter.PromptId);
+            if (!string.IsNullOrEmpty(filter.Title))
+                query = query.Where(p => p.Title.Contains(filter.Title));
+            if (!string.IsNullOrEmpty(filter.Content))
+                query = query.Where(p => p.Content.Contains(filter.Content));
+            if (!string.IsNullOrEmpty(filter.Description))
+                query = query.Where(p => p.Description.Contains(filter.Description));
+            return query.OrderBy(p => p.PromptId);
+        }
     }
 }

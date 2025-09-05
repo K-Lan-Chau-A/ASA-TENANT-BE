@@ -130,6 +130,11 @@ namespace ASA_TENANT_SERVICE.Mapping
                 .ForMember(dest => dest.PromotionEndTime, opt => opt.MapFrom(src => src.Promotion.EndTime));
             CreateMap<PromotionProductRequest, PromotionProduct>().ReverseMap();
             CreateMap<PromotionProductGetRequest, PromotionProduct>().ReverseMap();
+
+            // Prompt Mappings
+            CreateMap<Prompt, PromptResponse>().ReverseMap();
+            CreateMap<PromptRequest, Prompt>().ReverseMap();
+            CreateMap<PromptGetRequest, Prompt>().ReverseMap();
         }
     }
 }

@@ -15,5 +15,7 @@ namespace ASA_TENANT_SERVICE.Interface
         Task<ApiResponse<ShiftResponse>> CreateAsync(ShiftRequest request);
         Task<ApiResponse<ShiftResponse>> UpdateAsync(long id, ShiftRequest request);
         Task<ApiResponse<bool>> DeleteAsync(long id);
+        Task<ApiResponse<ShiftResponse>> OpenShift(ShiftOpenRequest shiftOpenRequest);
+        Task<ApiResponse<ShiftResponse>> CloseShift(ShiftCloseRequest shiftCloseRequest);
     }
 }

@@ -47,5 +47,12 @@ namespace ASA_TENANT_REPO.Repository
 
             return query.OrderBy(o => o.OrderId);
         }
+
+        public async Task<Decimal?> GetTotalRevenueByShiftIdAsync(long shiftId)
+        {
+            return await _context.Orders
+                .Where(o => o.ShiftId == shiftId && o.Status == 2) // 2 = Order Completed
+                .SumAsync(o => (decimal?)o.TotalPrice);
+        }
     }
 }

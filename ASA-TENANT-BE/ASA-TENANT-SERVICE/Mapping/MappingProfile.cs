@@ -101,6 +101,7 @@ namespace ASA_TENANT_SERVICE.Mapping
             CreateMap<Shift, ShiftResponse>().ReverseMap();
             CreateMap<ShiftRequest, Shift>().ReverseMap();
             CreateMap<ShiftGetRequest, Shift>().ReverseMap();
+            CreateMap<ShiftOpenRequest, Shift>().ReverseMap();
 
             //ProductUnit Mappings
             CreateMap<ProductUnit, ProductUnitResponse>()

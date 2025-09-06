@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ASA_TENANT_BE.Controllers
 {
-    [Route("api/Shifts")]
+    [Route("api/shifts")]
     [ApiController]
     public class ShiftController : ControllerBase
     {
@@ -46,6 +46,18 @@ namespace ASA_TENANT_BE.Controllers
         public async Task<ActionResult<bool>> Delete(long id)
         {
             var result = await _shiftService.DeleteAsync(id);
+            return Ok(result);
+        }
+        [HttpPost("open-shift")]
+        public async Task<ActionResult<ShiftResponse>> OpenShift([FromBody] ShiftOpenRequest shiftOpenRequest)
+        {
+            var result = await _shiftService.OpenShift(shiftOpenRequest);
+            return Ok(result);
+        }
+        [HttpPost("close-shift")]
+        public async Task<ActionResult<ShiftResponse>> CloseShift([FromBody] ShiftCloseRequest shiftCloseRequest)
+        {
+            var result = await _shiftService.CloseShift(shiftCloseRequest);
             return Ok(result);
         }
     }

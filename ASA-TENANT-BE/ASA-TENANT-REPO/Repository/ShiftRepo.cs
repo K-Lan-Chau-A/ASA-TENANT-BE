@@ -38,6 +38,6 @@ namespace ASA_TENANT_REPO.Repository
                 query = query.Where(c => c.ClosedDate <= filter.ClosedDate);
 
             return query.OrderBy(c => c.ShiftId);
-        }
+        } 
     }
 }

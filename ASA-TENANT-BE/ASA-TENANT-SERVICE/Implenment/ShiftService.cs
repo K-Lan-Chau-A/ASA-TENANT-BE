@@ -19,10 +19,12 @@ namespace ASA_TENANT_SERVICE.Implenment
     {
         private readonly ShiftRepo _shiftRepo;
         private readonly IMapper _mapper;
-        public ShiftService(ShiftRepo shiftRepo,IMapper mapper)
+        private readonly OrderRepo _orderRepo;
+        public ShiftService(ShiftRepo shiftRepo,IMapper mapper, OrderRepo orderRepo)
         {
             _shiftRepo = shiftRepo;
             _mapper = mapper;
+            _orderRepo = orderRepo;
         }
 
         public async Task<ApiResponse<ShiftResponse>> CreateAsync(ShiftRequest request)
@@ -109,6 +111,104 @@ namespace ASA_TENANT_SERVICE.Implenment
                 Page = page,
                 PageSize = pageSize
             };
+        }
+
+        public async Task<ApiResponse<ShiftResponse>> OpenShift(ShiftOpenRequest shiftOpenRequest)
+        {
+            try
+            {
+                var entity = _mapper.Map<Shift>(shiftOpenRequest);
+                entity.StartDate = DateTime.UtcNow;
+                entity.Status = 1; // Opening
+                entity.Revenue = 0;
+
+                var affected = await _shiftRepo.CreateAsync(entity);
+
+                if (affected > 0)
+                {
+                    var response = _mapper.Map<ShiftResponse>(entity);
+                    return new ApiResponse<ShiftResponse>
+                    {
+                        Success = true,
+                        Message = "Open shift successfully",
+                        Data = response
+                    };
+                }
+
+                return new ApiResponse<ShiftResponse>
+                {
+                    Success = false,
+                    Message = "Open failed",
+                    Data = null
+                };
+
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<ShiftResponse>
+                {
+                    Success = false,
+                    Message = $"Error: {ex.Message}",
+                    Data = null
+                };
+            }
+        }
+        public async Task<ApiResponse<ShiftResponse>> CloseShift(ShiftCloseRequest shiftCloseRequest)
+        {
+            try
+            {
+                var shift = await _shiftRepo.GetByIdAsync(shiftCloseRequest.ShiftId);
+                if (shift == null)
+                {
+                    return new ApiResponse<ShiftResponse>
+                    {
+                        Success = false,
+                        Message = "Shift not found",
+                        Data = null
+                    };
+                }
+                if (shift.Status == 2)
+                {
+                    return new ApiResponse<ShiftResponse>
+                    {
+                        Success = false,
+                        Message = "Shift already closed",
+                        Data = null
+                    };
+                }
+                shift.ClosedDate = DateTime.UtcNow;
+                shift.Status = 2; // Closed
+
+                //Calculate revenue from orders in this shift
+                var revenue = await _orderRepo.GetTotalRevenueByShiftIdAsync(shift.ShiftId);
+                shift.Revenue = revenue ?? 0;
+                var affected = await _shiftRepo.UpdateAsync(shift);
+                if (affected > 0)
+                {
+                    var response = _mapper.Map<ShiftResponse>(shift);
+                    return new ApiResponse<ShiftResponse>
+                    {
+                        Success = true,
+                        Message = "Close shift successfully",
+                        Data = response
+                    };
+                }
+                return new ApiResponse<ShiftResponse>
+                {
+                    Success = false,
+                    Message = "Close shift failed",
+                    Data = null
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<ShiftResponse>
+                {
+                    Success = false,
+                    Message = $"Error: {ex.Message}",
+                    Data = null
+                };
+            }
         }
 
         public async Task<ApiResponse<ShiftResponse>> UpdateAsync(long id, ShiftRequest request)

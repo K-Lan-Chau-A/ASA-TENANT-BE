@@ -33,7 +33,7 @@ namespace ASA_TENANT_BE.Controllers
         [HttpPost]
         public async Task<ActionResult<FcmResponse>> Create([FromBody] FcmRequest request)
         {
-            var result = await _fcmService.CreateAsync(request);
+            var result = await _fcmService.CreateOrActiveAsync(request);
             return Ok(result);
         }
         [HttpPut("{id}")]
@@ -42,12 +42,25 @@ namespace ASA_TENANT_BE.Controllers
             var result = await _fcmService.UpdateAsync(id, request);
             return Ok(result);
         }
-
+        [HttpPut]
+        public async Task<IActionResult> RefreshToken([FromBody] FcmRefreshTokenRequest request)
+        {
+            var result = await _fcmService.RefreshDeviceTokenAsync(request);
+            if (!result)
+                return NotFound(new { message = "Token record not found." });
+            return Ok(new { message = "Device token refreshed." });
+        }
         [HttpDelete("{id}")]
         public async Task<ActionResult<bool>> Delete(long id)
         {
             var result = await _fcmService.DeleteAsync(id);
             return Ok(result);
+        }
+        [HttpDelete]
+        public async Task<IActionResult> LogoutDevice([FromBody] FcmRequest request)
+        {
+            await _fcmService.LogoutDeviceAsync(request);
+            return Ok(new { message = "Device token deactivated." });
         }
     }
 }

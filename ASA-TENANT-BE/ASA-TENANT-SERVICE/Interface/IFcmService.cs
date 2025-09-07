@@ -12,8 +12,11 @@ namespace ASA_TENANT_SERVICE.Interface
     public interface IFcmService
     {
         Task<PagedResponse<FcmResponse>> GetFilteredFcmAsync(FcmGetRequest requestDto, int page, int pageSize);
-        Task<ApiResponse<FcmResponse>> CreateAsync(FcmRequest request);
+        Task<ApiResponse<FcmResponse>> CreateOrActiveAsync(FcmRequest request);
         Task<ApiResponse<FcmResponse>> UpdateAsync(long id, FcmRequest request);
         Task<ApiResponse<bool>> DeleteAsync(long id);
+        Task LogoutDeviceAsync(FcmRequest request);
+        Task<bool> SendNotificationToManyUsersAsync(List<int> userIds, string title, string body);
+        Task<bool> RefreshDeviceTokenAsync(FcmRefreshTokenRequest request);
     }
 }

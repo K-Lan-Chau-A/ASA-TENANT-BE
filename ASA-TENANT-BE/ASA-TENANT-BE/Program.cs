@@ -1,5 +1,6 @@
 ﻿using ASA_TENANT_REPO.DBContext;
 using ASA_TENANT_REPO.Repository;
+using ASA_TENANT_SERVICE.Implement;
 using ASA_TENANT_SERVICE.Implenment;
 using ASA_TENANT_SERVICE.Interface;
 using ASA_TENANT_SERVICE.Mapping;
@@ -47,6 +48,9 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IVoucherService, VoucherService>();
 builder.Services.AddScoped<IZalopayService, ZalopayService>();
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
+
+// Firebase Configuration
+builder.Services.AddSingleton<FirebaseConfigurationService>();
 
 // Register repositories
 builder.Services.AddScoped<CategoryRepo>();
@@ -192,7 +196,12 @@ builder.Services.AddDbContext<ASATENANTDBContext>(options =>
 
 var app = builder.Build();
 
-
+//Gọi InitializeFirebase() một lần khi app khởi động
+using (var scope = app.Services.CreateScope())
+{
+    var firebaseConfig = scope.ServiceProvider.GetRequiredService<FirebaseConfigurationService>();
+    firebaseConfig.InitializeFirebase();
+}
 // ==================== Middleware Pipeline ====================
 // Luôn bật swagger (kể cả Production như EDUConnect)
 app.UseSwagger();

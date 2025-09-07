@@ -101,6 +101,7 @@ namespace ASA_TENANT_SERVICE.Mapping
             CreateMap<Shift, ShiftResponse>().ReverseMap();
             CreateMap<ShiftRequest, Shift>().ReverseMap();
             CreateMap<ShiftGetRequest, Shift>().ReverseMap();
+            CreateMap<ShiftOpenRequest, Shift>().ReverseMap();
 
             //ProductUnit Mappings
             CreateMap<ProductUnit, ProductUnitResponse>()
@@ -130,6 +131,11 @@ namespace ASA_TENANT_SERVICE.Mapping
                 .ForMember(dest => dest.PromotionEndTime, opt => opt.MapFrom(src => src.Promotion.EndTime));
             CreateMap<PromotionProductRequest, PromotionProduct>().ReverseMap();
             CreateMap<PromotionProductGetRequest, PromotionProduct>().ReverseMap();
+
+            // Prompt Mappings
+            CreateMap<Prompt, PromptResponse>().ReverseMap();
+            CreateMap<PromptRequest, Prompt>().ReverseMap();
+            CreateMap<PromptGetRequest, Prompt>().ReverseMap();
         }
     }
 }

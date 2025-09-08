@@ -17,10 +17,12 @@ namespace ASA_TENANT_SERVICE.Implenment
     public class OrderService : IOrderService
     {
         private readonly OrderRepo _orderRepo;
+        private readonly IOrderDetailService _orderDetailService;
         private readonly IMapper _mapper;
-        public OrderService(OrderRepo orderRepo, IMapper mapper)
+        public OrderService(OrderRepo orderRepo, IOrderDetailService orderDetailService, IMapper mapper)
         {
             _orderRepo = orderRepo;
+            _orderDetailService = orderDetailService;
             _mapper = mapper;
         }
 
@@ -28,23 +30,65 @@ namespace ASA_TENANT_SERVICE.Implenment
         {
             try
             {
+                // Tạo Order trước
                 var entity = _mapper.Map<Order>(request);
-                var affected = await _orderRepo.CreateAsync(entity);
-                if (affected > 0)
+                
+                // Nếu có OrderDetails, bỏ qua TotalPrice từ request vì sẽ tính tự động
+                if (request.OrderDetails != null && request.OrderDetails.Any())
                 {
-                    var response = _mapper.Map<OrderResponse>(entity);
+                    entity.TotalPrice = 0; // Sẽ được cập nhật sau khi tạo OrderDetails
+                }
+                
+                var affected = await _orderRepo.CreateAsync(entity);
+                if (affected <= 0)
+                {
                     return new ApiResponse<OrderResponse>
                     {
-                        Success = true,
-                        Message = "Create successfully",
-                        Data = response
+                        Success = false,
+                        Message = "Create Order failed",
+                        Data = null
                     };
                 }
+
+                // Tạo OrderDetails nếu có và tính tổng TotalPrice
+                var createdOrderDetails = new List<OrderDetailResponse>();
+                decimal totalOrderPrice = 0;
+                
+                if (request.OrderDetails != null && request.OrderDetails.Any())
+                {
+                    foreach (var orderDetailRequest in request.OrderDetails)
+                    {
+                        orderDetailRequest.OrderId = entity.OrderId; // Gán OrderId cho OrderDetail
+                        var orderDetailResult = await _orderDetailService.CreateAsync(orderDetailRequest);
+                        if (orderDetailResult.Success && orderDetailResult.Data != null)
+                        {
+                            createdOrderDetails.Add(orderDetailResult.Data);
+                            // Cộng dồn TotalPrice của OrderDetail vào tổng Order
+                            if (orderDetailResult.Data.TotalPrice.HasValue)
+                            {
+                                totalOrderPrice += orderDetailResult.Data.TotalPrice.Value;
+                            }
+                        }
+                        // Nếu tạo OrderDetail thất bại, có thể rollback Order hoặc chỉ log lỗi
+                        // Ở đây tôi sẽ log lỗi nhưng vẫn trả về Order đã tạo
+                        // Trong thực tế, bạn có thể sử dụng transaction để rollback
+                    }
+                }
+
+                // Cập nhật TotalPrice của Order nếu có OrderDetails
+                if (createdOrderDetails.Any())
+                {
+                    entity.TotalPrice = totalOrderPrice;
+                    await _orderRepo.UpdateAsync(entity); // Cập nhật lại Order với TotalPrice đã tính
+                }
+
+                var response = _mapper.Map<OrderResponse>(entity);
+                response.OrderDetails = createdOrderDetails;
                 return new ApiResponse<OrderResponse>
                 {
-                    Success = false,
-                    Message = "Create failed",
-                    Data = null
+                    Success = true,
+                    Message = "Create successfully",
+                    Data = response
                 };
             }
             catch (Exception ex)

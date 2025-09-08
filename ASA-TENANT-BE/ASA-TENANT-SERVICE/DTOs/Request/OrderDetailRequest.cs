@@ -11,7 +11,6 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
         public int? Quantity { get; set; }
         public long? ProductUnitId { get; set; }
         public long? ProductId { get; set; }
-        public long? OrderId { get; set; }
     }
 
     public class OrderDetailGetRequest

@@ -19,6 +19,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
         public decimal? Discount { get; set; }
         public DateTime? CreatedAt { get; set; }
         public string? Note { get; set; }
+        public List<OrderDetailRequest>? OrderDetails { get; set; }
     }
 
     public class OrderGetRequest

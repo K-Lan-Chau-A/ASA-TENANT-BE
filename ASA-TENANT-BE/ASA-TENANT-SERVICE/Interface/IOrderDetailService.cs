@@ -9,6 +9,7 @@ namespace ASA_TENANT_SERVICE.Interface
     {
         Task<PagedResponse<OrderDetailResponse>> GetFilteredOrderDetailsAsync(OrderDetailGetRequest Filter, int page, int pageSize);
         Task<ApiResponse<OrderDetailResponse>> CreateAsync(OrderDetailRequest request);
+        Task<ApiResponse<OrderDetailResponse>> CreateAsync(OrderDetailRequest request, long orderId);
         Task<ApiResponse<OrderDetailResponse>> UpdateAsync(long id, OrderDetailRequest request);
         Task<ApiResponse<bool>> DeleteAsync(long id);
     }

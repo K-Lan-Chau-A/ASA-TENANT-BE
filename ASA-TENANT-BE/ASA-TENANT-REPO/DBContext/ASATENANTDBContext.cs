@@ -166,9 +166,28 @@ public partial class ASATENANTDBContext : DbContext
             entity.HasIndex(e => e.FcmToken, "fcm_fcm_token_key").IsUnique();
 
             entity.Property(e => e.FcmId).HasColumnName("fcm_id");
+            entity.Property(e => e.Createdat)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("createdat");
             entity.Property(e => e.FcmToken)
                 .HasMaxLength(255)
                 .HasColumnName("fcm_token");
+            entity.Property(e => e.Isactive)
+                .HasDefaultValue(true)
+                .HasColumnName("isactive");
+            entity.Property(e => e.Lastlogin)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("lastlogin");
+            entity.Property(e => e.Uniqueid)
+                .IsRequired()
+                .HasMaxLength(100)
+                .HasColumnName("uniqueid");
+            entity.Property(e => e.Updatedat)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("updatedat");
             entity.Property(e => e.UserId).HasColumnName("user_id");
 
             entity.HasOne(d => d.User).WithMany(p => p.Fcms)

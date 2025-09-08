@@ -81,6 +81,61 @@ namespace ASA_TENANT_SERVICE.Mapping
             CreateMap<Voucher, VoucherResponse>().ReverseMap();
             CreateMap<VoucherRequest, Voucher>().ReverseMap();
             CreateMap<VoucherGetRequest, Voucher>().ReverseMap();
+
+            // ChatMessage Mappings
+            CreateMap<ChatMessage, ChatMessageResponse>().ReverseMap();
+            CreateMap<ChatMessageRequest, ChatMessage>().ReverseMap();
+            CreateMap<ChatMessageGetRequest, ChatMessage>().ReverseMap();
+
+            //Fcm Mappings
+            CreateMap<Fcm, FcmResponse>().ReverseMap();
+            CreateMap<FcmRequest, Fcm>().ReverseMap();
+            CreateMap<FcmGetRequest, Fcm>().ReverseMap();
+
+            //Notification Mappings
+            CreateMap<Notification, NotificationResponse>().ReverseMap();
+            CreateMap<NotificationRequest, Notification>().ReverseMap();
+            CreateMap<NotificationGetRequest, Notification>().ReverseMap();
+
+            //Shift Mappings
+            CreateMap<Shift, ShiftResponse>().ReverseMap();
+            CreateMap<ShiftRequest, Shift>().ReverseMap();
+            CreateMap<ShiftGetRequest, Shift>().ReverseMap();
+            CreateMap<ShiftOpenRequest, Shift>().ReverseMap();
+
+            //ProductUnit Mappings
+            CreateMap<ProductUnit, ProductUnitResponse>()
+     .          ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product.ProductName))
+                .ForMember(dest => dest.UnitName, opt => opt.MapFrom(src => src.Unit.Name));
+            CreateMap<ProductUnitRequest, ProductUnit>().ReverseMap();
+            CreateMap<ProductUnitGetRequest, ProductUnit>().ReverseMap();
+
+            // Nfc Mappings
+            CreateMap<Nfc, NfcResponse>()
+                .ForMember(dest => dest.CustomerFullName, opt => opt.MapFrom(src => src.Customer.FullName))
+                .ForMember(dest => dest.CustomerEmail, opt => opt.MapFrom(src => src.Customer.Email))
+                .ForMember(dest => dest.CustomerPhone, opt => opt.MapFrom(src => src.Customer.Phone))
+                .ForMember(dest => dest.CustomerRank, opt => opt.MapFrom(src => src.Customer.Rank));
+            CreateMap<NfcRequest, Nfc>().ReverseMap();
+            CreateMap<NfcGetRequest, Nfc>().ReverseMap();
+
+            // Promotion Product Mappings
+            CreateMap<PromotionProduct, PromotionProductResponse>()
+                .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product.ProductName))
+                .ForMember(dest => dest.PromotionName, opt => opt.MapFrom(src => src.Promotion.Name))
+                .ForMember(dest => dest.PromotionValue, opt => opt.MapFrom(src => src.Promotion.Value))
+                .ForMember(dest => dest.PromotionType, opt => opt.MapFrom(src => src.Promotion.Type))
+                .ForMember(dest => dest.PromotionStartDate, opt => opt.MapFrom(src => src.Promotion.StartDate))
+                .ForMember(dest => dest.PromotionEndDate, opt => opt.MapFrom(src => src.Promotion.EndDate))
+                .ForMember(dest => dest.PromotionStartTime, opt => opt.MapFrom(src => src.Promotion.StartTime))
+                .ForMember(dest => dest.PromotionEndTime, opt => opt.MapFrom(src => src.Promotion.EndTime));
+            CreateMap<PromotionProductRequest, PromotionProduct>().ReverseMap();
+            CreateMap<PromotionProductGetRequest, PromotionProduct>().ReverseMap();
+
+            // Prompt Mappings
+            CreateMap<Prompt, PromptResponse>().ReverseMap();
+            CreateMap<PromptRequest, Prompt>().ReverseMap();
+            CreateMap<PromptGetRequest, Prompt>().ReverseMap();
         }
     }
 }

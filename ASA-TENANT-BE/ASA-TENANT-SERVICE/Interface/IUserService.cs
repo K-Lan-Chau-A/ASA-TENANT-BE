@@ -15,6 +15,7 @@ namespace ASA_TENANT_SERVICE.Interface
         Task<PagedResponse<UserResponse>> GetFilteredUsersAsync(UserGetRequest Filter, int page, int pageSize);
         Task<ApiResponse<UserResponse>> CreateAsync(UserRequest request);
         Task<ApiResponse<UserResponse>> UpdateAsync(long id, UserRequest request);
+        Task<User> GetUserbyUserId(long userId);
         Task<ApiResponse<bool>> DeleteAsync(long id);
         Task<User> GetUserByUsername(string username);
         string HashPassword(string password);

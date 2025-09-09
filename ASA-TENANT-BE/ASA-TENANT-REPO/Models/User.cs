@@ -23,10 +23,6 @@ public partial class User
 
     public string Avatar { get; set; }
 
-    public int? RequestLimit { get; set; }
-
-    public int? AccountLimit { get; set; }
-
     public virtual ICollection<ChatMessage> ChatMessages { get; set; } = new List<ChatMessage>();
 
     public virtual ICollection<Fcm> Fcms { get; set; } = new List<Fcm>();
@@ -40,4 +36,6 @@ public partial class User
     public virtual Shop Shop { get; set; }
 
     public virtual ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
+
+    public virtual ICollection<UserFeature> UserFeatures { get; set; } = new List<UserFeature>();
 }

@@ -15,7 +15,5 @@ namespace ASA_TENANT_SERVICE.DTOs.Response
         public short? Role { get; set; }
         public DateTime? CreatedAt { get; set; }
         public string Avatar { get; set; }
-        public int? RequestLimit { get; set; }
-        public int? AccountLimit { get; set; }
     }
 }

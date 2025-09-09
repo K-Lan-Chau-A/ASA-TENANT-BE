@@ -26,10 +26,6 @@ namespace ASA_TENANT_REPO.Repository
             {
                 query = query.Where(s => s.ShopName.ToLower().Contains(filter.ShopName.ToLower()));
             }
-            if (!string.IsNullOrEmpty(filter.Subscription))
-            {
-                query = query.Where(s => s.Subscription.Contains(filter.Subscription));
-            }
             if (!string.IsNullOrEmpty(filter.Address))
             {
                 query = query.Where(s => s.Address.Contains(filter.Address));

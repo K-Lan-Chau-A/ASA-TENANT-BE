@@ -92,6 +92,10 @@
          "ObjectType": 0
       },
       {
+         "Name": "public.shop_subscription",
+         "ObjectType": 0
+      },
+      {
          "Name": "public.transaction",
          "ObjectType": 0
       },
@@ -101,6 +105,10 @@
       },
       {
          "Name": "public.user",
+         "ObjectType": 0
+      },
+      {
+         "Name": "public.user_feature",
          "ObjectType": 0
       },
       {

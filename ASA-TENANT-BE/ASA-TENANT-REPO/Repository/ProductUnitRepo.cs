@@ -37,5 +37,9 @@ namespace ASA_TENANT_REPO.Repository
                 query = query.Where(x => x.Price == filter.Price);
             return query.OrderBy(x => x.ProductUnitId);
         }
+        public async Task<ProductUnit> GetByProductAndUnitAsync(long productId, long unitId, long shopId)
+        {
+            return await _context.ProductUnits.FirstOrDefaultAsync(pu => pu.ProductId == productId && pu.UnitId == unitId && pu.ShopId == shopId);
+        }
     }
 }

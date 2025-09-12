@@ -136,6 +136,8 @@ namespace ASA_TENANT_SERVICE.Mapping
             CreateMap<Prompt, PromptResponse>().ReverseMap();
             CreateMap<PromptRequest, Prompt>().ReverseMap();
             CreateMap<PromptGetRequest, Prompt>().ReverseMap();
+
+
         }
     }
 }

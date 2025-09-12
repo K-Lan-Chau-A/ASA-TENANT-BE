@@ -14,8 +14,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
         public short? Status { get; set; }
         public short? Role { get; set; }
         public string? Avatar { get; set; }
-        public int? RequestLimit { get; set; }
-        public int? AccountLimit { get; set; }
+
     }
 
     public class UserGetRequest
@@ -25,7 +24,6 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
         public long? ShopId { get; set; }
         public short? Status { get; set; }
         public short? Role { get; set; }
-        public int? RequestLimit { get; set; }
-        public int? AccountLimit { get; set; }
+
     }
 }

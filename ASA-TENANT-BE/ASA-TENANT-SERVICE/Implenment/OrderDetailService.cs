@@ -83,6 +83,63 @@ namespace ASA_TENANT_SERVICE.Implenment
             }
         }
 
+        public async Task<ApiResponse<OrderDetailResponse>> CreateAsync(OrderDetailRequest request, long orderId)
+        {
+            try
+            {
+                var entity = _mapper.Map<OrderDetail>(request);
+                entity.OrderId = orderId; // Set OrderId
+                
+                decimal unitPrice = 0;
+                if (request.ProductUnitId.HasValue && request.ProductUnitId.Value > 0)
+                {
+                    var productUnit = await _productUnitRepo.GetByIdAsync(request.ProductUnitId);
+                    if (productUnit != null && productUnit.Price.HasValue)
+                    {
+                        unitPrice = productUnit.Price.Value;
+                    }
+                }
+                if (unitPrice == 0 && request.ProductId.HasValue && request.ProductId.Value > 0)
+                {
+                    var product = await _productRepo.GetByIdAsync(request.ProductId);
+                    if (product != null && product.Price.HasValue)
+                    {
+                        unitPrice = product.Price.Value;
+                    }
+                }
+                if (request.Quantity.HasValue && unitPrice > 0)
+                {
+                    entity.TotalPrice = unitPrice * request.Quantity.Value;
+                }
+                var affected = await _orderDetailRepo.CreateAsync(entity);
+                if (affected > 0)
+                {
+                    var response = _mapper.Map<OrderDetailResponse>(entity);
+                    return new ApiResponse<OrderDetailResponse>
+                    {
+                        Success = true,
+                        Message = "Create successfully",
+                        Data = response
+                    };
+                }
+                return new ApiResponse<OrderDetailResponse>
+                {
+                    Success = false,
+                    Message = "Create failed",
+                    Data = null
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<OrderDetailResponse>
+                {
+                    Success = false,
+                    Message = $"Error: {ex.Message}",
+                    Data = null
+                };
+            }
+        }
+
         public async Task<ApiResponse<bool>> DeleteAsync(long id)
         {
             try

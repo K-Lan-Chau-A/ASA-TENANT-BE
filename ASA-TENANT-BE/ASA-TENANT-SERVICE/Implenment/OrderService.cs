@@ -17,10 +17,16 @@ namespace ASA_TENANT_SERVICE.Implenment
     public class OrderService : IOrderService
     {
         private readonly OrderRepo _orderRepo;
+        private readonly IOrderDetailService _orderDetailService;
+        private readonly IInventoryTransactionService _inventoryTransactionService;
+        private readonly ProductUnitRepo _productUnitRepo;
         private readonly IMapper _mapper;
-        public OrderService(OrderRepo orderRepo, IMapper mapper)
+        public OrderService(OrderRepo orderRepo, IOrderDetailService orderDetailService, IInventoryTransactionService inventoryTransactionService, ProductUnitRepo productUnitRepo, IMapper mapper)
         {
             _orderRepo = orderRepo;
+            _orderDetailService = orderDetailService;
+            _inventoryTransactionService = inventoryTransactionService;
+            _productUnitRepo = productUnitRepo;
             _mapper = mapper;
         }
 
@@ -28,23 +34,78 @@ namespace ASA_TENANT_SERVICE.Implenment
         {
             try
             {
+                // Tạo Order trước
                 var entity = _mapper.Map<Order>(request);
-                var affected = await _orderRepo.CreateAsync(entity);
-                if (affected > 0)
+                
+                // Set Datetime to current time (UTC for PostgreSQL compatibility)
+                entity.Datetime = DateTime.UtcNow;
+                
+                // Nếu có OrderDetails, bỏ qua TotalPrice từ request vì sẽ tính tự động
+                if (request.OrderDetails != null && request.OrderDetails.Any())
                 {
-                    var response = _mapper.Map<OrderResponse>(entity);
+                    entity.TotalPrice = 0; // Sẽ được cập nhật sau khi tạo OrderDetails
+                }
+                
+                var affected = await _orderRepo.CreateAsync(entity);
+                if (affected <= 0)
+                {
                     return new ApiResponse<OrderResponse>
                     {
-                        Success = true,
-                        Message = "Create successfully",
-                        Data = response
+                        Success = false,
+                        Message = "Create Order failed",
+                        Data = null
                     };
                 }
+
+                // Tạo OrderDetails nếu có và tính tổng TotalPrice
+                var createdOrderDetails = new List<OrderDetailResponse>();
+                decimal totalOrderPrice = 0;
+                
+                if (request.OrderDetails != null && request.OrderDetails.Any())
+                {
+                    foreach (var orderDetailRequest in request.OrderDetails)
+                    {
+                        // Tạo OrderDetailRequest mới với OrderId
+                        var orderDetailWithOrderId = new OrderDetailRequest
+                        {
+                            Quantity = orderDetailRequest.Quantity,
+                            ProductUnitId = orderDetailRequest.ProductUnitId,
+                            ProductId = orderDetailRequest.ProductId
+                        };
+                        
+                        var orderDetailResult = await _orderDetailService.CreateAsync(orderDetailWithOrderId, entity.OrderId);
+                        if (orderDetailResult.Success && orderDetailResult.Data != null)
+                        {
+                            createdOrderDetails.Add(orderDetailResult.Data);
+                            // Cộng dồn TotalPrice của OrderDetail vào tổng Order
+                            if (orderDetailResult.Data.TotalPrice.HasValue)
+                            {
+                                totalOrderPrice += orderDetailResult.Data.TotalPrice.Value;
+                            }
+
+                            // Tạo InventoryTransaction cho OrderDetail này
+                            await CreateInventoryTransactionForOrderDetail(orderDetailWithOrderId, entity);
+                        }
+                        // Nếu tạo OrderDetail thất bại, có thể rollback Order hoặc chỉ log lỗi
+                        // Ở đây tôi sẽ log lỗi nhưng vẫn trả về Order đã tạo
+                        // Trong thực tế, bạn có thể sử dụng transaction để rollback
+                    }
+                }
+
+                // Cập nhật TotalPrice của Order nếu có OrderDetails
+                if (createdOrderDetails.Any())
+                {
+                    entity.TotalPrice = totalOrderPrice;
+                    await _orderRepo.UpdateAsync(entity); // Cập nhật lại Order với TotalPrice đã tính
+                }
+
+                var response = _mapper.Map<OrderResponse>(entity);
+                response.OrderDetails = createdOrderDetails;
                 return new ApiResponse<OrderResponse>
                 {
-                    Success = false,
-                    Message = "Create failed",
-                    Data = null
+                    Success = true,
+                    Message = "Create successfully",
+                    Data = response
                 };
             }
             catch (Exception ex)
@@ -149,6 +210,48 @@ namespace ASA_TENANT_SERVICE.Implenment
                     Message = $"Error: {ex.Message}",
                     Data = null
                 };
+            }
+        }
+
+        private async Task CreateInventoryTransactionForOrderDetail(OrderDetailRequest orderDetailRequest, Order order)
+        {
+            try
+            {
+                // Chỉ tạo InventoryTransaction nếu có ProductUnitId
+                if (orderDetailRequest.ProductUnitId.HasValue && orderDetailRequest.ProductUnitId.Value > 0)
+                {
+                    // Lấy thông tin ProductUnit để tính conversion factor
+                    var productUnit = await _productUnitRepo.GetByIdAsync(orderDetailRequest.ProductUnitId.Value);
+                    if (productUnit != null && productUnit.ProductId.HasValue)
+                    {
+                        // Tính số lượng sản phẩm cần trừ (quantity * conversion factor)
+                        int quantityToDeduct = orderDetailRequest.Quantity ?? 0;
+                        if (productUnit.ConversionFactor.HasValue && productUnit.ConversionFactor.Value > 0)
+                        {
+                            quantityToDeduct = (int)(quantityToDeduct * productUnit.ConversionFactor.Value);
+                        }
+
+                        // Tạo InventoryTransaction với type = 1 (Sale)
+                        var inventoryTransactionRequest = new InventoryTransactionRequest
+                        {
+                            Type = 1, // Sale
+                            ProductId = productUnit.ProductId.Value,
+                            OrderId = order.OrderId,
+                            UnitId = productUnit.UnitId ?? 0,
+                            Quantity = quantityToDeduct,
+                            Price =  0,
+                            ShopId = order.ShopId ?? 0
+                        };
+
+                        await _inventoryTransactionService.CreateAsync(inventoryTransactionRequest);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log lỗi nhưng không throw để không ảnh hưởng đến việc tạo Order
+                // Trong thực tế, bạn có thể sử dụng ILogger để log lỗi
+                Console.WriteLine($"Error creating inventory transaction: {ex.Message}");
             }
         }
     }

@@ -18,37 +18,41 @@ namespace ASA_TENANT_SERVICE.Implenment
     public class ProductService : IProductService
     {
         private readonly ProductRepo _productRepo;
+        private readonly UnitRepo _unitRepo;
+        private readonly ProductUnitRepo _productUnitRepo;
+        private readonly InventoryTransactionRepo _inventoryTransactionRepo;
         private readonly IMapper _mapper;
-        public ProductService(ProductRepo productRepo, IMapper mapper)
+        public ProductService(ProductRepo productRepo, IMapper mapper, UnitRepo unitRepo, ProductUnitRepo productUnitRepo, InventoryTransactionRepo inventoryTransactionRepo)
         {
             _productRepo = productRepo;
             _mapper = mapper;
+            _unitRepo = unitRepo;
+            _productUnitRepo = productUnitRepo;
+            _inventoryTransactionRepo = inventoryTransactionRepo;
         }
 
+        
         public async Task<ApiResponse<ProductResponse>> CreateAsync(ProductRequest request)
         {
             try
             {
-                var entity = _mapper.Map<Product>(request);
+                var product = await _productRepo.GetByBarcodeAsync(request.Barcode, request.ShopId);
 
-                var affected = await _productRepo.CreateAsync(entity);
-
-                if (affected > 0)
+                if (product == null)
                 {
-                    var response = _mapper.Map<ProductResponse>(entity);
-                    return new ApiResponse<ProductResponse>
-                    {
-                        Success = true,
-                        Message = "Create successfully",
-                        Data = response
-                    };
+                    product = await CreateNewProductAsync(request);
+                }
+                else
+                {
+                    product = await UpdateExistingProductAsync(product, request);
                 }
 
+                var response = _mapper.Map<ProductResponse>(product);
                 return new ApiResponse<ProductResponse>
                 {
-                    Success = false,
-                    Message = "Create failed",
-                    Data = null
+                    Success = true,
+                    Message = "Create/Update product success",
+                    Data = response
                 };
             }
             catch (Exception ex)
@@ -61,6 +65,119 @@ namespace ASA_TENANT_SERVICE.Implenment
                 };
             }
         }
+
+        private async Task<Product> CreateNewProductAsync(ProductRequest request)
+        {
+            var product = _mapper.Map<Product>(request);
+            product.Quantity = request.Transaction.Quantity;
+            product.IsLow = false;
+            await _productRepo.CreateAsync(product);
+
+            // Thêm đơn vị sản phẩm
+            foreach (var unitReq in request.Units)
+            {
+                var unit = await _unitRepo.GetOrCreateAsync(unitReq.Name, request.ShopId);
+
+                if (unitReq.IsBaseUnit)
+                    product.UnitIdFk = unit.UnitId;
+
+                var productUnit = new ProductUnit
+                {
+                    ProductId = product.ProductId,
+                    UnitId = unit.UnitId,
+                    ConversionFactor = unitReq.ConversionFactor,
+                    Price = unitReq.Price,
+                    ShopId = product.ShopId
+                };
+
+                await _productUnitRepo.CreateAsync(productUnit);
+            }
+
+            // Tính cost từ transaction
+            if (request.Transaction != null)
+            {
+                product.Cost = request.Transaction.Price / request.Transaction.Quantity;
+                product.Price = request.Price ?? product.Price;
+                product.UpdateAt = DateTime.UtcNow;
+
+                var invTransaction = new InventoryTransaction
+                {
+                    ProductId = product.ProductId,
+                    ShopId = product.ShopId,
+                    UnitId = product.UnitIdFk,
+                    Quantity = request.Transaction.Quantity,
+                    Price = request.Transaction.Price,
+                    ImageUrl = request.Transaction.ImageUrl,
+                    CreatedAt = DateTime.UtcNow,
+                    Type = 1 // nhập kho
+                };
+
+                await _inventoryTransactionRepo.CreateAsync(invTransaction);
+            }
+
+            await _productRepo.UpdateAsync(product);
+            return product;
+        }
+
+        private async Task<Product> UpdateExistingProductAsync(Product product, ProductRequest request)
+        {
+            // Cập nhật số lượng tồn kho
+            if (request.Transaction != null)
+            {
+                product.Quantity = (product.Quantity ?? 0) + request.Transaction.Quantity;
+                product.Cost = request.Transaction.Price / request.Transaction.Quantity;
+                product.Price = request.Price ?? product.Price;
+                product.Discount = request.Discount ?? product.Discount;
+                product.UpdateAt = DateTime.UtcNow;
+
+                var invTransaction = new InventoryTransaction
+                {
+                    ProductId = product.ProductId,
+                    ShopId = product.ShopId,
+                    UnitId = product.UnitIdFk,
+                    Quantity = request.Transaction.Quantity,
+                    Price = request.Transaction.Price,
+                    ImageUrl = request.Transaction.ImageUrl,
+                    CreatedAt = DateTime.UtcNow,
+                    Type = 1
+                };
+
+                await _inventoryTransactionRepo.CreateAsync(invTransaction);
+            }
+
+            // Update hoặc thêm mới đơn vị sản phẩm
+            foreach (var unitReq in request.Units)
+            {
+                var unit = await _unitRepo.GetOrCreateAsync(unitReq.Name, request.ShopId);
+
+                if (unitReq.IsBaseUnit)
+                    product.UnitIdFk = unit.UnitId;
+
+                var productUnit = await _productUnitRepo.GetByProductAndUnitAsync(product.ProductId, unit.UnitId, request.ShopId);
+                if (productUnit == null)
+                {
+                    productUnit = new ProductUnit
+                    {
+                        ProductId = product.ProductId,
+                        UnitId = unit.UnitId,
+                        ConversionFactor = unitReq.ConversionFactor,
+                        Price = unitReq.Price,
+                        ShopId = product.ShopId
+                    };
+                    await _productUnitRepo.CreateAsync(productUnit);
+                }
+                else
+                {
+                    productUnit.ConversionFactor = unitReq.ConversionFactor;
+                    productUnit.Price = unitReq.Price;
+                    await _productUnitRepo.UpdateAsync(productUnit);
+                }
+            }
+
+            await _productRepo.UpdateAsync(product);
+            return product;
+        }
+
 
         public async Task<ApiResponse<bool>> DeleteAsync(long id)
         {

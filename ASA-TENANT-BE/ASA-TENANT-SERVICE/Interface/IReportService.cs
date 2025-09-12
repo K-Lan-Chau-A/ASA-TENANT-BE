@@ -8,5 +8,7 @@ namespace ASA_TENANT_SERVICE.Interface
 {
     public interface IReportService
     {
+        Task GenerateDailyReportAsync();
+        Task GenerateMonthlyReportAsync();
     }
 }

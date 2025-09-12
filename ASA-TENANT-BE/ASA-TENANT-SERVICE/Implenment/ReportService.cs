@@ -17,5 +17,16 @@ namespace ASA_TENANT_SERVICE.Implenment
         {
             _reportRepo = reportRepo;
         }
+
+        public async Task GenerateDailyReportAsync()
+        {
+            await _reportRepo.GenerateDailyReportAsync();
+
+        }
+
+        public async Task GenerateMonthlyReportAsync()
+        {
+            await _reportRepo.GenerateMonthlyReportAsync();
+        }
     }
 }

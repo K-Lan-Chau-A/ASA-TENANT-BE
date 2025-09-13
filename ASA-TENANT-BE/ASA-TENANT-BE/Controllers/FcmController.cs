@@ -18,7 +18,7 @@ namespace ASA_TENANT_BE.Controllers
             _fcmService = fcmService;
         }
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Fcm>>> GetFiltered([FromQuery] FcmGetRequest requestDto, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        public async Task<ActionResult<IEnumerable<FcmResponse>>> GetFiltered([FromQuery] FcmGetRequest requestDto, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             try
             {

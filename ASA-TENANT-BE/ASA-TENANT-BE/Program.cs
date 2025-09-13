@@ -47,6 +47,7 @@ builder.Services.AddScoped<IShopService, ShopService>();
 builder.Services.AddScoped<ITransactionService, TransactionService>();
 builder.Services.AddScoped<IUnitService, UnitService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IUserFeatureService, UserFeatureService>();
 builder.Services.AddScoped<IVoucherService, VoucherService>();
 builder.Services.AddScoped<IZalopayService, ZalopayService>();
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
@@ -77,6 +78,7 @@ builder.Services.AddScoped<ShopRepo>();
 builder.Services.AddScoped<TransactionRepo>();
 builder.Services.AddScoped<UnitRepo>();
 builder.Services.AddScoped<UserRepo>();
+builder.Services.AddScoped<UserFeatureRepo>();
 builder.Services.AddScoped<VoucherRepo>();
 builder.Services.AddScoped<ZalopayRepo>();
 

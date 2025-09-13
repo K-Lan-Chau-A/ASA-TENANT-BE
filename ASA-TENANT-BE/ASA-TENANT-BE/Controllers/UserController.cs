@@ -20,7 +20,7 @@ namespace ASA_TENANT_BE.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<User>>> GetFiltered([FromQuery] UserGetRequest requestDto, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        public async Task<ActionResult<IEnumerable<UserResponse>>> GetFiltered([FromQuery] UserGetRequest requestDto, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             try
             {

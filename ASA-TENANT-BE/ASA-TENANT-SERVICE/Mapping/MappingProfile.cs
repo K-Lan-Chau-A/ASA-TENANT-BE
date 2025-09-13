@@ -137,6 +137,15 @@ namespace ASA_TENANT_SERVICE.Mapping
             CreateMap<PromptRequest, Prompt>().ReverseMap();
             CreateMap<PromptGetRequest, Prompt>().ReverseMap();
 
+            // Report Mappings
+            CreateMap<Report, ReportResponse>()
+                .ForMember(dest => dest.ReportDetails, opt => opt.MapFrom(src => src.ReportDetails));
+            CreateMap<ReportGetRequest, Report>().ReverseMap();
+
+            CreateMap<ReportDetail, ReportDetailResponse>()
+                .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product.ProductName))
+                .ForMember(dest => dest.ProductCategory, opt => opt.MapFrom(src => src.Product.Category.CategoryName))
+                .ForMember(dest => dest.ProductPrice, opt => opt.MapFrom(src => src.Product.Price));
 
         }
     }

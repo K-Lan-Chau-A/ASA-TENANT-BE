@@ -131,6 +131,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                     };
 
                 _mapper.Map(request, existing);
+                existing.Password = HashPassword(request.Password);
 
                 var affected = await _userRepo.UpdateAsync(existing);
                 if (affected > 0)

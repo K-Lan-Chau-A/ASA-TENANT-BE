@@ -2,202 +2,289 @@
 using ASA_TENANT_REPO.Models;
 using EDUConnect_Repositories.Basic;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ASA_TENANT_REPO.Repository
 {
     public class ReportRepo : GenericRepository<Report>
     {
-        public ReportRepo(ASATENANTDBContext context) : base(context)
+        private const int WEEKLY = 1;
+        private const int MONTHLY = 2;
+
+        public ReportRepo(ASATENANTDBContext context) : base(context) { }
+
+        /// <summary>
+        /// Tạo report hàng tuần cho từng ShopId.
+        /// </summary>
+        public async Task GenerateWeeklyReportAsync()
         {
-        }
+            var vietnamZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            var localNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vietnamZone);
 
-        public async Task GenerateDailyReportAsync()
-        {
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            // Tính tuần hiện tại (Mon–Sun)
+            int dow = (int)localNow.DayOfWeek;
+            int offsetToMonday = dow == 0 ? 6 : dow - 1;
+            var startOfWeek = DateOnly.FromDateTime(localNow.Date.AddDays(-offsetToMonday));
+            var endOfWeek = startOfWeek.AddDays(6);
 
-            // Nếu đã có report cho ngày hôm nay thì bỏ qua
-            if (await _context.Reports.AnyAsync(r => r.Type == 1 && r.StartDate == today))
-                return;
-
-            // Lấy tất cả shift đã đóng trong ngày
-            var shifts = await _context.Shifts
-                .Where(s => DateOnly.FromDateTime(s.StartDate.Value) == today && s.Status == 2) // 2 = Closed
-                .ToListAsync();
-
-            if (!shifts.Any()) return;
-
-            // Đếm số order thuộc các shift này
-            var shiftIds = shifts.Select(s => s.ShiftId).ToList();
-            var orderCount = await _context.Orders
-                .Where(o => o.ShiftId.HasValue && shiftIds.Contains(o.ShiftId.Value))
-                .CountAsync();
-
-            var revenue = shifts.Sum(s => s.Revenue);
-
-            var cost = await CalculateCostFIFOAsync(shiftIds);
-
-            var grossProfit = revenue - cost;
-
-            var report = new Report
-            {
-                Type = 1, // 1 = DAY
-                StartDate = today,
-                EndDate = today,
-                CreateAt = DateTime.UtcNow,
-                Revenue = revenue,
-                GrossProfit = grossProfit,
-                Cost = cost,
-                OrderCounter = orderCount,
-                ShopId = shifts.First().ShopId
-            };
-
-            _context.Reports.Add(report);
-            await _context.SaveChangesAsync();
-
-            // 🔹 Sau khi lưu Report => tạo ReportDetail
-            var productSales = await _context.InventoryTransactions
-                .Where(it => it.OrderId.HasValue
-                          && it.Order.ShiftId.HasValue
-                          && shiftIds.Contains(it.Order.ShiftId.Value)
-                          && it.Type == 1) // 1 = bán hàng, 2 = nhập hàng
-                .GroupBy(it => it.ProductId)
-                .Select(g => new { ProductId = g.Key, Quantity = g.Sum(x => x.Quantity ?? 0) })
-                .ToListAsync();
-
-            foreach (var ps in productSales)
-            {
-                var detail = new ReportDetail
-                {
-                    ReportId = report.ReportId,
-                    ProductId = ps.ProductId,
-                    Quantity = ps.Quantity
-                };
-                _context.ReportDetails.Add(detail);
-            }
-
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task GenerateMonthlyReportAsync()
-        {
-            //var vietnamTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
-            var today = DateTime.UtcNow;
-            var currentMonth = new DateOnly(today.Year, today.Month, 1); // ngày đầu tháng
-            var endOfMonth = currentMonth.AddMonths(1).AddDays(-1); // ngày cuối tháng
-
-            // Nếu đã có report cho tháng này thì bỏ qua
-            if (await _context.Reports.AnyAsync(r => r.Type == 2 && r.StartDate == currentMonth))
-                return;
-
-            // Lấy tất cả shift đã đóng trong tháng
+            // Lấy tất cả shift đã đóng trong tuần
             var shifts = await _context.Shifts
                 .Where(s => s.StartDate.HasValue
-                    && s.Status == 2 // Closed
-                    && s.StartDate.Value.Year == today.Year
-                    && s.StartDate.Value.Month == today.Month)
+                            && DateOnly.FromDateTime(s.StartDate.Value) >= startOfWeek
+                            && DateOnly.FromDateTime(s.StartDate.Value) <= endOfWeek
+                            && s.Status == 2)
                 .ToListAsync();
 
             if (!shifts.Any()) return;
 
-            // Đếm số order thuộc các shift này
-            var shiftIds = shifts.Select(s => s.ShiftId).ToList();
-            var orderCount = await _context.Orders
-                .Where(o => o.ShiftId.HasValue && shiftIds.Contains(o.ShiftId.Value))
-                .CountAsync();
-
-            var revenue = shifts.Sum(s => s.Revenue);
-
-            var cost = await CalculateCostFIFOAsync(shiftIds);
-
-            var grossProfit = revenue - cost;
-
-            var report = new Report
+            // Gom theo ShopId
+            var shopGroups = shifts.GroupBy(s => s.ShopId);
+            foreach (var shopGroup in shopGroups)
             {
-                Type = 2, // 2 = MONTH
-                StartDate = currentMonth,
-                EndDate = endOfMonth,
-                CreateAt = DateTime.UtcNow,
-                Revenue = revenue,
-                GrossProfit = grossProfit,
-                Cost = cost,
-                OrderCounter = orderCount,
-                ShopId = shifts.First().ShopId
-            };
+                var shopId = shopGroup.Key;
 
-            _context.Reports.Add(report);
-            await _context.SaveChangesAsync();
+                // Nếu đã có report weekly cho shop này tuần này -> bỏ qua
+                bool exists = await _context.Reports
+                    .AnyAsync(r => r.Type == WEEKLY && r.StartDate == startOfWeek && r.ShopId == shopId);
+                if (exists) continue;
 
-            // 🔹 Tạo ReportDetail cho tháng
-            var productSales = await _context.InventoryTransactions
-                .Where(it => it.OrderId.HasValue
-                          && it.Order.ShiftId.HasValue
-                          && shiftIds.Contains(it.Order.ShiftId.Value)
-                          && it.Type == 1) // 1 = bán hàng, 2 = nhập hàng
-                .GroupBy(it => it.ProductId)
-                .Select(g => new { ProductId = g.Key, Quantity = g.Sum(x => x.Quantity ?? 0) })
-                .ToListAsync();
+                var shiftIds = shopGroup.Select(s => s.ShiftId).ToList();
 
-            foreach (var ps in productSales)
-            {
-                var detail = new ReportDetail
+                var orderCount = await _context.Orders
+                    .Where(o => o.ShiftId.HasValue && shiftIds.Contains(o.ShiftId.Value))
+                    .CountAsync();
+
+                var revenue = shopGroup.Sum(s => s.Revenue ?? 0m);
+                var cost = await CalculateCostFIFOAsync(shiftIds);
+                var grossProfit = revenue - cost;
+
+                var report = new Report
                 {
-                    ReportId = report.ReportId,
-                    ProductId = ps.ProductId,
-                    Quantity = ps.Quantity
-                };  
-                _context.ReportDetails.Add(detail);
-            }
+                    Type = WEEKLY,
+                    StartDate = startOfWeek,
+                    EndDate = endOfWeek,
+                    CreateAt = DateTime.UtcNow,
+                    Revenue = revenue,
+                    Cost = cost,
+                    GrossProfit = grossProfit,
+                    OrderCounter = orderCount,
+                    ShopId = shopId
+                };
 
-            await _context.SaveChangesAsync();
+                _context.Reports.Add(report);
+                await _context.SaveChangesAsync();
+
+                // Chi tiết theo sản phẩm
+                var productSales = await _context.InventoryTransactions
+                    .Where(it => it.OrderId.HasValue
+                                 && it.Order.ShiftId.HasValue
+                                 && shiftIds.Contains(it.Order.ShiftId.Value)
+                                 && it.Type == 1)
+                    .GroupBy(it => it.ProductId)
+                    .Select(g => new { ProductId = g.Key, Quantity = g.Sum(x => x.Quantity ?? 0) })
+                    .ToListAsync();
+
+                foreach (var ps in productSales)
+                {
+                    _context.ReportDetails.Add(new ReportDetail
+                    {
+                        ReportId = report.ReportId,
+                        ProductId = ps.ProductId,
+                        Quantity = ps.Quantity
+                    });
+                }
+
+                await _context.SaveChangesAsync();
+            }
         }
 
-        // 🔹 Hàm phụ tính cost theo FIFO
+        /// <summary>
+        /// Tạo report hàng tháng cho từng ShopId, gom từ weekly report.
+        /// </summary>
+        public async Task GenerateMonthlyReportAsync()
+        {
+            var vietnamZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            var localNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vietnamZone);
+
+            var currentMonthStart = new DateOnly(localNow.Year, localNow.Month, 1);
+            var nextMonthStart = currentMonthStart.AddMonths(1);
+
+            // lấy tất cả weekly report bắt đầu trong tháng hiện tại
+            var weeklyReports = await _context.Reports
+                .Where(r => r.Type == WEEKLY
+                            && r.StartDate >= currentMonthStart
+                            && r.StartDate < nextMonthStart)
+                .Include(r => r.ReportDetails)
+                .ToListAsync();
+
+            if (!weeklyReports.Any())
+            {
+                Console.WriteLine("⚠️ Không tìm thấy weekly report nào để tạo monthly.");
+                return;
+            }
+
+            // gom theo ShopId
+            var shopGroups = weeklyReports.GroupBy(r => r.ShopId);
+            foreach (var shopGroup in shopGroups)
+            {
+                var shopId = shopGroup.Key;
+
+                // nếu đã có monthly của tháng này thì bỏ qua
+                bool exists = await _context.Reports
+                    .AnyAsync(r => r.Type == MONTHLY
+                                && r.StartDate == currentMonthStart
+                                && r.ShopId == shopId);
+
+                if (exists)
+                {
+                    Console.WriteLine($"Monthly report đã tồn tại cho Shop {shopId} tháng {currentMonthStart.Month}");
+                    continue;
+                }
+
+                var revenue = shopGroup.Sum(r => r.Revenue ?? 0m);
+                var cost = shopGroup.Sum(r => r.Cost ?? 0m);
+                var grossProfit = shopGroup.Sum(r => r.GrossProfit ?? 0m);
+                var orderCount = shopGroup.Sum(r => r.OrderCounter);
+
+                var report = new Report
+                {
+                    Type = MONTHLY,
+                    StartDate = currentMonthStart,
+                    EndDate = nextMonthStart.AddDays(-1),
+                    CreateAt = DateTime.UtcNow,
+                    Revenue = revenue,
+                    Cost = cost,
+                    GrossProfit = grossProfit,
+                    OrderCounter = orderCount,
+                    ShopId = shopId
+                };
+
+                _context.Reports.Add(report);
+                await _context.SaveChangesAsync();
+
+                var productDetails = shopGroup
+                    .SelectMany(r => r.ReportDetails ?? Enumerable.Empty<ReportDetail>())
+                    .GroupBy(d => d.ProductId)
+                    .Select(g => new { ProductId = g.Key, Quantity = g.Sum(x => x.Quantity) })
+                    .ToList();
+
+                foreach (var pd in productDetails)
+                {
+                    _context.ReportDetails.Add(new ReportDetail
+                    {
+                        ReportId = report.ReportId,
+                        ProductId = pd.ProductId,
+                        Quantity = pd.Quantity
+                    });
+                }
+
+                await _context.SaveChangesAsync();
+
+                Console.WriteLine($"✅ Tạo Monthly report cho Shop {shopId} tháng {currentMonthStart.Month}");
+            }
+        }
+
+
+        // FIFO cost
         private async Task<decimal> CalculateCostFIFOAsync(List<long> shiftIds)
         {
-            decimal totalCost = 0;
+            decimal totalCost = 0m;
 
-            // Lấy danh sách bán theo sản phẩm trong shift
             var sales = await _context.InventoryTransactions
-                .Where(it => it.Type == 1 // bán hàng
-                          && it.OrderId.HasValue
-                          && it.Order.ShiftId.HasValue
-                          && shiftIds.Contains(it.Order.ShiftId.Value))
+                .Where(it => it.Type == 1
+                             && it.OrderId.HasValue
+                             && it.Order.ShiftId.HasValue
+                             && shiftIds.Contains(it.Order.ShiftId.Value))
                 .GroupBy(it => it.ProductId)
                 .Select(g => new { ProductId = g.Key, Quantity = g.Sum(x => x.Quantity ?? 0) })
                 .ToListAsync();
+
+            if (!sales.Any()) return 0m;
+
+            var productIds = sales.Select(s => s.ProductId).Distinct().ToList();
+
+            var imports = await _context.InventoryTransactions
+                .Where(it => it.Type == 2 && productIds.Contains(it.ProductId))
+                .OrderBy(it => it.CreatedAt)
+                .Select(it => new { it.ProductId, Quantity = it.Quantity ?? 0, Price = it.Price ?? 0m })
+                .ToListAsync();
+
+            var importsByProduct = imports
+                .GroupBy(i => i.ProductId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.Select(x => new ImportSlot { Available = x.Quantity, Price = x.Price }).ToList()
+                );
+
+            var productCosts = await _context.Products
+                .Where(p => productIds.Contains(p.ProductId))
+                .Select(p => new { p.ProductId, Cost = p.Cost ?? 0m })
+                .ToListAsync();
+            var costDict = productCosts.ToDictionary(p => p.ProductId, p => p.Cost);
 
             foreach (var sale in sales)
             {
-                int remainingToMatch = sale.Quantity;
+                int remaining = sale.Quantity;
 
-                // Lấy danh sách nhập (Type=2) theo FIFO
-                var imports = await _context.InventoryTransactions
-                    .Where(it => it.Type == 2 && it.ProductId == sale.ProductId)
-                    .OrderBy(it => it.CreatedAt) // FIFO = nhập trước xuất trước
-                    .ToListAsync();
-
-                foreach (var import in imports)
+                if (importsByProduct.TryGetValue(sale.ProductId, out var slots))
                 {
-                    if (remainingToMatch <= 0) break;
+                    foreach (var slot in slots)
+                    {
+                        if (remaining <= 0) break;
+                        if (slot.Available <= 0) continue;
 
-                    int available = import.Quantity ?? 0;
-                    if (available <= 0) continue;
+                        int used = Math.Min(remaining, slot.Available);
+                        totalCost += used * slot.Price;
+                        slot.Available -= used;
+                        remaining -= used;
+                    }
+                }
 
-                    int used = Math.Min(remainingToMatch, available);
-
-                    totalCost += used * (import.Price ?? 0);
-
-                    remainingToMatch -= used;
+                if (remaining > 0)
+                {
+                    decimal fallback = costDict.TryGetValue(sale.ProductId.Value, out var c) ? c : 0m;
+                    totalCost += remaining * fallback;
                 }
             }
 
             return totalCost;
         }
 
+        public IQueryable<Report> GetFiltered(Report filter)
+        {
+            var query = _context.Reports
+                .Include(r => r.ReportDetails)
+                    .ThenInclude(rd => rd.Product)
+                        .ThenInclude(p => p.Category)
+                .AsQueryable();
+
+            if (filter.ReportId > 0)
+                query = query.Where(r => r.ReportId == filter.ReportId);
+            if (filter.Type.HasValue)
+                query = query.Where(r => r.Type == filter.Type);
+            if (filter.StartDate.HasValue)
+                query = query.Where(r => r.StartDate >= filter.StartDate);
+            if (filter.EndDate.HasValue)
+                query = query.Where(r => r.EndDate <= filter.EndDate);
+            if (filter.ShopId > 0)
+                query = query.Where(r => r.ShopId == filter.ShopId);
+            if (filter.Revenue > 0)
+                query = query.Where(r => r.Revenue >= filter.Revenue);
+            if (filter.Cost > 0)
+                query = query.Where(r => r.Cost >= filter.Cost);
+            if (filter.GrossProfit > 0)
+                query = query.Where(r => r.GrossProfit >= filter.GrossProfit);
+            if (filter.OrderCounter > 0)
+                query = query.Where(r => r.OrderCounter >= filter.OrderCounter);
+            if (filter.CreateAt.HasValue && filter.CreateAt > DateTime.MinValue)
+                query = query.Where(r => r.CreateAt >= filter.CreateAt);
+
+            return query.OrderBy(r => r.ReportId);
+        }
+
+        private class ImportSlot
+        {
+            public int Available { get; set; }
+            public decimal Price { get; set; }
+        }
     }
 }

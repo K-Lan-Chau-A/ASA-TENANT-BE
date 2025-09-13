@@ -8,23 +8,22 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ASA_TENANT_BE.Controllers
 {
-    [Route("api/users")]
+    [Route("api/userfeature")]
     [ApiController]
-    public class UserController : ControllerBase
+    public class UserFeatureController : ControllerBase
     {
-        private readonly IUserService _userService;
+        private readonly IUserFeatureService _userFeatureService;
 
-        public UserController(IUserService userService)
+        public UserFeatureController(IUserFeatureService userFeatureService)
         {
-            _userService = userService;
+            _userFeatureService = userFeatureService;
         }
-
         [HttpGet]
         public async Task<ActionResult<IEnumerable<UserResponse>>> GetFiltered([FromQuery] UserGetRequest requestDto, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             try
             {
-                var result = await _userService.GetFilteredUsersAsync(requestDto, page, pageSize);
+                var result = await _userFeatureService.GetFilteredUsersAsync(requestDto, page, pageSize);
                 return Ok(result);
             }
             catch (Exception ex)
@@ -35,21 +34,22 @@ namespace ASA_TENANT_BE.Controllers
         [HttpPost]
         public async Task<ActionResult<UserResponse>> Create([FromBody] UserRequest request)
         {
-            var result = await _userService.CreateAsync(request);
+            var result = await _userFeatureService.CreateAsync(request);
             return Ok(result);
         }
         [HttpPut("{id}")]
         public async Task<ActionResult<UserResponse>> Update(long id, [FromBody] UserRequest request)
         {
-            var result = await _userService.UpdateAsync(id, request);
+            var result = await _userFeatureService.UpdateAsync(id, request);
             return Ok(result);
         }
 
         [HttpDelete("{id}")]
         public async Task<ActionResult<bool>> Delete(long id)
         {
-            var result = await _userService.DeleteAsync(id);
+            var result = await _userFeatureService.DeleteAsync(id);
             return Ok(result);
         }
     }
 }
+

@@ -91,20 +91,20 @@ builder.Services.AddHttpClient("BePlatform", client =>
 builder.Services.AddQuartz(q =>
 {
     // Daily job: chạy mỗi ngày lúc 00:05
-    var dailyJobKey = new JobKey("DailyReportJob");
-q.AddJob<DailyReportJob>(opts => opts.WithIdentity(dailyJobKey));
-q.AddTrigger(opts => opts
-    .ForJob(dailyJobKey)
-    .WithIdentity("DailyReportTrigger")
-    .WithCronSchedule("0 5 0 * * ?")); // 00:05 UTC mỗi ngày
+    var dailyJobKey = new JobKey("WeeklyReportJob");
+    q.AddJob<WeeklyReportJob>(opts => opts.WithIdentity(dailyJobKey));
+    q.AddTrigger(opts => opts
+        .ForJob(dailyJobKey)
+        .WithIdentity("WeeklyReportTrigger")
+        .WithCronSchedule("0 5 0 * * ?")); // 00:05 UTC mỗi ngày
 
-// Monthly job: chạy ngày 1 hàng tháng lúc 00:10
-var monthlyJobKey = new JobKey("MonthlyReportJob");
-q.AddJob<MonthlyReportJob>(opts => opts.WithIdentity(monthlyJobKey));
-q.AddTrigger(opts => opts
-    .ForJob(monthlyJobKey)
-    .WithIdentity("MonthlyReportTrigger")
-    .WithCronSchedule("0 10 0 1 * ?")); // 00:10 UTC ngày 1 hàng tháng
+    // Monthly job: chạy ngày 1 hàng tháng lúc 00:10
+    var monthlyJobKey = new JobKey("MonthlyReportJob");
+    q.AddJob<MonthlyReportJob>(opts => opts.WithIdentity(monthlyJobKey));
+    q.AddTrigger(opts => opts
+        .ForJob(monthlyJobKey)
+        .WithIdentity("MonthlyReportTrigger")
+        .WithCronSchedule("0 10 0 1 * ?")); // 00:10 UTC ngày 1 hàng tháng
 });
 
 //// Quartz test 5p và 10p
@@ -112,7 +112,7 @@ q.AddTrigger(opts => opts
 //{
 //    // Daily job: chạy mỗi 5 phút
 //    var dailyJobKey = new JobKey("DailyReportJob");
-//    q.AddJob<DailyReportJob>(opts => opts.WithIdentity(dailyJobKey));
+//    q.AddJob<WeeklyReportJob>(opts => opts.WithIdentity(dailyJobKey));
 //    q.AddTrigger(opts => opts
 //        .ForJob(dailyJobKey)
 //        .WithIdentity("DailyReportTrigger")

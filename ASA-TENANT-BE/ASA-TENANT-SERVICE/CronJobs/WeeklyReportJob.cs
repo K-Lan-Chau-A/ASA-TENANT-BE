@@ -5,20 +5,20 @@ using ASA_TENANT_SERVICE.Interface;
 
 namespace ASA_TENANT_SERVICE.CronJobs
 {
-    public class DailyReportJob : IJob
+    public class WeeklyReportJob : IJob
     {
         private readonly IReportService _reportService;
 
-        public DailyReportJob(IReportService reportService)
+        public WeeklyReportJob(IReportService reportService)
         {
             _reportService = reportService;
         }
 
         public async Task Execute(IJobExecutionContext context)
         {
-            Console.WriteLine("🔔 DailyReportJob triggered at " + DateTime.Now);
+            Console.WriteLine("🔔 WeeklyReportJob triggered at " + DateTime.Now);
 
-            await _reportService.GenerateDailyReportAsync();
+            await _reportService.GenerateWeeklyReportAsync();
         }
     }
 }

@@ -26,12 +26,15 @@ namespace ASA_TENANT_REPO.Repository
             var startOfWeek = DateOnly.FromDateTime(localNow.Date.AddDays(-offsetToMonday));
             var endOfWeek = startOfWeek.AddDays(6);
 
+            var startDateTime = startOfWeek.ToDateTime(TimeOnly.MinValue);
+            var endDateTime = endOfWeek.ToDateTime(TimeOnly.MaxValue);
+
             // Lấy tất cả shift đã đóng trong tuần
             var shifts = await _context.Shifts
                 .Where(s => s.StartDate.HasValue
-                            && DateOnly.FromDateTime(s.StartDate.Value) >= startOfWeek
-                            && DateOnly.FromDateTime(s.StartDate.Value) <= endOfWeek
-                            && s.Status == 2)
+                    && s.StartDate.Value >= startDateTime
+                    && s.StartDate.Value <= endDateTime
+                    && s.Status == 2)
                 .ToListAsync();
 
             if (!shifts.Any()) return;
@@ -102,17 +105,23 @@ namespace ASA_TENANT_REPO.Repository
         /// </summary>
         public async Task GenerateMonthlyReportAsync()
         {
-            var vietnamZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
-            var localNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vietnamZone);
+            // Lấy giờ hiện tại theo giờ VN
+            var vnTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            var localNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vnTimeZone);
 
+            // Xác định đầu tháng hiện tại và tháng trước theo giờ VN
             var currentMonthStart = new DateOnly(localNow.Year, localNow.Month, 1);
-            var nextMonthStart = currentMonthStart.AddMonths(1);
+            var prevMonthStart = currentMonthStart.AddMonths(-1);
 
-            // lấy tất cả weekly report bắt đầu trong tháng hiện tại
+            var monthStart = prevMonthStart;
+            var monthEndExclusive = currentMonthStart; // exclusive upper bound
+            var monthEndInclusive = monthEndExclusive.AddDays(-1);
+
+            // Lấy tất cả weekly report của tháng trước
             var weeklyReports = await _context.Reports
                 .Where(r => r.Type == WEEKLY
-                            && r.StartDate >= currentMonthStart
-                            && r.StartDate < nextMonthStart)
+                            && r.StartDate >= monthStart
+                            && r.StartDate < monthEndExclusive)
                 .Include(r => r.ReportDetails)
                 .ToListAsync();
 
@@ -128,15 +137,15 @@ namespace ASA_TENANT_REPO.Repository
             {
                 var shopId = shopGroup.Key;
 
-                // nếu đã có monthly của tháng này thì bỏ qua
+                // nếu đã có monthly của tháng trước (StartDate = monthStart) thì bỏ qua
                 bool exists = await _context.Reports
                     .AnyAsync(r => r.Type == MONTHLY
-                                && r.StartDate == currentMonthStart
+                                && r.StartDate == monthStart
                                 && r.ShopId == shopId);
 
                 if (exists)
                 {
-                    Console.WriteLine($"Monthly report đã tồn tại cho Shop {shopId} tháng {currentMonthStart.Month}");
+                    Console.WriteLine($"Monthly report đã tồn tại cho Shop {shopId} tháng {monthStart.Month}");
                     continue;
                 }
 
@@ -148,8 +157,8 @@ namespace ASA_TENANT_REPO.Repository
                 var report = new Report
                 {
                     Type = MONTHLY,
-                    StartDate = currentMonthStart,
-                    EndDate = nextMonthStart.AddDays(-1),
+                    StartDate = monthStart,               // <-- monthStart (tháng trước)
+                    EndDate = monthEndInclusive,         // <-- cuối tháng trước
                     CreateAt = DateTime.UtcNow,
                     Revenue = revenue,
                     Cost = cost,
@@ -179,9 +188,10 @@ namespace ASA_TENANT_REPO.Repository
 
                 await _context.SaveChangesAsync();
 
-                Console.WriteLine($"✅ Tạo Monthly report cho Shop {shopId} tháng {currentMonthStart.Month}");
+                Console.WriteLine($"✅ Tạo Monthly report cho Shop {shopId} tháng {monthStart.Month}");
             }
         }
+
 
 
         // FIFO cost

@@ -36,5 +36,10 @@ namespace ASA_TENANT_REPO.Repository
         {
             return await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
         }
+
+        public async Task<User?> GetFirstUserAdmin()
+        {
+            return await _context.Users.FirstOrDefaultAsync(u => u.Role == 1);
+        }
     }
 }

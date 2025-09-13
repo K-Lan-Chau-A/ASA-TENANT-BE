@@ -92,21 +92,21 @@ builder.Services.AddHttpClient("BePlatform", client =>
 //Đăng ký Quartz
 builder.Services.AddQuartz(q =>
 {
-    // Daily job: chạy mỗi ngày lúc 00:05
+    // Weekly job: chạy mỗi ngày lúc 00:05 T2
     var dailyJobKey = new JobKey("WeeklyReportJob");
     q.AddJob<WeeklyReportJob>(opts => opts.WithIdentity(dailyJobKey));
     q.AddTrigger(opts => opts
         .ForJob(dailyJobKey)
         .WithIdentity("WeeklyReportTrigger")
-        .WithCronSchedule("0 5 0 * * ?")); // 00:05 UTC mỗi ngày
+        .WithCronSchedule("0 5 0 ? * MON", x => x.InTimeZone(TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time")))); // 00:05 mỗi thứ Hai (UTC)
 
-    // Monthly job: chạy ngày 1 hàng tháng lúc 00:10
+    // Monthly job: chạy ngày 1 hàng tháng lúc 00:10 
     var monthlyJobKey = new JobKey("MonthlyReportJob");
     q.AddJob<MonthlyReportJob>(opts => opts.WithIdentity(monthlyJobKey));
     q.AddTrigger(opts => opts
         .ForJob(monthlyJobKey)
         .WithIdentity("MonthlyReportTrigger")
-        .WithCronSchedule("0 10 0 1 * ?")); // 00:10 UTC ngày 1 hàng tháng
+        .WithCronSchedule("0 30 0 1 * ?", x => x.InTimeZone(TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time")))); // 00:10 UTC ngày 1 hàng tháng
 });
 
 //// Quartz test 5p và 10p

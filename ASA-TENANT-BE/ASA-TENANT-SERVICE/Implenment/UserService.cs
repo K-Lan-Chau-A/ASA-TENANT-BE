@@ -29,6 +29,21 @@ namespace ASA_TENANT_SERVICE.Implenment
         {
             try
             {
+                // Check if admin user already exists
+                if (request.Role == 1) // 1 = Admin
+                {
+                    var existingAdmin = await _userRepo.GetFirstUserAdmin();
+                    if (existingAdmin != null)
+                    {
+                        return new ApiResponse<UserResponse>
+                        {
+                            Success = false,
+                            Message = "Only 1 admin user can exists in shop, try another role",
+                            Data = null
+                        };
+                    }
+                }
+
                 var entity = _mapper.Map<User>(request);
 
                 entity.CreatedAt = DateTime.UtcNow;

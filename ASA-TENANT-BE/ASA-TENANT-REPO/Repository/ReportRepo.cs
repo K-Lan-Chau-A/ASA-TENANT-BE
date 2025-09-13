@@ -26,8 +26,9 @@ namespace ASA_TENANT_REPO.Repository
             var startOfWeek = DateOnly.FromDateTime(localNow.Date.AddDays(-offsetToMonday));
             var endOfWeek = startOfWeek.AddDays(6);
 
-            var startDateTime = startOfWeek.ToDateTime(TimeOnly.MinValue);
-            var endDateTime = endOfWeek.ToDateTime(TimeOnly.MaxValue);
+            var startDateTime = DateTime.SpecifyKind(startOfWeek.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+            var endDateTime = DateTime.SpecifyKind(endOfWeek.ToDateTime(TimeOnly.MaxValue), DateTimeKind.Utc);
+
 
             // Lấy tất cả shift đã đóng trong tuần
             var shifts = await _context.Shifts

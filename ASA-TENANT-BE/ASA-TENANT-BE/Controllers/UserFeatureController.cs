@@ -19,11 +19,11 @@ namespace ASA_TENANT_BE.Controllers
             _userFeatureService = userFeatureService;
         }
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<UserResponse>>> GetFiltered([FromQuery] UserGetRequest requestDto, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        public async Task<ActionResult<IEnumerable<UserFeatureResponse>>> GetFiltered([FromQuery] UserFeatureGetRequest requestDto, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             try
             {
-                var result = await _userFeatureService.GetFilteredUsersAsync(requestDto, page, pageSize);
+                var result = await _userFeatureService.GetFilteredUsersFeatureAsync(requestDto, page, pageSize);
                 return Ok(result);
             }
             catch (Exception ex)
@@ -32,15 +32,15 @@ namespace ASA_TENANT_BE.Controllers
             }
         }
         [HttpPost]
-        public async Task<ActionResult<UserResponse>> Create([FromBody] UserRequest request)
+        public async Task<ActionResult<List<UserFeatureResponse>>> Create([FromBody] UserFeatureRequest request)
         {
             var result = await _userFeatureService.CreateAsync(request);
             return Ok(result);
         }
-        [HttpPut("{id}")]
-        public async Task<ActionResult<UserResponse>> Update(long id, [FromBody] UserRequest request)
+        [HttpPut()]
+        public async Task<ActionResult<List<UserFeatureResponse>>> Update( [FromBody] UserFeatureUpdateRequest request)
         {
-            var result = await _userFeatureService.UpdateAsync(id, request);
+            var result = await _userFeatureService.UpdateAsync( request);
             return Ok(result);
         }
 

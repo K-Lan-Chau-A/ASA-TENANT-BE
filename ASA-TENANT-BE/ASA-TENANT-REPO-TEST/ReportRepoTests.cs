@@ -12,34 +12,26 @@ public class ReportRepoTests
     // ==================== TEST CASES FOR REPORT GENERATION ====================
 
     /*
-    1️) GenerateWeeklyReportAsync_ShouldCreateWeeklyReportFromShifts
-       - Kiểm tra tạo báo cáo tuần từ các shift thực tế.
-       - Bao gồm Revenue, Cost, GrossProfit, OrderCounter, ReportDetails.
-    */
-
-    /*
-    2️) GenerateMonthlyReportAsync_ShouldAggregateWeeklyReports
-       - Kiểm tra tạo báo cáo tháng từ các weekly report có sẵn.
-       - Kiểm tra tổng hợp Revenue, Cost, GrossProfit, OrderCounter, ReportDetails.
-    */
-
-    /*
-    3️) GenerateMonthlyReportAsync_ShouldAggregate4WeeklyReports
-       - Kiểm tra gộp nhiều weekly report (4 tuần) trong tháng.
-       - Kiểm tra tổng hợp giá trị tăng dần theo tuần.
-    */
-
-    /*
-    4️) GenerateMonthlyReportAsync_ShouldOnlyAggregateSameShopId
-       - Kiểm tra monthly report chỉ gộp các weekly report cùng ShopId.
-       - Tránh dữ liệu của shop khác bị lẫn.
-    */
-
-    /*
-    5️) GenerateMonthlyReportAsync_ShouldHandleMonthWith5WeeklyReports
-       - Kiểm tra tháng có 5 tuần với số weekly report khác nhau giữa các shop.
-       - Đảm bảo tổng hợp chính xác cho từng shop.
-    */
+     * 1) GenerateWeeklyReportAsync_ShouldCreateWeeklyReportFromShifts
+     *    - Kiểm tra tạo báo cáo tuần từ các shift (Status = 2).
+     *    - Bao gồm Revenue, Cost, GrossProfit, OrderCounter, ReportDetails.
+     *
+     * 2) GenerateMonthlyReportAsync_ShouldAggregateWeeklyReports
+     *    - Kiểm tra tạo báo cáo tháng từ các weekly report (tháng trước).
+     *    - Kiểm tra cộng dồn Revenue, Cost, GrossProfit, OrderCounter, ReportDetails.
+     *
+     * 3) GenerateMonthlyReportAsync_ShouldAggregate4WeeklyReports
+     *    - Kiểm tra gộp nhiều weekly report (4 tuần) trong tháng.
+     *    - Đảm bảo số liệu cộng dồn chính xác.
+     *
+     * 4) GenerateMonthlyReportAsync_ShouldOnlyAggregateSameShopId
+     *    - Kiểm tra monthly report chỉ gộp các weekly report cùng ShopId.
+     *    - Đảm bảo dữ liệu shop khác không bị lẫn.
+     *
+     * 5) GenerateMonthlyReportAsync_ShouldHandleMonthWith5WeeklyReports
+     *    - Kiểm tra tháng có 5 weekly report (hoặc số lượng khác nhau giữa các shop).
+     *    - Đảm bảo tổng hợp chính xác cho từng shop riêng biệt.
+     */
 
 
     private ASATENANTDBContext GetInMemoryDbContext()
@@ -113,26 +105,24 @@ public async Task GenerateWeeklyReportAsync_ShouldCreateWeeklyReportFromShifts()
         var repo = new ReportRepo(context);
 
         int shopId = 1;
-        var monthStart = new DateTime(2025, 9, 1);
-        var nextMonthStart = monthStart.AddMonths(1);
 
-        // Giả lập 2 weekly report trong tháng 9
+        // Phải tạo weekly ở tháng trước (tháng 8), vì hàm gom tháng 8
         var weekly1 = new Report
         {
             ReportId = 1,
             Type = 1, // WEEKLY
             ShopId = shopId,
-            StartDate = DateOnly.FromDateTime(new DateTime(2025, 9, 1)),
-            EndDate = DateOnly.FromDateTime(new DateTime(2025, 9, 7)),
+            StartDate = new DateOnly(2025, 8, 1),
+            EndDate = new DateOnly(2025, 8, 7),
             Revenue = 1000,
             Cost = 400,
             GrossProfit = 600,
             OrderCounter = 10,
             ReportDetails =
-            {
-                new ReportDetail { ProductId = 101, Quantity = 5 },
-                new ReportDetail { ProductId = 102,  Quantity = 5 }
-            }
+        {
+            new ReportDetail { ProductId = 101, Quantity = 5 },
+            new ReportDetail { ProductId = 102, Quantity = 5 }
+        }
         };
 
         var weekly2 = new Report
@@ -140,16 +130,16 @@ public async Task GenerateWeeklyReportAsync_ShouldCreateWeeklyReportFromShifts()
             ReportId = 2,
             Type = 1,
             ShopId = shopId,
-            StartDate = DateOnly.FromDateTime(new DateTime(2025, 9, 1)),
-            EndDate = DateOnly.FromDateTime(new DateTime(2025, 9, 7)),
+            StartDate = new DateOnly(2025, 8, 8),
+            EndDate = new DateOnly(2025, 8, 14),
             Revenue = 2000,
             Cost = 1000,
             GrossProfit = 1000,
             OrderCounter = 20,
             ReportDetails =
-            {
-                new ReportDetail { ProductId = 101, Quantity = 20 }
-            }
+        {
+            new ReportDetail { ProductId = 101, Quantity = 20 }
+        }
         };
 
         context.Reports.AddRange(weekly1, weekly2);
@@ -179,6 +169,7 @@ public async Task GenerateWeeklyReportAsync_ShouldCreateWeeklyReportFromShifts()
         Assert.Equal(5, detail102.Quantity);
     }
 
+
     [Fact]
     public async Task GenerateMonthlyReportAsync_ShouldAggregate4WeeklyReports()
     {
@@ -188,15 +179,15 @@ public async Task GenerateWeeklyReportAsync_ShouldCreateWeeklyReportFromShifts()
 
         int shopId = 1;
 
-        // Tạo 4 weekly report trong tháng 9
+        // Tạo 4 weekly report trong tháng 8/2025
         for (int i = 0; i < 4; i++)
         {
             context.Reports.Add(new Report
             {
                 Type = 1, // WEEKLY
                 ShopId = shopId,
-                StartDate = DateOnly.FromDateTime(new DateTime(2025, 9, 1).AddDays(i * 7)),
-                EndDate = DateOnly.FromDateTime(new DateTime(2025, 9, 7).AddDays(i * 7)),
+                StartDate = new DateOnly(2025, 8, 1).AddDays(i * 7),
+                EndDate = new DateOnly(2025, 8, 7).AddDays(i * 7),
                 Revenue = 1000 * (i + 1),
                 Cost = 500 * (i + 1),
                 GrossProfit = 500 * (i + 1),
@@ -219,24 +210,16 @@ public async Task GenerateWeeklyReportAsync_ShouldCreateWeeklyReportFromShifts()
             .FirstOrDefaultAsync(r => r.Type == 2 && r.ShopId == shopId);
 
         Assert.NotNull(monthly);
-
-        // Tổng revenue = 1000 + 2000 + 3000 + 4000 = 10000
         Assert.Equal(10000, monthly.Revenue);
-
-        // Tổng cost = 500 + 1000 + 1500 + 2000 = 5000
         Assert.Equal(5000, monthly.Cost);
-
-        // Tổng profit = 500 + 1000 + 1500 + 2000 = 5000
         Assert.Equal(5000, monthly.GrossProfit);
-
-        // Tổng order = 10 + 20 + 30 + 40 = 100
         Assert.Equal(100, monthly.OrderCounter);
 
-        // Quantity của product 101 = 5 + 10 + 15 + 20 = 50
         var detail101 = monthly.ReportDetails.FirstOrDefault(d => d.ProductId == 101);
         Assert.NotNull(detail101);
         Assert.Equal(50, detail101.Quantity);
     }
+
 
     [Fact]
     public async Task GenerateMonthlyReportAsync_ShouldOnlyAggregateSameShopId()
@@ -250,8 +233,8 @@ public async Task GenerateWeeklyReportAsync_ShouldCreateWeeklyReportFromShifts()
         {
             Type = 1,
             ShopId = 1,
-            StartDate = DateOnly.FromDateTime(new DateTime(2025, 9, 1)),
-            EndDate = DateOnly.FromDateTime(new DateTime(2025, 9, 7)),
+            StartDate = new DateOnly(2025, 8, 1),
+            EndDate = new DateOnly(2025, 8, 7),
             Revenue = 1000,
             Cost = 400,
             GrossProfit = 600,
@@ -267,8 +250,8 @@ public async Task GenerateWeeklyReportAsync_ShouldCreateWeeklyReportFromShifts()
         {
             Type = 1,
             ShopId = 2,
-            StartDate = DateOnly.FromDateTime(new DateTime(2025, 9, 1)),
-            EndDate = DateOnly.FromDateTime(new DateTime(2025, 9, 7)),
+            StartDate = new DateOnly(2025, 8, 1),
+            EndDate = new DateOnly(2025, 8, 7),
             Revenue = 2000,
             Cost = 1000,
             GrossProfit = 1000,
@@ -306,6 +289,7 @@ public async Task GenerateWeeklyReportAsync_ShouldCreateWeeklyReportFromShifts()
         Assert.Equal(102, monthlyShop2.ReportDetails.First().ProductId);
     }
 
+
     [Fact]
     public async Task GenerateMonthlyReportAsync_ShouldHandleMonthWith5WeeklyReports()
     {
@@ -315,9 +299,7 @@ public async Task GenerateWeeklyReportAsync_ShouldCreateWeeklyReportFromShifts()
 
         int shop1 = 1;
         int shop2 = 2;
-
-        var now = DateTime.Now; // tháng hiện tại theo môi trường test
-        var monthStart = new DateOnly(now.Year, now.Month, 1);
+        var monthStart = new DateOnly(2025, 8, 1);
 
         // Tạo 5 weekly report cho Shop 1
         for (int i = 0; i < 5; i++)
@@ -370,11 +352,11 @@ public async Task GenerateWeeklyReportAsync_ShouldCreateWeeklyReportFromShifts()
             .FirstOrDefaultAsync(r => r.Type == 2 && r.ShopId == shop1);
 
         Assert.NotNull(monthlyShop1);
-        Assert.Equal(5 * 1000, monthlyShop1.Revenue); // 5000
-        Assert.Equal(5 * 400, monthlyShop1.Cost);    // 2000
-        Assert.Equal(5 * 600, monthlyShop1.GrossProfit); // 3000
-        Assert.Equal(5 * 10, monthlyShop1.OrderCounter); // 50
-        Assert.Equal(5 * 5, monthlyShop1.ReportDetails.First(d => d.ProductId == 101).Quantity); // 25
+        Assert.Equal(5000, monthlyShop1.Revenue);
+        Assert.Equal(2000, monthlyShop1.Cost);
+        Assert.Equal(3000, monthlyShop1.GrossProfit);
+        Assert.Equal(50, monthlyShop1.OrderCounter);
+        Assert.Equal(25, monthlyShop1.ReportDetails.First(d => d.ProductId == 101).Quantity);
 
         // Assert Shop 2
         var monthlyShop2 = await context.Reports
@@ -382,12 +364,13 @@ public async Task GenerateWeeklyReportAsync_ShouldCreateWeeklyReportFromShifts()
             .FirstOrDefaultAsync(r => r.Type == 2 && r.ShopId == shop2);
 
         Assert.NotNull(monthlyShop2);
-        Assert.Equal(3 * 2000, monthlyShop2.Revenue); // 6000
-        Assert.Equal(3 * 800, monthlyShop2.Cost);    // 2400
-        Assert.Equal(3 * 1200, monthlyShop2.GrossProfit); // 3600
-        Assert.Equal(3 * 20, monthlyShop2.OrderCounter); // 60
-        Assert.Equal(3 * 10, monthlyShop2.ReportDetails.First(d => d.ProductId == 102).Quantity); // 30
+        Assert.Equal(6000, monthlyShop2.Revenue);
+        Assert.Equal(2400, monthlyShop2.Cost);
+        Assert.Equal(3600, monthlyShop2.GrossProfit);
+        Assert.Equal(60, monthlyShop2.OrderCounter);
+        Assert.Equal(30, monthlyShop2.ReportDetails.First(d => d.ProductId == 102).Quantity);
     }
+
 
 
 }

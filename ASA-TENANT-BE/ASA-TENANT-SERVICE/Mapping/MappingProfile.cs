@@ -147,6 +147,13 @@ namespace ASA_TENANT_SERVICE.Mapping
                 .ForMember(dest => dest.ProductCategory, opt => opt.MapFrom(src => src.Product.Category.CategoryName))
                 .ForMember(dest => dest.ProductPrice, opt => opt.MapFrom(src => src.Product.Price));
 
+            //UserFeature Mappings
+            CreateMap<UserFeature, UserFeatureResponse>()
+                .ForMember(dest => dest.Username, opt => opt.MapFrom(src => src.User.Username))
+                .ForMember(dest => dest.ShopId, opt => opt.MapFrom(src => src.User.ShopId))
+                .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.User.Role));
+            CreateMap<UserFeatureRequest, UserFeature>().ReverseMap();
+            CreateMap<UserFeatureGetRequest, UserFeature>().ReverseMap();
         }
     }
 }

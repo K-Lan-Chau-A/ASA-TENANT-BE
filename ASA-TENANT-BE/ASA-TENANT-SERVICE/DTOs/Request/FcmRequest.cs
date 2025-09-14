@@ -10,7 +10,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
     {
         public int UserId { get; set; }
         public string FcmToken { get; set; }
-        public string UniqueId { get; set; }
+        public string? UniqueId { get; set; }
     }
     public class FcmGetRequest
     {

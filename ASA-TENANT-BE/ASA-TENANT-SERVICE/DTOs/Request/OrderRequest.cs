@@ -1,3 +1,4 @@
+using ASA_TENANT_SERVICE.Enums;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,7 +10,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
     public class OrderRequest
     {
         public long? CustomerId { get; set; }
-        public string? PaymentMethod { get; set; }
+        public PaymentMethod PaymentMethod { get; set; }
         public short? Status { get; set; }
         public long ShiftId { get; set; }
         public long ShopId { get; set; }
@@ -25,7 +26,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
         public DateTime? Datetime { get; set; }
         public long? CustomerId { get; set; }
         public decimal? TotalPrice { get; set; }
-        public string? PaymentMethod { get; set; }
+        public PaymentMethod? PaymentMethod { get; set; }
         public short? Status { get; set; }
         public long? ShiftId { get; set; }
         public long? ShopId { get; set; }

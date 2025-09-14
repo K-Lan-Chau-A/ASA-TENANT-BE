@@ -13,6 +13,8 @@ public partial class Transaction
 
     public long? UserId { get; set; }
 
+    public long? ShopId { get; set; }
+
     public string PaymentStatus { get; set; }
 
     public string AppTransId { get; set; }
@@ -26,6 +28,8 @@ public partial class Transaction
     public DateTime? CreatedAt { get; set; }
 
     public virtual Order Order { get; set; }
+
+    public virtual Shop Shop { get; set; }
 
     public virtual User User { get; set; }
 }

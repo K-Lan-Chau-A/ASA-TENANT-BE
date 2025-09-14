@@ -18,7 +18,7 @@ namespace ASA_TENANT_BE.Controllers
             _unitService = unitService;
         }
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Unit>>> GetFiltered([FromQuery] UnitGetRequest requestDto, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        public async Task<ActionResult<IEnumerable<UnitResponse>>> GetFiltered([FromQuery] UnitGetRequest requestDto, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             try
             {

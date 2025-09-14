@@ -56,19 +56,23 @@ public partial class ASATENANTDBContext : DbContext
 
     public virtual DbSet<Shop> Shops { get; set; }
 
+    public virtual DbSet<ShopSubscription> ShopSubscriptions { get; set; }
+
     public virtual DbSet<Transaction> Transactions { get; set; }
 
     public virtual DbSet<Unit> Units { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
 
+    public virtual DbSet<UserFeature> UserFeatures { get; set; }
+
     public virtual DbSet<Voucher> Vouchers { get; set; }
 
     public virtual DbSet<Zalopay> Zalopays { get; set; }
 
-//    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-//#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-//        => optionsBuilder.UseNpgsql("Persist Security Info=True;Password=Hau@1310;Username=postgres;Database=ASA-TENANT-DB;Host=localhost");
+//     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+// #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+//         => optionsBuilder.UseNpgsql("Persist Security Info=True;Password=Hau@1310;Username=postgres;Database=ASA-TENANT-DB;Host=localhost");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -181,7 +185,6 @@ public partial class ASATENANTDBContext : DbContext
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("lastlogin");
             entity.Property(e => e.Uniqueid)
-                .IsRequired()
                 .HasMaxLength(100)
                 .HasColumnName("uniqueid");
             entity.Property(e => e.Updatedat)
@@ -619,15 +622,42 @@ public partial class ASATENANTDBContext : DbContext
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
-            entity.Property(e => e.ExpiredAt).HasColumnName("expired_at");
+            entity.Property(e => e.CurrentAccount)
+                .HasDefaultValue(0)
+                .HasColumnName("current_account");
+            entity.Property(e => e.CurrentRequest)
+                .HasDefaultValue(0)
+                .HasColumnName("current_request");
             entity.Property(e => e.QrcodeUrl).HasColumnName("qrcode_url");
+            entity.Property(e => e.SepayApiKey).HasColumnName("sepay_api_key");
             entity.Property(e => e.ShopName)
                 .HasMaxLength(150)
                 .HasColumnName("shop_name");
+            entity.Property(e => e.ShopToken)
+                .HasMaxLength(150)
+                .HasColumnName("shop_token");
             entity.Property(e => e.Status).HasColumnName("status");
-            entity.Property(e => e.Subscription)
-                .HasMaxLength(50)
-                .HasColumnName("subscription");
+        });
+
+        modelBuilder.Entity<ShopSubscription>(entity =>
+        {
+            entity.HasKey(e => e.ShopSubscriptionId).HasName("shop_subscription_pkey");
+
+            entity.ToTable("shop_subscription");
+
+            entity.Property(e => e.ShopSubscriptionId).HasColumnName("shop_subscription_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.EndDate).HasColumnName("end_date");
+            entity.Property(e => e.PlatformProductId).HasColumnName("platform_product_id");
+            entity.Property(e => e.ShopId).HasColumnName("shop_id");
+            entity.Property(e => e.StartDate).HasColumnName("start_date");
+            entity.Property(e => e.Status).HasColumnName("status");
+
+            entity.HasOne(d => d.Shop).WithMany(p => p.ShopSubscriptions)
+                .HasForeignKey(d => d.ShopId)
+                .HasConstraintName("shop_subscription_shop_id_fkey");
         });
 
         modelBuilder.Entity<Transaction>(entity =>
@@ -651,6 +681,7 @@ public partial class ASATENANTDBContext : DbContext
             entity.Property(e => e.ReturnMessage)
                 .HasMaxLength(255)
                 .HasColumnName("return_message");
+            entity.Property(e => e.ShopId).HasColumnName("shop_id");
             entity.Property(e => e.UserId).HasColumnName("user_id");
             entity.Property(e => e.ZpTransId)
                 .HasMaxLength(50)
@@ -659,6 +690,10 @@ public partial class ASATENANTDBContext : DbContext
             entity.HasOne(d => d.Order).WithMany(p => p.Transactions)
                 .HasForeignKey(d => d.OrderId)
                 .HasConstraintName("transaction_order_id_fkey");
+
+            entity.HasOne(d => d.Shop).WithMany(p => p.Transactions)
+                .HasForeignKey(d => d.ShopId)
+                .HasConstraintName("transaction_shop_id_fkey");
 
             entity.HasOne(d => d.User).WithMany(p => p.Transactions)
                 .HasForeignKey(d => d.UserId)
@@ -691,7 +726,6 @@ public partial class ASATENANTDBContext : DbContext
             entity.HasIndex(e => e.Username, "user_username_key").IsUnique();
 
             entity.Property(e => e.UserId).HasColumnName("user_id");
-            entity.Property(e => e.AccountLimit).HasColumnName("account_limit");
             entity.Property(e => e.Avatar).HasColumnName("avatar");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
@@ -699,7 +733,6 @@ public partial class ASATENANTDBContext : DbContext
             entity.Property(e => e.Password)
                 .HasMaxLength(255)
                 .HasColumnName("password");
-            entity.Property(e => e.RequestLimit).HasColumnName("request_limit");
             entity.Property(e => e.Role).HasColumnName("role");
             entity.Property(e => e.ShopId).HasColumnName("shop_id");
             entity.Property(e => e.Status).HasColumnName("status");
@@ -710,6 +743,34 @@ public partial class ASATENANTDBContext : DbContext
             entity.HasOne(d => d.Shop).WithMany(p => p.Users)
                 .HasForeignKey(d => d.ShopId)
                 .HasConstraintName("user_shop_id_fkey");
+        });
+
+        modelBuilder.Entity<UserFeature>(entity =>
+        {
+            entity.HasKey(e => e.UserFeatureId).HasName("user_feature_pkey");
+
+            entity.ToTable("user_feature");
+
+            entity.Property(e => e.UserFeatureId).HasColumnName("user_feature_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.FeatureId).HasColumnName("feature_id");
+            entity.Property(e => e.FeatureName)
+                .HasMaxLength(64)
+                .HasColumnName("feature_name");
+            entity.Property(e => e.IsEnabled)
+                .HasDefaultValue(true)
+                .HasColumnName("is_enabled");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+
+            entity.HasOne(d => d.User).WithMany(p => p.UserFeatures)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("user_feature_user_id_fkey");
         });
 
         modelBuilder.Entity<Voucher>(entity =>

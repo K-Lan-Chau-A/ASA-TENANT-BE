@@ -43,5 +43,10 @@ namespace ASA_TENANT_REPO.Repository
                 query = query.Where(p => p.Barcode == filter.Barcode);
             return query.OrderBy(p => p.ProductId);
         }
+        public async Task<Product> GetByBarcodeAsync(string barcode, long shopId)
+        {
+            return await _context.Products.FirstOrDefaultAsync(p => p.Barcode == barcode && p.ShopId == shopId);
+        }
+       
     }
 }

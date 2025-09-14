@@ -10,7 +10,6 @@ namespace ASA_TENANT_SERVICE.DTOs.Response
     {
         public long ShopId { get; set; }
         public string ShopName { get; set; }
-        public string Subscription { get; set; }
         public string Address { get; set; }
         public DateTime? CreatedAt { get; set; }
         public short? Status { get; set; }

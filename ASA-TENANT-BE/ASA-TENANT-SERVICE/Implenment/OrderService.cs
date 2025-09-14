@@ -110,6 +110,10 @@ namespace ASA_TENANT_SERVICE.Implenment
                 // Set Datetime to current time (UTC for PostgreSQL compatibility)
                 entity.Datetime = DateTime.UtcNow;
                 
+                // Set status mặc định = 0 (chờ thanh toán)
+                // Status: 0 = Chờ thanh toán, 1 = Đã thanh toán, 2 = Đã hủy
+                entity.Status = 0;
+                
                 // Nếu có OrderDetails, bỏ qua TotalPrice từ request vì sẽ tính tự động
                 if (request.OrderDetails != null && request.OrderDetails.Any())
                 {

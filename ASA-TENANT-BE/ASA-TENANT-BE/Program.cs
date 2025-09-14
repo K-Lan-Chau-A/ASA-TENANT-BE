@@ -1,5 +1,6 @@
 ﻿using ASA_TENANT_REPO.DBContext;
 using ASA_TENANT_REPO.Repository;
+using ASA_TENANT_SERVICE.CronJobs;
 using ASA_TENANT_SERVICE.Implement;
 using ASA_TENANT_SERVICE.Implenment;
 using ASA_TENANT_SERVICE.Interface;
@@ -9,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Quartz;
 using System.Text;
 using ASA_TENANT_BE.Hubs;
 
@@ -46,6 +48,7 @@ builder.Services.AddScoped<IShopService, ShopService>();
 builder.Services.AddScoped<ITransactionService, TransactionService>();
 builder.Services.AddScoped<IUnitService, UnitService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IUserFeatureService, UserFeatureService>();
 builder.Services.AddScoped<IVoucherService, VoucherService>();
 builder.Services.AddScoped<IZalopayService, ZalopayService>();
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
@@ -76,6 +79,7 @@ builder.Services.AddScoped<ShopRepo>();
 builder.Services.AddScoped<TransactionRepo>();
 builder.Services.AddScoped<UnitRepo>();
 builder.Services.AddScoped<UserRepo>();
+builder.Services.AddScoped<UserFeatureRepo>();
 builder.Services.AddScoped<VoucherRepo>();
 builder.Services.AddScoped<ZalopayRepo>();
 
@@ -85,6 +89,50 @@ builder.Services.AddHttpClient("BePlatform", client =>
     client.BaseAddress = new Uri(builder.Configuration["BePlatformURL:Url"]);
     client.Timeout = TimeSpan.FromSeconds(60);
 });
+
+//Đăng ký Quartz
+builder.Services.AddQuartz(q =>
+{
+    // Weekly job: chạy mỗi ngày lúc 00:05 T2
+    var dailyJobKey = new JobKey("WeeklyReportJob");
+    q.AddJob<WeeklyReportJob>(opts => opts.WithIdentity(dailyJobKey));
+    q.AddTrigger(opts => opts
+        .ForJob(dailyJobKey)
+        .WithIdentity("WeeklyReportTrigger")
+        .WithCronSchedule("0 5 0 ? * MON", x => x.InTimeZone(TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time")))); // 00:05 mỗi thứ Hai (UTC)
+
+    // Monthly job: chạy ngày 1 hàng tháng lúc 00:10 
+    var monthlyJobKey = new JobKey("MonthlyReportJob");
+    q.AddJob<MonthlyReportJob>(opts => opts.WithIdentity(monthlyJobKey));
+    q.AddTrigger(opts => opts
+        .ForJob(monthlyJobKey)
+        .WithIdentity("MonthlyReportTrigger")
+        .WithCronSchedule("0 30 0 1 * ?", x => x.InTimeZone(TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time")))); // 00:10 UTC ngày 1 hàng tháng
+});
+
+//// Quartz test 5p và 10p
+//builder.Services.AddQuartz(q =>
+//{
+//    // Daily job: chạy mỗi 5 phút
+//    var dailyJobKey = new JobKey("DailyReportJob");
+//    q.AddJob<WeeklyReportJob>(opts => opts.WithIdentity(dailyJobKey));
+//    q.AddTrigger(opts => opts
+//        .ForJob(dailyJobKey)
+//        .WithIdentity("DailyReportTrigger")
+//        .WithSimpleSchedule(x => x.WithIntervalInMinutes(1).RepeatForever()));
+
+//    //Monthly job: chạy mỗi 10 phút(chỉ để test)
+//    var monthlyJobKey = new JobKey("MonthlyReportJob");
+//    q.AddJob<MonthlyReportJob>(opts => opts.WithIdentity(monthlyJobKey));
+//    q.AddTrigger(opts => opts
+//        .ForJob(monthlyJobKey)
+//        .WithIdentity("MonthlyReportTrigger")
+//        .WithSimpleSchedule(x => x.WithIntervalInMinutes(5).RepeatForever()));
+//});
+
+
+// Dùng Quartz background service
+builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 
 // Đăng ký AutoMapper
 builder.Services.AddAutoMapper(cfg => {}, typeof(MappingProfile).Assembly);

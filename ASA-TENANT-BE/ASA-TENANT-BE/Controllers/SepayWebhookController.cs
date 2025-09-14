@@ -167,7 +167,8 @@ namespace ASA_TENANT_BE.Controllers
                 }
 
                 // Kiểm tra Order đã được thanh toán chưa
-                if (order.Status == 2) // 2 = đã thanh toán
+                // Status: 0 = Chờ thanh toán, 1 = Đã thanh toán, 2 = Đã hủy
+                if (order.Status == 1) // 1 = đã thanh toán
                 {
                     _logger.LogWarning("Order {OrderId} đã được thanh toán trước đó", order.OrderId);
                     return Ok(new { success = true, info = "order_already_paid" });
@@ -194,8 +195,9 @@ namespace ASA_TENANT_BE.Controllers
                     return StatusCode(500, new { success = false, message = "Failed to create transaction" });
                 }
 
-                // Cập nhật trạng thái Order thành "đã thanh toán" (status = 2)
-                var updateStatusResult = await _orderService.UpdateStatusAsync(order.OrderId, 2);
+                // Cập nhật trạng thái Order thành "đã thanh toán" (status = 1)
+                // Status: 0 = Chờ thanh toán, 1 = Đã thanh toán, 2 = Đã hủy
+                var updateStatusResult = await _orderService.UpdateStatusAsync(order.OrderId, 1);
                 if (!updateStatusResult.Success)
                 {
                     _logger.LogWarning("Không thể cập nhật status Order {OrderId}: {Message}", 

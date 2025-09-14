@@ -29,16 +29,17 @@ namespace ASA_TENANT_REPO.Repository
                 query = query.Where(u => u.Status == filter.Status);
             if (filter.Role.HasValue)
                 query = query.Where(u => u.Role == filter.Role);
-            if (filter.RequestLimit.HasValue)
-                query = query.Where(u => u.RequestLimit == filter.RequestLimit.Value);
-            if (filter.AccountLimit.HasValue)
-                query = query.Where(u => u.AccountLimit == filter.AccountLimit.Value);
             return query.OrderBy(u => u.UserId);
         }
 
         public async Task<User?> GetUserByUsername(string username)
         {
             return await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+        }
+
+        public async Task<User?> GetFirstUserAdmin()
+        {
+            return await _context.Users.FirstOrDefaultAsync(u => u.Role == 1);
         }
     }
 }

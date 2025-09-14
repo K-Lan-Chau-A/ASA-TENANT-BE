@@ -1,6 +1,7 @@
 ﻿using ASA_TENANT_REPO.DBContext;
 using ASA_TENANT_REPO.Models;
 using EDUConnect_Repositories.Basic;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -25,6 +26,17 @@ namespace ASA_TENANT_REPO.Repository
             if (filter.ShopId > 0)
                 query = query.Where(u => u.ShopId == filter.ShopId);
             return query.OrderBy(u => u.UnitId);
+        }
+        public async Task<Unit> GetOrCreateAsync(string unitName, long shopId)
+        {
+            var unit = await _context.Units.FirstOrDefaultAsync(u => u.Name == unitName);
+            if (unit == null)
+            {
+                unit = new Unit { Name = unitName , ShopId = shopId};
+                _context.Units.Add(unit);
+                await _context.SaveChangesAsync();
+            }
+            return unit;
         }
     }
 }

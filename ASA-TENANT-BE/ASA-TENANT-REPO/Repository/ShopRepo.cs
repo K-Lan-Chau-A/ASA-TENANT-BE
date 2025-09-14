@@ -1,6 +1,7 @@
 ﻿using ASA_TENANT_REPO.DBContext;
 using ASA_TENANT_REPO.Models;
 using EDUConnect_Repositories.Basic;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -39,6 +40,29 @@ namespace ASA_TENANT_REPO.Repository
                 query = query.Where(s => s.QrcodeUrl.Contains(filter.QrcodeUrl));
             }
             return query;
+        }
+
+        /// <summary>
+        /// Chỉ cập nhật SepayApiKey cho Shop
+        /// </summary>
+        public async Task<int> UpdateSepayApiKeyAsync(long shopId, string apiKey)
+        {
+            try
+            {
+                var shop = await _context.Shops.FindAsync(shopId);
+                if (shop == null)
+                {
+                    return 0;
+                }
+
+                shop.SepayApiKey = apiKey;
+                _context.Shops.Update(shop);
+                return await _context.SaveChangesAsync();
+            }
+            catch (Exception)
+            {
+                return 0;
+            }
         }
     }
 }

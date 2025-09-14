@@ -69,7 +69,7 @@ namespace ASA_TENANT_SERVICE.Implenment
         private async Task<Product> CreateNewProductAsync(ProductRequest request)
         {
             var product = _mapper.Map<Product>(request);
-            product.Quantity = request.Transaction.Quantity;
+            product.Quantity = request.InventoryTransaction.Quantity;
             product.IsLow = false;
             await _productRepo.CreateAsync(product);
 
@@ -94,9 +94,9 @@ namespace ASA_TENANT_SERVICE.Implenment
             }
 
             // Tính cost từ transaction
-            if (request.Transaction != null)
+            if (request.InventoryTransaction != null)
             {
-                product.Cost = request.Transaction.Price / request.Transaction.Quantity;
+                product.Cost = request.InventoryTransaction.Price / request.InventoryTransaction.Quantity;
                 product.Price = request.Price ?? product.Price;
                 product.UpdateAt = DateTime.UtcNow;
 
@@ -105,9 +105,9 @@ namespace ASA_TENANT_SERVICE.Implenment
                     ProductId = product.ProductId,
                     ShopId = product.ShopId,
                     UnitId = product.UnitIdFk,
-                    Quantity = request.Transaction.Quantity,
-                    Price = request.Transaction.Price,
-                    ImageUrl = request.Transaction.ImageUrl,
+                    Quantity = request.InventoryTransaction.Quantity,
+                    Price = request.InventoryTransaction.Price,
+                    ImageUrl = request.InventoryTransaction.ImageUrl,
                     CreatedAt = DateTime.UtcNow,
                     Type = 1 // nhập kho
                 };
@@ -122,10 +122,10 @@ namespace ASA_TENANT_SERVICE.Implenment
         private async Task<Product> UpdateExistingProductAsync(Product product, ProductRequest request)
         {
             // Cập nhật số lượng tồn kho
-            if (request.Transaction != null)
+            if (request.InventoryTransaction != null)
             {
-                product.Quantity = (product.Quantity ?? 0) + request.Transaction.Quantity;
-                product.Cost = request.Transaction.Price / request.Transaction.Quantity;
+                product.Quantity = (product.Quantity ?? 0) + request.InventoryTransaction.Quantity;
+                product.Cost = request.InventoryTransaction.Price / request.InventoryTransaction.Quantity;
                 product.Price = request.Price ?? product.Price;
                 product.Discount = request.Discount ?? product.Discount;
                 product.UpdateAt = DateTime.UtcNow;
@@ -135,9 +135,9 @@ namespace ASA_TENANT_SERVICE.Implenment
                     ProductId = product.ProductId,
                     ShopId = product.ShopId,
                     UnitId = product.UnitIdFk,
-                    Quantity = request.Transaction.Quantity,
-                    Price = request.Transaction.Price,
-                    ImageUrl = request.Transaction.ImageUrl,
+                    Quantity = request.InventoryTransaction.Quantity,
+                    Price = request.InventoryTransaction.Price,
+                    ImageUrl = request.InventoryTransaction.ImageUrl,
                     CreatedAt = DateTime.UtcNow,
                     Type = 1
                 };

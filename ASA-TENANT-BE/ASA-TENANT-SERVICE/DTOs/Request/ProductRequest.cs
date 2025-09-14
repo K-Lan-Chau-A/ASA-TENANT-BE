@@ -21,7 +21,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
 
         public List<UnitProductRequest> Units { get; set; } = new List<UnitProductRequest>();
 
-        public InventoryTransactionProductRequest Transaction { get; set; }
+        public InventoryTransactionProductRequest InventoryTransaction { get; set; }
     }
 
     public class UnitProductRequest

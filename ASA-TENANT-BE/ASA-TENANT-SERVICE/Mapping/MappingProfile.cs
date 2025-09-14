@@ -1,6 +1,8 @@
 ﻿using ASA_TENANT_REPO.Models;
 using ASA_TENANT_SERVICE.DTOs.Request;
 using ASA_TENANT_SERVICE.DTOs.Response;
+using ASA_TENANT_SERVICE.Enums;
+using ASA_TENANT_SERVICE.Helper;
 using AutoMapper;
 using System;
 using System.Collections.Generic;
@@ -63,9 +65,19 @@ namespace ASA_TENANT_SERVICE.Mapping
             CreateMap<UnitGetRequest, Unit>().ReverseMap();
 
             // Order Mappings
+            CreateMap<PaymentMethod, string>()
+                .ConvertUsing(src => src.ToString());
+
+            CreateMap<string, PaymentMethod>()
+                .ConvertUsing(src => EnumHelper.ParsePaymentMethod(src));
+
+            CreateMap<string, PaymentMethod?>()
+                .ConvertUsing(src => EnumHelper.ParseNullablePaymentMethod(src));
+
             CreateMap<Order, OrderResponse>().ReverseMap();
             CreateMap<OrderRequest, Order>().ReverseMap();
             CreateMap<OrderGetRequest, Order>().ReverseMap();
+
 
             // OrderDetail Mappings
             CreateMap<OrderDetail, OrderDetailResponse>().ReverseMap();

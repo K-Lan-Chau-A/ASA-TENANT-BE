@@ -69,8 +69,8 @@ namespace ASA_TENANT_BE.Controllers
                 var apiKey = authHeader.Replace("Apikey ", "").Trim();
                 
                 // Tìm Shop theo SepayApiKey
-                var shop = await _shopRepo.GetAllAsync()
-                    .FirstOrDefaultAsync(s => s.SepayApiKey == apiKey);
+                var shops = await _shopRepo.GetAllAsync();
+                var shop = shops.FirstOrDefault(s => s.SepayApiKey == apiKey);
                 
                 if (shop == null)
                 {

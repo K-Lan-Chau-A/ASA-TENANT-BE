@@ -30,6 +30,76 @@ namespace ASA_TENANT_SERVICE.Implenment
             _mapper = mapper;
         }
 
+        public async Task<ApiResponse<OrderResponse>> GetByIdAsync(long id)
+        {
+            try
+            {
+                var order = await _orderRepo.GetByIdAsync(id);
+                if (order == null)
+                {
+                    return new ApiResponse<OrderResponse>
+                    {
+                        Success = false,
+                        Message = "Order not found",
+                        Data = null
+                    };
+                }
+
+                var response = _mapper.Map<OrderResponse>(order);
+                return new ApiResponse<OrderResponse>
+                {
+                    Success = true,
+                    Message = "Order found",
+                    Data = response
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<OrderResponse>
+                {
+                    Success = false,
+                    Message = $"Error: {ex.Message}",
+                    Data = null
+                };
+            }
+        }
+
+        public async Task<ApiResponse<OrderResponse>> GetByNoteAsync(string note)
+        {
+            try
+            {
+                var orders = await _orderRepo.GetAllAsync();
+                var order = orders.FirstOrDefault(o => o.Note == note);
+
+                if (order == null)
+                {
+                    return new ApiResponse<OrderResponse>
+                    {
+                        Success = false,
+                        Message = "Order not found",
+                        Data = null
+                    };
+                }
+
+                var response = _mapper.Map<OrderResponse>(order);
+                return new ApiResponse<OrderResponse>
+                {
+                    Success = true,
+                    Message = "Order found",
+                    Data = response
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<OrderResponse>
+                {
+                    Success = false,
+                    Message = $"Error: {ex.Message}",
+                    Data = null
+                };
+            }
+        }
+
         public async Task<ApiResponse<OrderResponse>> CreateAsync(OrderRequest request)
         {
             try
@@ -106,6 +176,51 @@ namespace ASA_TENANT_SERVICE.Implenment
                     Success = true,
                     Message = "Create successfully",
                     Data = response
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<OrderResponse>
+                {
+                    Success = false,
+                    Message = $"Error: {ex.Message}",
+                    Data = null
+                };
+            }
+        }
+
+        public async Task<ApiResponse<OrderResponse>> UpdateStatusAsync(long id, short status)
+        {
+            try
+            {
+                var existing = await _orderRepo.GetByIdAsync(id);
+                if (existing == null)
+                {
+                    return new ApiResponse<OrderResponse>
+                    {
+                        Success = false,
+                        Message = "Order not found",
+                        Data = null
+                    };
+                }
+
+                existing.Status = status;
+                var affected = await _orderRepo.UpdateAsync(existing);
+                if (affected > 0)
+                {
+                    var response = _mapper.Map<OrderResponse>(existing);
+                    return new ApiResponse<OrderResponse>
+                    {
+                        Success = true,
+                        Message = "Order status updated successfully",
+                        Data = response
+                    };
+                }
+                return new ApiResponse<OrderResponse>
+                {
+                    Success = false,
+                    Message = "Update status failed",
+                    Data = null
                 };
             }
             catch (Exception ex)

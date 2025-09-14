@@ -17,11 +17,11 @@ public partial class Shop
 
     public DateTime? CreatedAt { get; set; }
 
-    public DateTime? ExpiredAt { get; set; }
-
     public short? Status { get; set; }
 
     public string QrcodeUrl { get; set; }
+
+    public string? SepayApiKey { get; set; }
 
     public virtual ICollection<Category> Categories { get; set; } = new List<Category>();
 

@@ -4,6 +4,7 @@ using ASA_TENANT_REPO.Repository;
 using ASA_TENANT_SERVICE.DTOs.Common;
 using ASA_TENANT_SERVICE.DTOs.Request;
 using ASA_TENANT_SERVICE.DTOs.Response;
+using ASA_TENANT_SERVICE.Enums;
 using ASA_TENANT_SERVICE.Interface;
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
@@ -119,7 +120,7 @@ namespace ASA_TENANT_SERVICE.Implenment
             {
                 var entity = _mapper.Map<Shift>(shiftOpenRequest);
                 entity.StartDate = DateTime.UtcNow;
-                entity.Status = 1; // Opening
+                entity.Status = (short)ShiftStatus.Open; // Open
                 entity.Revenue = 0;
 
                 var affected = await _shiftRepo.CreateAsync(entity);
@@ -167,7 +168,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                         Data = null
                     };
                 }
-                if (shift.Status == 2)
+                if (shift.Status == (short)ShiftStatus.Closed)
                 {
                     return new ApiResponse<ShiftResponse>
                     {
@@ -177,7 +178,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                     };
                 }
                 shift.ClosedDate = DateTime.UtcNow;
-                shift.Status = 2; // Closed
+                shift.Status = (short)ShiftStatus.Closed;
 
                 //Calculate revenue from orders in this shift
                 var revenue = await _orderRepo.GetTotalRevenueByShiftIdAsync(shift.ShiftId);

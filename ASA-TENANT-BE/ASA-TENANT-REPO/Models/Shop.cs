@@ -21,6 +21,8 @@ public partial class Shop
 
     public string QrcodeUrl { get; set; }
 
+    public string SepayApiKey { get; set; }
+
     public int? CurrentRequest { get; set; }
 
     public int? CurrentAccount { get; set; }
@@ -50,6 +52,8 @@ public partial class Shop
     public virtual ICollection<Shift> Shifts { get; set; } = new List<Shift>();
 
     public virtual ICollection<ShopSubscription> ShopSubscriptions { get; set; } = new List<ShopSubscription>();
+
+    public virtual ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
 
     public virtual ICollection<Unit> Units { get; set; } = new List<Unit>();
 

@@ -70,9 +70,9 @@ public partial class ASATENANTDBContext : DbContext
 
     public virtual DbSet<Zalopay> Zalopays { get; set; }
 
-//    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-//#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-//        => optionsBuilder.UseNpgsql("Persist Security Info=True;Password=Hau@1310;Username=postgres;Database=ASA-TENANT-DB;Host=localhost");
+//     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+// #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+//         => optionsBuilder.UseNpgsql("Persist Security Info=True;Password=Hau@1310;Username=postgres;Database=ASA-TENANT-DB;Host=localhost");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -629,6 +629,7 @@ public partial class ASATENANTDBContext : DbContext
                 .HasDefaultValue(0)
                 .HasColumnName("current_request");
             entity.Property(e => e.QrcodeUrl).HasColumnName("qrcode_url");
+            entity.Property(e => e.SepayApiKey).HasColumnName("sepay_api_key");
             entity.Property(e => e.ShopName)
                 .HasMaxLength(150)
                 .HasColumnName("shop_name");
@@ -680,6 +681,7 @@ public partial class ASATENANTDBContext : DbContext
             entity.Property(e => e.ReturnMessage)
                 .HasMaxLength(255)
                 .HasColumnName("return_message");
+            entity.Property(e => e.ShopId).HasColumnName("shop_id");
             entity.Property(e => e.UserId).HasColumnName("user_id");
             entity.Property(e => e.ZpTransId)
                 .HasMaxLength(50)
@@ -688,6 +690,10 @@ public partial class ASATENANTDBContext : DbContext
             entity.HasOne(d => d.Order).WithMany(p => p.Transactions)
                 .HasForeignKey(d => d.OrderId)
                 .HasConstraintName("transaction_order_id_fkey");
+
+            entity.HasOne(d => d.Shop).WithMany(p => p.Transactions)
+                .HasForeignKey(d => d.ShopId)
+                .HasConstraintName("transaction_shop_id_fkey");
 
             entity.HasOne(d => d.User).WithMany(p => p.Transactions)
                 .HasForeignKey(d => d.UserId)

@@ -12,7 +12,6 @@ namespace ASA_TENANT_SERVICE.DTOs.Response
         public string ShopName { get; set; }
         public string Address { get; set; }
         public DateTime? CreatedAt { get; set; }
-        public DateTime? ExpiredAt { get; set; }
         public short? Status { get; set; }
         public string QrcodeUrl { get; set; }
     }

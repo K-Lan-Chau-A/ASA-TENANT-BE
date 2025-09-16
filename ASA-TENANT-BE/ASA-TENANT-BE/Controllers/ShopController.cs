@@ -50,5 +50,48 @@ namespace ASA_TENANT_BE.Controllers
             return Ok(result);
         }
 
+        /// <summary>
+        /// Cập nhật Sepay API key cho shop
+        /// </summary>
+        [HttpPut("{id}/sepay-api-key")]
+        public async Task<ActionResult> UpdateSepayApiKey(long id, [FromBody] SepayApiKeyRequest request)
+        {
+            try
+            {
+                var result = await _shopService.UpdateSepayApiKeyAsync(id, request.ApiKey);
+                if (result.Success)
+                {
+                    return Ok(result);
+                }
+                return BadRequest(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Test Sepay API key
+        /// </summary>
+        [HttpPost("test-sepay-api-key")]
+        public async Task<ActionResult> TestSepayApiKey([FromBody] SepayApiKeyRequest request)
+        {
+            try
+            {
+                var result = await _shopService.TestSepayApiKeyAsync(request.ApiKey);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
+    }
+
+    public class SepayApiKeyRequest
+    {
+        public string ApiKey { get; set; } = string.Empty;
     }
 }

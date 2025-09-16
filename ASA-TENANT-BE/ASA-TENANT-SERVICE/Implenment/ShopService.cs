@@ -157,5 +157,79 @@ namespace ASA_TENANT_SERVICE.Implenment
                 };
             }
         }
+
+        public async Task<ApiResponse<ShopResponse>> UpdateSepayApiKeyAsync(long id, string apiKey)
+        {
+            try
+            {
+                // Sử dụng method riêng chỉ cập nhật SepayApiKey
+                var affected = await _shopRepo.UpdateSepayApiKeyAsync(id, apiKey);
+                
+                if (affected > 0)
+                {
+                    // Lấy lại shop sau khi cập nhật
+                    var updatedShop = await _shopRepo.GetByIdAsync(id);
+                    var response = _mapper.Map<ShopResponse>(updatedShop);
+                    return new ApiResponse<ShopResponse>
+                    {
+                        Success = true,
+                        Message = "Sepay API key updated successfully",
+                        Data = response
+                    };
+                }
+
+                return new ApiResponse<ShopResponse>
+                {
+                    Success = false,
+                    Message = "Shop not found or failed to update Sepay API key",
+                    Data = null
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<ShopResponse>
+                {
+                    Success = false,
+                    Message = $"Error: {ex.Message}",
+                    Data = null
+                };
+            }
+        }
+
+        public async Task<ApiResponse<ShopResponse>> TestSepayApiKeyAsync(string apiKey)
+        {
+            try
+            {
+                var shops = await _shopRepo.GetAllAsync();
+                var shop = shops.FirstOrDefault(s => s.SepayApiKey == apiKey);
+
+                if (shop != null)
+                {
+                    var response = _mapper.Map<ShopResponse>(shop);
+                    return new ApiResponse<ShopResponse>
+                    {
+                        Success = true,
+                        Message = "API key is valid",
+                        Data = response
+                    };
+                }
+
+                return new ApiResponse<ShopResponse>
+                {
+                    Success = false,
+                    Message = "Invalid API key",
+                    Data = null
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<ShopResponse>
+                {
+                    Success = false,
+                    Message = $"Error: {ex.Message}",
+                    Data = null
+                };
+            }
+        }
     }
 }

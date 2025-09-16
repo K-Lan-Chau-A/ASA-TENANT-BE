@@ -12,6 +12,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Quartz;
 using System.Text;
+using ASA_TENANT_BE.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 // Cấu hình để chạy trên Docker/Render
@@ -150,9 +151,13 @@ builder.Services.AddCors(options =>
                  )
                 .AllowAnyHeader()
                 .AllowAnyMethod()
-                .AllowCredentials();
+                .AllowCredentials()
+                .SetIsOriginAllowedToAllowWildcardSubdomains();
         });
 });
+
+// ==================== SignalR ====================
+builder.Services.AddSignalR();
 
 // ==================== Controllers & Swagger ====================
 builder.Services.AddControllers();
@@ -268,5 +273,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Map SignalR Hub
+app.MapHub<NotificationHub>("/notificationHub");
 
 app.Run();

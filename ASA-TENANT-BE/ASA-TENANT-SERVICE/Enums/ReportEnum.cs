@@ -1,14 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace ASA_TENANT_SERVICE.Enums
 {
-    public enum UserRole
+    public enum ReportEnum
     {
-        Admin = 1,
-        Staff = 2
+        [Description("Tuần")]
+        Weekly = 1,
+
+        [Description("Tháng")]
+        Monthly = 2
     }
 }

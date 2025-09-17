@@ -17,6 +17,6 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
     {
         public long? categoryId { get; set; }
         public string? categoryName { get; set; }
-        public long? shopId { get; set; }
+        public long shopId { get; set; }
     }
 }

@@ -1,6 +1,8 @@
 ﻿using ASA_TENANT_REPO.Models;
 using ASA_TENANT_SERVICE.DTOs.Request;
 using ASA_TENANT_SERVICE.DTOs.Response;
+using ASA_TENANT_SERVICE.Enums;
+using ASA_TENANT_SERVICE.Helper;
 using AutoMapper;
 using System;
 using System.Collections.Generic;
@@ -33,7 +35,10 @@ namespace ASA_TENANT_SERVICE.Mapping
 
             // User Mappings
             CreateMap<User, UserResponse>().ReverseMap();
-            CreateMap<UserRequest, User>().ReverseMap();
+            CreateMap<UserRequest, User>()
+     .          ForMember(dest => dest.Role, opt => opt.MapFrom(src => (short)src.Role))
+                .ReverseMap()
+     .          ForMember(dest => dest.Role, opt => opt.MapFrom(src => (UserRole)src.Role));
             CreateMap<UserGetRequest, User>().ReverseMap();
             CreateMap<LoginResponse, User>().ReverseMap();
 
@@ -63,11 +68,21 @@ namespace ASA_TENANT_SERVICE.Mapping
             CreateMap<UnitGetRequest, Unit>().ReverseMap();
 
             // Order Mappings
+            CreateMap<PaymentMethodEnum, string>()
+                .ConvertUsing(src => src.ToString());
+
+            CreateMap<string, PaymentMethodEnum>()
+                .ConvertUsing(src => EnumHelper.ParsePaymentMethod(src));
+
+            CreateMap<string, PaymentMethodEnum?>()
+                .ConvertUsing(src => EnumHelper.ParseNullablePaymentMethod(src));
+
             CreateMap<Order, OrderResponse>().ReverseMap();
             CreateMap<OrderRequest, Order>()
                 .ForMember(dest => dest.OrderDetails, opt => opt.Ignore())
                 .ReverseMap();
             CreateMap<OrderGetRequest, Order>().ReverseMap();
+
 
             // OrderDetail Mappings
             CreateMap<OrderDetail, OrderDetailResponse>().ReverseMap();

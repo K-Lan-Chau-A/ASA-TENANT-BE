@@ -194,7 +194,7 @@ namespace ASA_TENANT_SERVICE.Implenment
         }
 
 
-        public async Task<ApiResponse<bool>> DeleteAsync(long id)
+        public async Task<ApiResponse<bool>> DeleteAsync(long id,long shopid)
         {
             try
             {
@@ -207,11 +207,11 @@ namespace ASA_TENANT_SERVICE.Implenment
                         Data = false
                     };
 
-                var affected = await _productRepo.RemoveAsync(existing);
+                var affected = await _productRepo.UnActiveProduct(id, shopid);
                 return new ApiResponse<bool>
                 {
                     Success = affected,
-                    Message = affected ? "Deleted successfully" : "Delete failed",
+                    Message = affected ? "UnActive successfully" : "UnActive failed",
                     Data = affected
                 };
             }

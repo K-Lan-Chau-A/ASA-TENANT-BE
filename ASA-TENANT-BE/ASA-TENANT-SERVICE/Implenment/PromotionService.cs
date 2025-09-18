@@ -18,24 +18,69 @@ namespace ASA_TENANT_SERVICE.Implenment
     public class PromotionService : IPromotionService
     {
         private readonly PromotionRepo _promotionRepo;
+        private readonly PromotionProductRepo _promotionProductRepo;
         private readonly IMapper _mapper;
-        public PromotionService(PromotionRepo promotionRepo, IMapper mapper)
+        public PromotionService(PromotionRepo promotionRepo, IMapper mapper, PromotionProductRepo promotionProductRepo)
         {
             _promotionRepo = promotionRepo;
             _mapper = mapper;
+            _promotionProductRepo = promotionProductRepo;
         }
 
         public async Task<ApiResponse<PromotionResponse>> CreateAsync(PromotionRequest request)
         {
             try
             {
+                if (request.ProductIds != null && request.ProductIds.Any())
+                {
+                    var invalidIds = await _promotionRepo.GetInvalidProductIdsAsync(request.ProductIds);
+                    if (invalidIds.Any())
+                    {
+                        return new ApiResponse<PromotionResponse>
+                        {
+                            Success = false,
+                            Message = $"Invalid product id(s): {string.Join(", ", invalidIds)}",
+                            Data = null
+                        };
+                    }
+                }
+                // map request sang entity Promotion
                 var entity = _mapper.Map<Promotion>(request);
 
+                // tạo promotion
                 var affected = await _promotionRepo.CreateAsync(entity);
 
                 if (affected > 0)
                 {
+                    var promotionProducts = new List<PromotionProduct>();
+
+                    // nếu có danh sách product
+                    if (request.ProductIds != null && request.ProductIds.Any())
+                    {
+                        foreach (var productId in request.ProductIds)
+                        {
+                            var pp = new PromotionProduct
+                            {
+                                PromotionId = entity.PromotionId,
+                                ProductId = productId
+                            };
+
+                            await _promotionProductRepo.CreateAsync(pp);
+                            promotionProducts.Add(pp);
+                        }
+                    }
+
+                    // map sang response
                     var response = _mapper.Map<PromotionResponse>(entity);
+
+                    // set danh sách product response trả về
+                    if (promotionProducts.Any())
+                    {
+                        response.Products = promotionProducts
+                            .Select(pp => pp.ProductId.Value)
+                            .ToHashSet();
+                    }
+
                     return new ApiResponse<PromotionResponse>
                     {
                         Success = true,
@@ -62,6 +107,7 @@ namespace ASA_TENANT_SERVICE.Implenment
             }
         }
 
+
         public async Task<ApiResponse<bool>> DeleteAsync(long id)
         {
             try
@@ -75,6 +121,14 @@ namespace ASA_TENANT_SERVICE.Implenment
                         Data = false
                     };
 
+                // Xóa các PromotionProduct liên quan
+                var promotionProducts = await _promotionProductRepo.GetByPromotionIdAsync(id);
+                foreach (var pp in promotionProducts)
+                {
+                    await _promotionProductRepo.RemoveAsync(pp);
+                }
+
+                // Sau đó xóa promotion
                 var affected = await _promotionRepo.RemoveAsync(existing);
                 return new ApiResponse<bool>
                 {
@@ -93,6 +147,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                 };
             }
         }
+
 
         public async Task<PagedResponse<PromotionResponse>> GetFilteredPromotionsAsync(PromotionGetRequest Filter, int page, int pageSize)
         {
@@ -124,12 +179,62 @@ namespace ASA_TENANT_SERVICE.Implenment
                         Data = null
                     };
 
+                // validate product ids
+                if (request.ProductIds != null && request.ProductIds.Any())
+                {
+                    var invalidIds = await _promotionRepo.GetInvalidProductIdsAsync(request.ProductIds);
+                    if (invalidIds.Any())
+                    {
+                        return new ApiResponse<PromotionResponse>
+                        {
+                            Success = false,
+                            Message = $"Invalid product id(s): {string.Join(", ", invalidIds)}",
+                            Data = null
+                        };
+                    }
+                }
+
+                // map data từ request sang entity
                 _mapper.Map(request, existing);
 
+                // update promotion
                 var affected = await _promotionRepo.UpdateAsync(existing);
                 if (affected > 0)
                 {
+                    var promotionProducts = new List<PromotionProduct>();
+
+                    // Xóa product cũ
+                    var oldProducts = await _promotionProductRepo.GetByPromotionIdAsync(id);
+                    foreach (var op in oldProducts)
+                    {
+                        await _promotionProductRepo.RemoveAsync(op);
+                    }
+
+                    // Thêm product mới
+                    if (request.ProductIds != null && request.ProductIds.Any())
+                    {
+                        foreach (var productId in request.ProductIds)
+                        {
+                            var pp = new PromotionProduct
+                            {
+                                PromotionId = existing.PromotionId,
+                                ProductId = productId
+                            };
+
+                            await _promotionProductRepo.CreateAsync(pp);
+                            promotionProducts.Add(pp);
+                        }
+                    }
+
+                    // map sang response
                     var response = _mapper.Map<PromotionResponse>(existing);
+                    if (promotionProducts.Any())
+                    {
+                        response.Products = promotionProducts
+                            .Select(pp => pp.ProductId.Value)
+                            .ToHashSet();
+                    }
+
                     return new ApiResponse<PromotionResponse>
                     {
                         Success = true,
@@ -155,5 +260,6 @@ namespace ASA_TENANT_SERVICE.Implenment
                 };
             }
         }
+
     }
 }

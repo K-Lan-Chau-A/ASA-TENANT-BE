@@ -27,6 +27,12 @@ public partial class Shop
 
     public int? CurrentAccount { get; set; }
 
+    public string BankName { get; set; }
+
+    public string BankCode { get; set; }
+
+    public string BankNum { get; set; }
+
     public virtual ICollection<Category> Categories { get; set; } = new List<Category>();
 
     public virtual ICollection<ChatMessage> ChatMessages { get; set; } = new List<ChatMessage>();
@@ -46,6 +52,8 @@ public partial class Shop
     public virtual ICollection<Product> Products { get; set; } = new List<Product>();
 
     public virtual ICollection<Promotion> Promotions { get; set; } = new List<Promotion>();
+
+    public virtual ICollection<Rank> Ranks { get; set; } = new List<Rank>();
 
     public virtual ICollection<Report> Reports { get; set; } = new List<Report>();
 

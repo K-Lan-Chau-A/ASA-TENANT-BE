@@ -26,6 +26,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
     public class PromotionGetRequest
     {
         public long PromotionId { get; set; }
+        [Required(ErrorMessage = "ShopId is required")]
         public long ShopId { get; set; }
         public string? Name { get; set; }
         public DateOnly? StartDate { get; set; }

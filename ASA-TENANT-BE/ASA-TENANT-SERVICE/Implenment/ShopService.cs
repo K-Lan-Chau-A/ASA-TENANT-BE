@@ -231,5 +231,54 @@ namespace ASA_TENANT_SERVICE.Implenment
                 };
             }
         }
+
+        public async Task<ApiResponse<ShopResponse>> UpdateBankInfoAsync(long id, string bankName, string bankCode, string bankNum)
+        {
+            try
+            {
+                var existing = await _shopRepo.GetByIdAsync(id);
+                if (existing == null)
+                {
+                    return new ApiResponse<ShopResponse>
+                    {
+                        Success = false,
+                        Message = "Shop not found",
+                        Data = null
+                    };
+                }
+
+                existing.BankName = bankName;
+                existing.BankCode = bankCode;
+                existing.BankNum = bankNum;
+
+                var affected = await _shopRepo.UpdateAsync(existing);
+                if (affected > 0)
+                {
+                    var response = _mapper.Map<ShopResponse>(existing);
+                    return new ApiResponse<ShopResponse>
+                    {
+                        Success = true,
+                        Message = "Bank info updated successfully",
+                        Data = response
+                    };
+                }
+
+                return new ApiResponse<ShopResponse>
+                {
+                    Success = false,
+                    Message = "Failed to update bank info",
+                    Data = null
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<ShopResponse>
+                {
+                    Success = false,
+                    Message = $"Error: {ex.Message}",
+                    Data = null
+                };
+            }
+        }
     }
 }

@@ -76,6 +76,10 @@
          "ObjectType": 0
       },
       {
+         "Name": "public.rank",
+         "ObjectType": 0
+      },
+      {
          "Name": "public.report",
          "ObjectType": 0
       },

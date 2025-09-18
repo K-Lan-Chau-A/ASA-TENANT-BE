@@ -54,6 +54,8 @@ public partial class Shop
 
     public virtual ICollection<Promotion> Promotions { get; set; } = new List<Promotion>();
 
+    public virtual ICollection<Rank> Ranks { get; set; } = new List<Rank>();
+
     public virtual ICollection<Report> Reports { get; set; } = new List<Report>();
 
     public virtual ICollection<Shift> Shifts { get; set; } = new List<Shift>();

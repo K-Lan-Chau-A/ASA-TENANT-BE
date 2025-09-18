@@ -48,6 +48,8 @@ public partial class ASATENANTDBContext : DbContext
 
     public virtual DbSet<Prompt> Prompts { get; set; }
 
+    public virtual DbSet<Rank> Ranks { get; set; }
+
     public virtual DbSet<Report> Reports { get; set; }
 
     public virtual DbSet<ReportDetail> ReportDetails { get; set; }
@@ -70,9 +72,9 @@ public partial class ASATENANTDBContext : DbContext
 
     public virtual DbSet<Zalopay> Zalopays { get; set; }
 
-//     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-// #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-//         => optionsBuilder.UseNpgsql("Persist Security Info=True;Password=Hau@1310;Username=postgres;Database=ASA-TENANT-DB;Host=localhost");
+//    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+//#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+//        => optionsBuilder.UseNpgsql("Persist Security Info=True;Password=Hau@1310;Username=postgres;Database=ASA-TENANT-DB;Host=localhost");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -144,9 +146,7 @@ public partial class ASATENANTDBContext : DbContext
             entity.Property(e => e.Phone)
                 .HasMaxLength(20)
                 .HasColumnName("phone");
-            entity.Property(e => e.Rank)
-                .HasMaxLength(50)
-                .HasColumnName("rank");
+            entity.Property(e => e.RankId).HasColumnName("rank_id");
             entity.Property(e => e.ShopId).HasColumnName("shop_id");
             entity.Property(e => e.Spent)
                 .HasPrecision(18, 2)
@@ -155,6 +155,10 @@ public partial class ASATENANTDBContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.Rank).WithMany(p => p.Customers)
+                .HasForeignKey(d => d.RankId)
+                .HasConstraintName("customer_rank_id_fkey");
 
             entity.HasOne(d => d.Shop).WithMany(p => p.Customers)
                 .HasForeignKey(d => d.ShopId)
@@ -533,6 +537,26 @@ public partial class ASATENANTDBContext : DbContext
                 .HasColumnName("updated_at");
         });
 
+        modelBuilder.Entity<Rank>(entity =>
+        {
+            entity.HasKey(e => e.RankId).HasName("rank_pkey");
+
+            entity.ToTable("rank");
+
+            entity.Property(e => e.RankId).HasColumnName("rank_id");
+            entity.Property(e => e.Benefit).HasColumnName("benefit");
+            entity.Property(e => e.RankName)
+                .IsRequired()
+                .HasMaxLength(100)
+                .HasColumnName("rank_name");
+            entity.Property(e => e.ShopId).HasColumnName("shop_id");
+            entity.Property(e => e.Threshold).HasColumnName("threshold");
+
+            entity.HasOne(d => d.Shop).WithMany(p => p.Ranks)
+                .HasForeignKey(d => d.ShopId)
+                .HasConstraintName("rank_shop_id_fkey");
+        });
+
         modelBuilder.Entity<Report>(entity =>
         {
             entity.HasKey(e => e.ReportId).HasName("report_pkey");
@@ -619,6 +643,15 @@ public partial class ASATENANTDBContext : DbContext
 
             entity.Property(e => e.ShopId).HasColumnName("shop_id");
             entity.Property(e => e.Address).HasColumnName("address");
+            entity.Property(e => e.BankCode)
+                .HasMaxLength(50)
+                .HasColumnName("bank_code");
+            entity.Property(e => e.BankName)
+                .HasMaxLength(255)
+                .HasColumnName("bank_name");
+            entity.Property(e => e.BankNum)
+                .HasMaxLength(50)
+                .HasColumnName("bank_num");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");

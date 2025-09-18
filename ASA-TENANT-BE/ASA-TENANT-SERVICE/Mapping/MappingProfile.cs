@@ -22,7 +22,9 @@ namespace ASA_TENANT_SERVICE.Mapping
             CreateMap<CategoryGetRequest, Category>().ReverseMap();
 
             //Customer Mappings
-            CreateMap<Customer, CustomerResponse>().ReverseMap();
+            CreateMap<Customer, CustomerResponse>()
+                                .ForMember(dest => dest.RankName, opt => opt.MapFrom(src => src.Rank.RankName))
+                                .ReverseMap();
             CreateMap<CustomerRequest, Customer>().ReverseMap();
             CreateMap<CustomerGetRequest, Customer>().ReverseMap();
 
@@ -35,10 +37,11 @@ namespace ASA_TENANT_SERVICE.Mapping
 
             // User Mappings
             CreateMap<User, UserResponse>().ReverseMap();
-            CreateMap<UserRequest, User>()
+            CreateMap<UserUpdateRequest, User>()
      .          ForMember(dest => dest.Role, opt => opt.MapFrom(src => (short)src.Role))
                 .ReverseMap()
      .          ForMember(dest => dest.Role, opt => opt.MapFrom(src => (UserRole)src.Role));
+            CreateMap<UserCreateRequest, User>().ReverseMap();
             CreateMap<UserGetRequest, User>().ReverseMap();
             CreateMap<LoginResponse, User>().ReverseMap();
 
@@ -53,8 +56,14 @@ namespace ASA_TENANT_SERVICE.Mapping
             CreateMap<InventoryTransactionGetRequest, InventoryTransaction>().ReverseMap();
 
             // Promotion Mappings
-            CreateMap<Promotion, PromotionResponse>().ReverseMap();
-            CreateMap<PromotionRequest, Promotion>().ReverseMap();
+            CreateMap<Promotion, PromotionResponse>()
+                .ForMember(dest => dest.Type, opt => opt.MapFrom(src => (short?)src.Type))
+                .ReverseMap()
+                .ForMember(dest => dest.Type, opt => opt.MapFrom(src => (PromotionType)src.Type));
+            CreateMap<PromotionRequest, Promotion>()
+                .ForMember(dest => dest.Type, opt => opt.MapFrom(src => (short)src.Type))
+                .ReverseMap()
+                .ForMember(dest => dest.Type, opt => opt.MapFrom(src => (PromotionType)src.Type));
             CreateMap<PromotionGetRequest, Promotion>().ReverseMap();
 
             // LogActivity Mappings

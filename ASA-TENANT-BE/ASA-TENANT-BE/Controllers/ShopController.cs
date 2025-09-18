@@ -88,10 +88,38 @@ namespace ASA_TENANT_BE.Controllers
             }
         }
 
+        /// <summary>
+        /// Cập nhật thông tin ngân hàng (BankName, BankCode, BankNum) cho shop
+        /// </summary>
+        [HttpPut("{id}/bank-info")]
+        public async Task<ActionResult> UpdateBankInfo(long id, [FromBody] UpdateBankInfoRequest request)
+        {
+            try
+            {
+                var result = await _shopService.UpdateBankInfoAsync(id, request.BankName, request.BankCode, request.BankNum);
+                if (result.Success)
+                {
+                    return Ok(result);
+                }
+                return BadRequest(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
     }
 
     public class SepayApiKeyRequest
     {
         public string ApiKey { get; set; } = string.Empty;
     }
+
+public class UpdateBankInfoRequest
+{
+    public string BankName { get; set; } = string.Empty;
+    public string BankCode { get; set; } = string.Empty;
+    public string BankNum { get; set; } = string.Empty;
+}
 }

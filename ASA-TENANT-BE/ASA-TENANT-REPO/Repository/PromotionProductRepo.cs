@@ -30,5 +30,12 @@ namespace ASA_TENANT_REPO.Repository
                 query = query.Where(x => x.ProductId == filter.ProductId);
             return query.OrderBy(x => x.PromotionProductId);
         }
+
+        public async Task<IEnumerable<PromotionProduct>> GetByPromotionIdAsync(long promotionId)
+        {
+            return await _context.PromotionProducts
+                .Where(pp => pp.PromotionId == promotionId)
+                .ToListAsync();
+        }
     }
 }

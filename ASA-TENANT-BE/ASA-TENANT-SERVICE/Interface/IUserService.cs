@@ -13,8 +13,9 @@ namespace ASA_TENANT_SERVICE.Interface
     public interface IUserService
     {
         Task<PagedResponse<UserResponse>> GetFilteredUsersAsync(UserGetRequest Filter, int page, int pageSize);
-        Task<ApiResponse<UserResponse>> CreateAsync(UserRequest request);
-        Task<ApiResponse<UserResponse>> UpdateAsync(long id, UserRequest request);
+        Task<ApiResponse<UserResponse>> CreateStaffAsync(UserCreateRequest request);
+        Task<ApiResponse<UserResponse>> CreateAdminAsync(UserCreateRequest request);
+        Task<ApiResponse<UserResponse>> UpdateAsync(long id, UserUpdateRequest request);
         Task<User> GetUserbyUserId(long userId);
         Task<ApiResponse<bool>> DeleteAsync(long id);
         Task<User> GetUserByUsername(string username);

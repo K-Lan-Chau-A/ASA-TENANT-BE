@@ -30,6 +30,6 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
         public string? Rankid { get; set; }
         public decimal? Spent { get; set; }
         [Required(ErrorMessage = "ShopId is required")]
-        public long? ShopId { get; set; }
+        public long ShopId { get; set; }
     }
 }

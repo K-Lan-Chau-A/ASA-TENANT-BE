@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -44,7 +45,8 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
     {
         public long? ProductId { get; set; }
         public long? CategoryId { get; set; }
-        public long? ShopId { get; set; }
+        [Required(ErrorMessage = "ShopId is required")]
+        public long ShopId { get; set; }
         public long? UnitIdFk { get; set; }
         public string? ProductName { get; set; }
         public short? Status { get; set; }

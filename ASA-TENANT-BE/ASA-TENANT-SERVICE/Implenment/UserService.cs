@@ -25,29 +25,26 @@ namespace ASA_TENANT_SERVICE.Implenment
             _mapper = mapper;
         }
 
-        public async Task<ApiResponse<UserResponse>> CreateAsync(UserRequest request)
+        public async Task<ApiResponse<UserResponse>> CreateStaffAsync(UserCreateRequest request)
         {
             try
-            {
-                // Check if admin user already exists
-                if (request.Role == Enums.UserRole.Admin) // 1 = Admin
-                {
-                    var existingAdmin = await _userRepo.GetFirstUserAdmin();
-                    if (existingAdmin != null)
-                    {
-                        return new ApiResponse<UserResponse>
-                        {
-                            Success = false,
-                            Message = "Only 1 admin user can exists in shop, try another role",
-                            Data = null
-                        };
-                    }
-                }
+            {        
+                    //var existingAdmin = await _userRepo.GetFirstUserAdmin(request.ShopId.Value);
+                    //if (existingAdmin != null)
+                    //{
+                    //    return new ApiResponse<UserResponse>
+                    //    {
+                    //        Success = false,
+                    //        Message = "Only 1 admin user can exists in shop, try another role",
+                    //        Data = null
+                    //    };
+                    //}
 
                 var entity = _mapper.Map<User>(request);
 
                 entity.CreatedAt = DateTime.UtcNow;
                 entity.Password = HashPassword(request.Password);
+                entity.Role = 2; // Default role is staff
 
                 var affected = await _userRepo.CreateAsync(entity);
 
@@ -80,6 +77,52 @@ namespace ASA_TENANT_SERVICE.Implenment
             }
         }
 
+        public async Task<ApiResponse<UserResponse>> CreateAdminAsync(UserCreateRequest adminRequest)
+        {
+            try
+            {   // Check if admin user already exists
+                var existingAdmin = await _userRepo.GetFirstUserAdmin(adminRequest.ShopId.Value);
+                if (existingAdmin != null)
+                {
+                    return new ApiResponse<UserResponse>
+                    {
+                        Success = false,
+                        Message = "Only 1 admin user can exists in shop",
+                        Data = null
+                    };
+                }
+                var entity = _mapper.Map<User>(adminRequest);
+                entity.CreatedAt = DateTime.UtcNow;
+                entity.Password = HashPassword(adminRequest.Password);
+                entity.Role = 1; // 1 = Admin
+                var affected = await _userRepo.CreateAsync(entity);
+                if (affected > 0)
+                {
+                    var response = _mapper.Map<UserResponse>(entity);
+                    return new ApiResponse<UserResponse>
+                    {
+                        Success = true,
+                        Message = "Create successfully",
+                        Data = response
+                    };
+                }
+                return new ApiResponse<UserResponse>
+                {
+                    Success = false,
+                    Message = "Create failed",
+                    Data = null
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<UserResponse>
+                {
+                    Success = false,
+                    Message = $"Error: {ex.Message}",
+                    Data = null
+                };
+            }
+        }
         public async Task<ApiResponse<bool>> DeleteAsync(long id)
         {
             try
@@ -132,7 +175,7 @@ namespace ASA_TENANT_SERVICE.Implenment
             };
         }
 
-        public async Task<ApiResponse<UserResponse>> UpdateAsync(long id, UserRequest request)
+        public async Task<ApiResponse<UserResponse>> UpdateAsync(long id, UserUpdateRequest request)
         {
             try
             {
@@ -148,7 +191,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                 // Check if admin user already exists
                 if (request.Role == Enums.UserRole.Admin) // 1 = Admin
                 {
-                    var existingAdmin = await _userRepo.GetFirstUserAdmin();
+                    var existingAdmin = await _userRepo.GetFirstUserAdmin(request.ShopId.Value);
                     if (existingAdmin != null)
                     {
                         return new ApiResponse<UserResponse>

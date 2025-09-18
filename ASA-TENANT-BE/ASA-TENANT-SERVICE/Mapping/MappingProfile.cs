@@ -37,10 +37,11 @@ namespace ASA_TENANT_SERVICE.Mapping
 
             // User Mappings
             CreateMap<User, UserResponse>().ReverseMap();
-            CreateMap<UserRequest, User>()
+            CreateMap<UserUpdateRequest, User>()
      .          ForMember(dest => dest.Role, opt => opt.MapFrom(src => (short)src.Role))
                 .ReverseMap()
      .          ForMember(dest => dest.Role, opt => opt.MapFrom(src => (UserRole)src.Role));
+            CreateMap<UserCreateRequest, User>().ReverseMap();
             CreateMap<UserGetRequest, User>().ReverseMap();
             CreateMap<LoginResponse, User>().ReverseMap();
 
@@ -55,8 +56,14 @@ namespace ASA_TENANT_SERVICE.Mapping
             CreateMap<InventoryTransactionGetRequest, InventoryTransaction>().ReverseMap();
 
             // Promotion Mappings
-            CreateMap<Promotion, PromotionResponse>().ReverseMap();
-            CreateMap<PromotionRequest, Promotion>().ReverseMap();
+            CreateMap<Promotion, PromotionResponse>()
+                .ForMember(dest => dest.Type, opt => opt.MapFrom(src => (short?)src.Type))
+                .ReverseMap()
+                .ForMember(dest => dest.Type, opt => opt.MapFrom(src => (PromotionType)src.Type));
+            CreateMap<PromotionRequest, Promotion>()
+                .ForMember(dest => dest.Type, opt => opt.MapFrom(src => (short)src.Type))
+                .ReverseMap()
+                .ForMember(dest => dest.Type, opt => opt.MapFrom(src => (PromotionType)src.Type));
             CreateMap<PromotionGetRequest, Promotion>().ReverseMap();
 
             // LogActivity Mappings
@@ -80,7 +87,9 @@ namespace ASA_TENANT_SERVICE.Mapping
                 .ConvertUsing(src => EnumHelper.ParseNullablePaymentMethod(src));
 
             CreateMap<Order, OrderResponse>().ReverseMap();
-            CreateMap<OrderRequest, Order>().ReverseMap();
+            CreateMap<OrderRequest, Order>()
+                .ForMember(dest => dest.OrderDetails, opt => opt.Ignore())
+                .ReverseMap();
             CreateMap<OrderGetRequest, Order>().ReverseMap();
 
 

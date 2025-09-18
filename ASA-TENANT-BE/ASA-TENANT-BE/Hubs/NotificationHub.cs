@@ -72,6 +72,30 @@ namespace ASA_TENANT_BE.Hubs
             });
         }
 
+        // Method để gửi thông báo đến Shop cụ thể
+        public async Task SendToShop(long shopId, string message, object? data = null)
+        {
+            await Clients.Group($"Shop_{shopId}").SendAsync("ReceiveNotification", new
+            {
+                Message = message,
+                Data = data,
+                Timestamp = DateTime.UtcNow,
+                Type = "ShopNotification"
+            });
+        }
+
+        // Method để gửi thông báo đến User cụ thể
+        public async Task SendToUser(long userId, string message, object? data = null)
+        {
+            await Clients.Group($"User_{userId}").SendAsync("ReceiveNotification", new
+            {
+                Message = message,
+                Data = data,
+                Timestamp = DateTime.UtcNow,
+                Type = "UserNotification"
+            });
+        }
+
         // Method để join group
         public async Task JoinGroup(string groupName)
         {
@@ -84,6 +108,13 @@ namespace ASA_TENANT_BE.Hubs
         {
             await Groups.AddToGroupAsync(Context.ConnectionId, $"Shop_{shopId}");
             _logger.LogInformation($"Connection {Context.ConnectionId} joined shop group Shop_{shopId}");
+        }
+
+        // Method để join User group (cho customer)
+        public async Task JoinUserGroup(long userId)
+        {
+            await Groups.AddToGroupAsync(Context.ConnectionId, $"User_{userId}");
+            _logger.LogInformation($"Connection {Context.ConnectionId} joined user group User_{userId}");
         }
 
         // Method để join Admin group

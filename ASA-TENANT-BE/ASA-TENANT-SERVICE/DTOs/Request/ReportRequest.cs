@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -9,6 +10,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
     public class ReportGetRequest
     {
         public long? ReportId { get; set; }
+        [Required(ErrorMessage = "ShopId is required")]
         public long? ShopId { get; set; }
         public short? Type { get; set; }
         public DateOnly? StartDate { get; set; }

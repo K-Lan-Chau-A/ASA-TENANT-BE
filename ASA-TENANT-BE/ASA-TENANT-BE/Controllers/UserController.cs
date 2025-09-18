@@ -32,14 +32,20 @@ namespace ASA_TENANT_BE.Controllers
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
-        [HttpPost]
-        public async Task<ActionResult<UserResponse>> Create([FromBody] UserRequest request)
+        [HttpPost("create-staff")]
+        public async Task<ActionResult<UserResponse>> CreateStaff([FromBody] UserCreateRequest request)
         {
-            var result = await _userService.CreateAsync(request);
+            var result = await _userService.CreateStaffAsync(request);
+            return Ok(result);
+        }
+        [HttpPost("create-admin")]
+        public async Task<ActionResult<UserResponse>> CreateAdmin([FromBody] UserCreateRequest request)
+        {
+            var result = await _userService.CreateAdminAsync(request);
             return Ok(result);
         }
         [HttpPut("{id}")]
-        public async Task<ActionResult<UserResponse>> Update(long id, [FromBody] UserRequest request)
+        public async Task<ActionResult<UserResponse>> Update(long id, [FromBody] UserUpdateRequest request)
         {
             var result = await _userService.UpdateAsync(id, request);
             return Ok(result);

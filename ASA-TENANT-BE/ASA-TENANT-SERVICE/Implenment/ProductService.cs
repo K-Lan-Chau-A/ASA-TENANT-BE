@@ -21,13 +21,15 @@ namespace ASA_TENANT_SERVICE.Implenment
         private readonly UnitRepo _unitRepo;
         private readonly ProductUnitRepo _productUnitRepo;
         private readonly InventoryTransactionRepo _inventoryTransactionRepo;
+        private readonly CategoryRepo _categoryRepo;
         private readonly IMapper _mapper;
-        public ProductService(ProductRepo productRepo, IMapper mapper, UnitRepo unitRepo, ProductUnitRepo productUnitRepo, InventoryTransactionRepo inventoryTransactionRepo)
+        public ProductService(ProductRepo productRepo, IMapper mapper, UnitRepo unitRepo, ProductUnitRepo productUnitRepo, InventoryTransactionRepo inventoryTransactionRepo,CategoryRepo categoryRepo)
         {
             _productRepo = productRepo;
             _mapper = mapper;
             _unitRepo = unitRepo;
             _productUnitRepo = productUnitRepo;
+            _categoryRepo = categoryRepo;
             _inventoryTransactionRepo = inventoryTransactionRepo;
         }
 
@@ -36,6 +38,19 @@ namespace ASA_TENANT_SERVICE.Implenment
         {
             try
             {
+                if (request.CategoryId != null)
+                {
+                    var category = await _categoryRepo.GetByIdAndShopIdAsync(request.CategoryId.Value, request.ShopId);
+                    if (category == null)
+                    {
+                        return new ApiResponse<ProductResponse>
+                        {
+                            Success = false,
+                            Message = $"Error: CategoryId {request.CategoryId.Value} không thuộc ShopId {request.ShopId}",
+                            Data = null
+                        };
+                    }
+                }
                 var product = await _productRepo.GetByBarcodeAsync(request.Barcode, request.ShopId);
 
                 if (product == null)

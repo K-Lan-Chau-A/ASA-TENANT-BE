@@ -25,7 +25,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
         public string? Username { get; set; }
         public string? Password { get; set; }
         [Required(ErrorMessage = "ShopId is required")]
-        public long? ShopId { get; set; }
+        public long ShopId { get; set; }
         public short? Status { get; set; }
         [EnumDataType(typeof(UserRole))]
         public UserRole Role { get; set; }

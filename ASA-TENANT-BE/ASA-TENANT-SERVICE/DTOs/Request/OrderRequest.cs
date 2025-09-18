@@ -1,6 +1,7 @@
 using ASA_TENANT_SERVICE.Enums;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -29,7 +30,8 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
         public PaymentMethodEnum? PaymentMethod { get; set; }
         public short? Status { get; set; }
         public long? ShiftId { get; set; }
-        public long? ShopId { get; set; }
+        [Required(ErrorMessage = "ShopId is required")]
+        public long ShopId { get; set; }
         public long? VoucherId { get; set; }
         public decimal? Discount { get; set; }
         public DateTime? CreatedAt { get; set; }

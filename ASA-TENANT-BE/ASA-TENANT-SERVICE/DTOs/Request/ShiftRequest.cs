@@ -26,7 +26,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
     public class ShiftGetRequest
     {
         [Required(ErrorMessage = "ShopId is required")]
-        public long? ShiftId { get; set; }
+        public long ShiftId { get; set; }
 
         public long? UserId { get; set; }
 

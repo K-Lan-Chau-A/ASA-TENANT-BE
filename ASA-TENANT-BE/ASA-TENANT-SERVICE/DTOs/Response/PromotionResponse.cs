@@ -18,5 +18,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Response
         public short? Status { get; set; }
         public string Name { get; set; }
         public long? ShopId { get; set; }
+
+        public HashSet<long>? Products { get; set; }
     }
 }

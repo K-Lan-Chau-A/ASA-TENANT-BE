@@ -40,5 +40,23 @@ namespace ASA_TENANT_REPO.Repository
                 query = query.Where(x => x.ShopId == filter.ShopId);
             return query.OrderBy(x => x.PromotionId);
         }
+
+        public async Task<List<long>> GetInvalidProductIdsAsync(IEnumerable<long> productIds)
+        {
+            if (productIds == null || !productIds.Any())
+                return new List<long>();
+
+            // Lấy toàn bộ ProductId có trong DB
+            var validIds = _context.Products
+                .Where(p => productIds.Contains(p.ProductId))
+                .Select(p => p.ProductId)
+                .ToList();
+
+            // Những id nào ko nằm trong validIds thì là invalid
+            var invalidIds = productIds.Except(validIds).ToList();
+
+            return invalidIds;
+        }
+
     }
 }

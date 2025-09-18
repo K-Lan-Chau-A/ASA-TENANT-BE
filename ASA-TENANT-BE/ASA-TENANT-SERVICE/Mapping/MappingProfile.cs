@@ -68,17 +68,19 @@ namespace ASA_TENANT_SERVICE.Mapping
             CreateMap<UnitGetRequest, Unit>().ReverseMap();
 
             // Order Mappings
-            CreateMap<PaymentMethod, string>()
+            CreateMap<PaymentMethodEnum, string>()
                 .ConvertUsing(src => src.ToString());
 
-            CreateMap<string, PaymentMethod>()
+            CreateMap<string, PaymentMethodEnum>()
                 .ConvertUsing(src => EnumHelper.ParsePaymentMethod(src));
 
-            CreateMap<string, PaymentMethod?>()
+            CreateMap<string, PaymentMethodEnum?>()
                 .ConvertUsing(src => EnumHelper.ParseNullablePaymentMethod(src));
 
             CreateMap<Order, OrderResponse>().ReverseMap();
-            CreateMap<OrderRequest, Order>().ReverseMap();
+            CreateMap<OrderRequest, Order>()
+                .ForMember(dest => dest.OrderDetails, opt => opt.Ignore())
+                .ReverseMap();
             CreateMap<OrderGetRequest, Order>().ReverseMap();
 
 

@@ -1,14 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace ASA_TENANT_SERVICE.Enums
 {
-    public enum ReportType
+    public enum ShiftStatus
     {
-        Weekly = 1,
-        Monthly = 2
+        [Description("Đang mở")]
+        Open = 1,
+
+        [Description("Đã đóng")]
+        Closed = 2
     }
 }

@@ -9,15 +9,15 @@ namespace ASA_TENANT_SERVICE.Helper
 {
     public static class EnumHelper
     {
-        public static PaymentMethod ParsePaymentMethod(string value)
+        public static PaymentMethodEnum ParsePaymentMethod(string value)
         {
-            return Enum.TryParse<PaymentMethod>(value, out var method) ? method : default;
+            return Enum.TryParse<PaymentMethodEnum>(value, out var method) ? method : default;
         }
 
-        public static PaymentMethod? ParseNullablePaymentMethod(string? value)
+        public static PaymentMethodEnum? ParseNullablePaymentMethod(string? value)
         {
             if (string.IsNullOrEmpty(value)) return null;
-            return Enum.TryParse<PaymentMethod>(value, out var method) ? method : (PaymentMethod?)null;
+            return Enum.TryParse<PaymentMethodEnum>(value, out var method) ? method : (PaymentMethodEnum?)null;
         }
     }
 

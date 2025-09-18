@@ -1,18 +1,21 @@
-﻿using ASA_TENANT_REPO.DBContext;
+﻿using ASA_TENANT_BE.Hubs;
+using ASA_TENANT_REPO.DBContext;
 using ASA_TENANT_REPO.Repository;
+using ASA_TENANT_SERVICE.Configurations;
 using ASA_TENANT_SERVICE.CronJobs;
 using ASA_TENANT_SERVICE.Implement;
 using ASA_TENANT_SERVICE.Implenment;
 using ASA_TENANT_SERVICE.Interface;
 using ASA_TENANT_SERVICE.Mapping;
+using CloudinaryDotNet;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Quartz;
 using System.Text;
-using ASA_TENANT_BE.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 // Cấu hình để chạy trên Docker/Render
@@ -52,10 +55,21 @@ builder.Services.AddScoped<IUserFeatureService, UserFeatureService>();
 builder.Services.AddScoped<IVoucherService, VoucherService>();
 builder.Services.AddScoped<IZalopayService, ZalopayService>();
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
+builder.Services.AddScoped<IPhotoService, PhotoService>();
 
 // Firebase Configuration
 builder.Services.AddSingleton<FirebaseConfigurationService>();
 
+// Cấu hình Cloudinary
+builder.Services.Configure<CloudinarySettings>(
+    builder.Configuration.GetSection("CloudinarySettings"));
+
+builder.Services.AddSingleton(sp =>
+{
+    var config = sp.GetRequiredService<IOptions<CloudinarySettings>>().Value;
+    var account = new Account(config.CloudName, config.ApiKey, config.ApiSecret);
+    return new Cloudinary(account);
+});
 // Register repositories
 builder.Services.AddScoped<CategoryRepo>();
 builder.Services.AddScoped<ChatMessageRepo>();

@@ -32,7 +32,7 @@ namespace ASA_TENANT_BE.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<ProductResponse>> Create([FromBody] ProductRequest request)
+        public async Task<ActionResult<ProductResponse>> Create([FromForm] ProductRequest request)
         {
             var result = await _productService.CreateAsync(request);
             return Ok(result);

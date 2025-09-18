@@ -21,7 +21,4 @@
 	<ItemGroup>
 	  <ProjectReference Include="..\ASA-TENANT-REPO\ASA-TENANT-REPO.csproj" />
 	</ItemGroup>
-	<ItemGroup>
-	  <Folder Include="Configurations\" />
-	</ItemGroup>
 </Project>

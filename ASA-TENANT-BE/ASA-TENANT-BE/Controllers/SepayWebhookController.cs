@@ -48,12 +48,12 @@ namespace ASA_TENANT_BE.Controllers
             public string gateway { get; set; }            // Brand name ngân hàng
             public string transactionDate { get; set; }    // Thời gian giao dịch phía ngân hàng
             public string accountNumber { get; set; }      // Số tài khoản ngân hàng
-            public string code { get; set; }               // Mã code thanh toán (có thể null)
+            public string? code { get; set; }               // Mã code thanh toán (có thể null)
             public string content { get; set; }            // Nội dung chuyển khoản
             public string transferType { get; set; }       // in/out
             public long transferAmount { get; set; }       // Số tiền giao dịch
             public long? accumulated { get; set; }         // Số dư lũy kế (nếu có)
-            public string subAccount { get; set; }         // Tài khoản phụ (nếu có)
+            public string? subAccount { get; set; }         // Tài khoản phụ (nếu có)
             public string referenceCode { get; set; }      // Mã tham chiếu (SePay nhận diện)
             public string description { get; set; }        // Toàn bộ nội dung tin nhắn sms (nếu có)
         }

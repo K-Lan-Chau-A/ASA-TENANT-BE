@@ -1,5 +1,7 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Http;
+using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -14,7 +16,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
         public string Barcode { get; set; }      
 
         public long? CategoryId { get; set; }
-        public string ImageUrl { get; set; }
+        public IFormFile? ImageFile { get; set; }
         public decimal? Price { get; set; }
         public decimal? Discount { get; set; }
         public short? Status { get; set; }
@@ -36,7 +38,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
     {
         public int Quantity { get; set; }                  // Số lượng nhập
         public decimal? Price { get; set; }                // Giá bán mới (nếu muốn cập nhật)
-        public string ImageUrl { get; set; }               // Link hóa đơn/ảnh chứng từ
+        public IFormFile? ImageFile { get; set; }               // Link hóa đơn/ảnh chứng từ
     }
 
 
@@ -44,7 +46,8 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
     {
         public long? ProductId { get; set; }
         public long? CategoryId { get; set; }
-        public long? ShopId { get; set; }
+        [Required(ErrorMessage = "ShopId is required")]
+        public long ShopId { get; set; }
         public long? UnitIdFk { get; set; }
         public string? ProductName { get; set; }
         public short? Status { get; set; }

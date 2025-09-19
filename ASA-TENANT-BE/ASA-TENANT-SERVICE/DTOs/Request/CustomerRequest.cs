@@ -11,7 +11,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
     {       
         public string? FullName { get; set; }
         public string? Phone { get; set; }
-        public string? Rank { get; set; }
+        public string? Rankid { get; set; }
         public string? Email { get; set; }
         public decimal? Spent { get; set; }
         public short? Gender { get; set; }
@@ -27,9 +27,9 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
         public string? FullName { get; set; }
         public string? Phone { get; set; }
         public string? Email { get; set; }
-        public string? Rank { get; set; }
+        public string? Rankid { get; set; }
         public decimal? Spent { get; set; }
         [Required(ErrorMessage = "ShopId is required")]
-        public long? ShopId { get; set; }
+        public long ShopId { get; set; }
     }
 }

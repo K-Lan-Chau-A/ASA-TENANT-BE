@@ -17,7 +17,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
     {
         public long UnitId { get; set; }
         [Required(ErrorMessage = "ShopId is required")]
-        public long? ShopId { get; set; }
+        public long ShopId { get; set; }
         public string? Name { get; set; }
     }
 }

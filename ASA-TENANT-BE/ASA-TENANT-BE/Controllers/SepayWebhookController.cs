@@ -41,16 +41,91 @@ namespace ASA_TENANT_BE.Controllers
             _shopRepo = shopRepo;
         }
 
-        // Model map từ payload SePay (chỉ demo một số field, bạn bổ sung thêm nếu cần)
+        // Model map từ payload SePay (cập nhật theo tài liệu/payload mẫu)
         public class SepayWebhookPayload
         {
-            public string id { get; set; }           // ID giao dịch
-            public string code { get; set; }         // Mã code đơn hàng
-            public string referenceCode { get; set; }// Mã tham chiếu
-            public string transferType { get; set; } // Loại giao dịch (in/out)
-            public decimal transferAmount { get; set; }
-            public string transactionDate { get; set; }
-            public string content { get; set; }
+            public long id { get; set; }                   // ID giao dịch trên SePay
+            public string gateway { get; set; }            // Brand name ngân hàng
+            public string transactionDate { get; set; }    // Thời gian giao dịch phía ngân hàng
+            public string accountNumber { get; set; }      // Số tài khoản ngân hàng
+            public string? code { get; set; }               // Mã code thanh toán (có thể null)
+            public string content { get; set; }            // Nội dung chuyển khoản
+            public string transferType { get; set; }       // in/out
+            public long transferAmount { get; set; }       // Số tiền giao dịch
+            public long? accumulated { get; set; }         // Số dư lũy kế (nếu có)
+            public string? subAccount { get; set; }         // Tài khoản phụ (nếu có)
+            public string referenceCode { get; set; }      // Mã tham chiếu (SePay nhận diện)
+            public string description { get; set; }        // Toàn bộ nội dung tin nhắn sms (nếu có)
+        }
+
+        [HttpGet("vietqr")]
+        public async Task<IActionResult> GenerateVietQr([FromQuery] long orderId)
+        {
+            try
+            {
+                // Lấy order
+                var orderResult = await _orderService.GetByIdAsync(orderId);
+                if (!orderResult.Success || orderResult.Data == null)
+                {
+                    return NotFound(new { success = false, message = "Order not found" });
+                }
+                var order = orderResult.Data;
+
+                // Lấy Shop theo ShopId từ Order
+                if (order.ShopId == null)
+                {
+                    return BadRequest(new { success = false, message = "Order missing ShopId" });
+                }
+
+                var shops = await _shopRepo.GetAllAsync();
+                var shop = shops.FirstOrDefault(s => s.ShopId == order.ShopId);
+                if (shop == null)
+                {
+                    return NotFound(new { success = false, message = "Shop not found" });
+                }
+                if (shop.Status != 1)
+                {
+                    return BadRequest(new { success = false, message = "Shop is not active" });
+                }
+
+                // Tính số tiền cần thanh toán
+                var total = order.TotalPrice ?? 0m;
+                if (total <= 0)
+                {
+                    return BadRequest(new { success = false, message = "Invalid order amount" });
+                }
+
+                // Ưu tiên sử dụng thông tin ngân hàng từ Shop nếu có
+                string baseUrl = null;
+
+                var shopBankCode = shop.BankCode;
+                var shopBankAccount = shop.BankNum;
+                var shopBankName = shop.BankName;
+
+                if (!string.IsNullOrWhiteSpace(shopBankCode) && !string.IsNullOrWhiteSpace(shopBankAccount))
+                {
+                    baseUrl = $"https://img.vietqr.io/image/{shopBankCode.Trim()}-{shopBankAccount.Trim()}-compact2.png";
+                }
+
+                if (string.IsNullOrWhiteSpace(baseUrl))
+                {
+                    return BadRequest(new { success = false, message = "Missing Shop bank info (BankCode/BankAccount)." });
+                }
+
+                // Tạo query theo tài liệu VietQR: amount, addInfo, accountName
+                var delimiter = baseUrl.Contains('?') ? "&" : "?";
+                var amount = (long)decimal.Round(total, 0, MidpointRounding.AwayFromZero);
+                var addInfo = Uri.EscapeDataString("SEVQR");
+                var accName = Uri.EscapeDataString(!string.IsNullOrWhiteSpace(shopBankName) ? shopBankName : (shop.ShopName ?? ""));
+                var qrUrl = $"{baseUrl}{delimiter}amount={amount}&addInfo={addInfo}&accountName={accName}";
+
+                return Ok(new { success = true, url = qrUrl, orderId = order.OrderId, amount = amount });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi tạo VietQR cho order {OrderId}", orderId);
+                return StatusCode(500, new { success = false, message = "Internal server error" });
+            }
         }
 
         [HttpPost("webhook")]
@@ -85,9 +160,9 @@ namespace ASA_TENANT_BE.Controllers
                 }
 
                 // ✅ Đảm bảo payload hợp lệ
-                if (string.IsNullOrEmpty(payload.id))
+                if (payload.id <= 0)
                 {
-                    return BadRequest(new { success = false, message = "Missing id" });
+                    return BadRequest(new { success = false, message = "Invalid id" });
                 }
 
                 if (payload.transferAmount <= 0)
@@ -96,7 +171,7 @@ namespace ASA_TENANT_BE.Controllers
                 }
 
                 // ✅ Idempotency check (tránh xử lý trùng)
-                if (ProcessedTransactions.Contains(payload.id))
+                if (ProcessedTransactions.Contains(payload.id.ToString()))
                 {
                     return Ok(new { success = true, info = "already_processed" });
                 }
@@ -104,57 +179,26 @@ namespace ASA_TENANT_BE.Controllers
                 _logger.LogInformation("Nhận webhook từ SePay cho Shop {ShopId} ({ShopName}): {@Payload}", 
                     shop.ShopId, shop.ShopName, payload);
 
-                // Tìm Order theo referenceCode hoặc code
+                // Tìm Order theo referenceCode (ưu tiên)
                 OrderResponse order = null;
-                
-                // Ưu tiên tìm theo referenceCode trước
                 if (!string.IsNullOrEmpty(payload.referenceCode))
                 {
-                    if (long.TryParse(payload.referenceCode, out long orderId))
+                    if (long.TryParse(payload.referenceCode, out long refOrderId))
                     {
-                        // Nếu referenceCode là số, tìm theo OrderId
-                        var orderResult = await _orderService.GetByIdAsync(orderId);
-                        if (orderResult.Success)
-                        {
-                            order = orderResult.Data;
-                        }
+                        var orderResult = await _orderService.GetByIdAsync(refOrderId);
+                        if (orderResult.Success) order = orderResult.Data;
                     }
-                    else
+                    if (order == null)
                     {
-                        // Nếu referenceCode không phải số, tìm theo Note
                         var orderResult = await _orderService.GetByNoteAsync(payload.referenceCode);
-                        if (orderResult.Success)
-                        {
-                            order = orderResult.Data;
-                        }
-                    }
-                }
-                
-                // Nếu chưa tìm thấy và có code, thử tìm theo code
-                if (order == null && !string.IsNullOrEmpty(payload.code))
-                {
-                    if (long.TryParse(payload.code, out long orderId))
-                    {
-                        var orderResult = await _orderService.GetByIdAsync(orderId);
-                        if (orderResult.Success)
-                        {
-                            order = orderResult.Data;
-                        }
-                    }
-                    else
-                    {
-                        var orderResult = await _orderService.GetByNoteAsync(payload.code);
-                        if (orderResult.Success)
-                        {
-                            order = orderResult.Data;
-                        }
+                        if (orderResult.Success) order = orderResult.Data;
                     }
                 }
 
                 if (order == null)
                 {
-                    _logger.LogWarning("Không tìm thấy Order với referenceCode: {ReferenceCode} hoặc code: {Code}", 
-                        payload.referenceCode, payload.code);
+                    _logger.LogWarning("Không tìm thấy Order với referenceCode: {ReferenceCode}", 
+                        payload.referenceCode);
                     return BadRequest(new { success = false, message = "Order not found" });
                 }
 
@@ -180,8 +224,8 @@ namespace ASA_TENANT_BE.Controllers
                     OrderId = order.OrderId,
                     UserId = order.CustomerId, // Sử dụng CustomerId thay vì UserId
                     PaymentStatus = "PAID",
-                    AppTransId = payload.id,
-                    ZpTransId = payload.id, // SePay transaction ID
+                    AppTransId = payload.id.ToString(),
+                    ZpTransId = payload.id.ToString(), // SePay transaction ID
                     ReturnCode = 0, // Success
                     ReturnMessage = "Payment successful via SePay",
                     CreatedAt = DateTime.UtcNow
@@ -204,7 +248,7 @@ namespace ASA_TENANT_BE.Controllers
                         order.OrderId, updateStatusResult.Message);
                 }
 
-                ProcessedTransactions.Add(payload.id);
+                ProcessedTransactions.Add(payload.id.ToString());
 
                 // Gửi thông báo real-time qua SignalR theo ShopId
                 var shopId = shop.ShopId;

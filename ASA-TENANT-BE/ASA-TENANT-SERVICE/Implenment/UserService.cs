@@ -191,7 +191,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                 // Check if admin user already exists
                 if (request.Role == Enums.UserRole.Admin) // 1 = Admin
                 {
-                    var existingAdmin = await _userRepo.GetFirstUserAdmin(request.ShopId.Value);
+                    var existingAdmin = await _userRepo.GetFirstUserAdmin(request.ShopId);
                     if (existingAdmin != null)
                     {
                         return new ApiResponse<UserResponse>

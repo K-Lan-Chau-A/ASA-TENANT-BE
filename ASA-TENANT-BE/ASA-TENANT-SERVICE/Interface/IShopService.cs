@@ -17,5 +17,6 @@ namespace ASA_TENANT_SERVICE.Interface
         Task<ApiResponse<bool>> DeleteAsync(long id);
         Task<ApiResponse<ShopResponse>> UpdateSepayApiKeyAsync(long id, string apiKey);
         Task<ApiResponse<ShopResponse>> TestSepayApiKeyAsync(string apiKey);
+        Task<ApiResponse<ShopResponse>> UpdateBankInfoAsync(long id, string bankName, string bankCode, string bankNum);
     }
 }

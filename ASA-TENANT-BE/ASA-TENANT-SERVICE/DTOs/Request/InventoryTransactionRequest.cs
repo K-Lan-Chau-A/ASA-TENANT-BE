@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -28,6 +29,8 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
         public int Quantity { get; set; }
         public string? ImageUrl { get; set; }
         public decimal? Price { get; set; }
+
+        [Required(ErrorMessage = "ShopId is required")]
         public long ShopId { get; set; }
     }
 }

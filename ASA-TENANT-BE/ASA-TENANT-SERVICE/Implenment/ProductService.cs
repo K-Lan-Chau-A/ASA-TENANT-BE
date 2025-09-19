@@ -21,13 +21,17 @@ namespace ASA_TENANT_SERVICE.Implenment
         private readonly UnitRepo _unitRepo;
         private readonly ProductUnitRepo _productUnitRepo;
         private readonly InventoryTransactionRepo _inventoryTransactionRepo;
+        private readonly CategoryRepo _categoryRepo;
+        private readonly IPhotoService _photoService;
         private readonly IMapper _mapper;
-        public ProductService(ProductRepo productRepo, IMapper mapper, UnitRepo unitRepo, ProductUnitRepo productUnitRepo, InventoryTransactionRepo inventoryTransactionRepo)
+        public ProductService(ProductRepo productRepo, IMapper mapper, UnitRepo unitRepo, ProductUnitRepo productUnitRepo, InventoryTransactionRepo inventoryTransactionRepo,CategoryRepo categoryRepo, IPhotoService photoService)
         {
             _productRepo = productRepo;
             _mapper = mapper;
             _unitRepo = unitRepo;
             _productUnitRepo = productUnitRepo;
+            _categoryRepo = categoryRepo;
+            _photoService = photoService;
             _inventoryTransactionRepo = inventoryTransactionRepo;
         }
 
@@ -36,6 +40,19 @@ namespace ASA_TENANT_SERVICE.Implenment
         {
             try
             {
+                if (request.CategoryId != null)
+                {
+                    var category = await _categoryRepo.GetByIdAndShopIdAsync(request.CategoryId.Value, request.ShopId);
+                    if (category == null)
+                    {
+                        return new ApiResponse<ProductResponse>
+                        {
+                            Success = false,
+                            Message = $"Error: CategoryId {request.CategoryId.Value} không thuộc ShopId {request.ShopId}",
+                            Data = null
+                        };
+                    }
+                }
                 var product = await _productRepo.GetByBarcodeAsync(request.Barcode, request.ShopId);
 
                 if (product == null)
@@ -69,6 +86,13 @@ namespace ASA_TENANT_SERVICE.Implenment
         private async Task<Product> CreateNewProductAsync(ProductRequest request)
         {
             var product = _mapper.Map<Product>(request);
+
+            if(request.ImageFile != null)
+            {
+                var imageUrl = await _photoService.UploadImageAsync(request.ImageFile);
+                product.ImageUrl = imageUrl;
+            }
+
             product.Quantity = request.InventoryTransaction.Quantity;
             product.IsLow = false;
             await _productRepo.CreateAsync(product);
@@ -100,6 +124,12 @@ namespace ASA_TENANT_SERVICE.Implenment
                 product.Price = request.Price ?? product.Price;
                 product.UpdateAt = DateTime.UtcNow;
 
+                string invImageUrl = null;
+                if (request.InventoryTransaction.ImageFile != null)
+                {
+                    invImageUrl = await _photoService.UploadImageAsync(request.InventoryTransaction.ImageFile);
+                }
+
                 var invTransaction = new InventoryTransaction
                 {
                     ProductId = product.ProductId,
@@ -107,7 +137,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                     UnitId = product.UnitIdFk,
                     Quantity = request.InventoryTransaction.Quantity,
                     Price = request.InventoryTransaction.Price,
-                    ImageUrl = request.InventoryTransaction.ImageUrl,
+                    ImageUrl = invImageUrl,
                     CreatedAt = DateTime.UtcNow,
                     Type = 1 // nhập kho
                 };
@@ -121,6 +151,12 @@ namespace ASA_TENANT_SERVICE.Implenment
 
         private async Task<Product> UpdateExistingProductAsync(Product product, ProductRequest request)
         {
+            // Upload ảnh sản phẩm nếu có
+            if (request.ImageFile != null)
+            {
+                var imageUrl = await _photoService.UploadImageAsync(request.ImageFile);
+                product.ImageUrl = imageUrl;
+            }
             // Cập nhật số lượng tồn kho
             if (request.InventoryTransaction != null)
             {
@@ -130,6 +166,12 @@ namespace ASA_TENANT_SERVICE.Implenment
                 product.Discount = request.Discount ?? product.Discount;
                 product.UpdateAt = DateTime.UtcNow;
 
+                string invImageUrl = null;
+                if (request.InventoryTransaction?.ImageFile != null)
+                {
+                    invImageUrl = await _photoService.UploadImageAsync(request.InventoryTransaction.ImageFile);
+                }
+
                 var invTransaction = new InventoryTransaction
                 {
                     ProductId = product.ProductId,
@@ -137,7 +179,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                     UnitId = product.UnitIdFk,
                     Quantity = request.InventoryTransaction.Quantity,
                     Price = request.InventoryTransaction.Price,
-                    ImageUrl = request.InventoryTransaction.ImageUrl,
+                    ImageUrl = invImageUrl,
                     CreatedAt = DateTime.UtcNow,
                     Type = 1
                 };
@@ -179,7 +221,7 @@ namespace ASA_TENANT_SERVICE.Implenment
         }
 
 
-        public async Task<ApiResponse<bool>> DeleteAsync(long id)
+        public async Task<ApiResponse<bool>> DeleteAsync(long id,long shopid)
         {
             try
             {
@@ -192,11 +234,11 @@ namespace ASA_TENANT_SERVICE.Implenment
                         Data = false
                     };
 
-                var affected = await _productRepo.RemoveAsync(existing);
+                var affected = await _productRepo.UnActiveProduct(id, shopid);
                 return new ApiResponse<bool>
                 {
                     Success = affected,
-                    Message = affected ? "Deleted successfully" : "Delete failed",
+                    Message = affected ? "UnActive successfully" : "UnActive failed",
                     Data = affected
                 };
             }

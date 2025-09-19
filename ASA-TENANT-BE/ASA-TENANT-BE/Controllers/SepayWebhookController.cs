@@ -44,15 +44,15 @@ namespace ASA_TENANT_BE.Controllers
         // Model map từ payload SePay (cập nhật theo tài liệu/payload mẫu)
         public class SepayWebhookPayload
         {
-            public string id { get; set; }                 // ID giao dịch trên SePay
+            public long id { get; set; }                   // ID giao dịch trên SePay
             public string gateway { get; set; }            // Brand name ngân hàng
             public string transactionDate { get; set; }    // Thời gian giao dịch phía ngân hàng
             public string accountNumber { get; set; }      // Số tài khoản ngân hàng
-            public string sender { get; set; }             // Người gửi (có thể null)
+            public string code { get; set; }               // Mã code thanh toán (có thể null)
             public string content { get; set; }            // Nội dung chuyển khoản
             public string transferType { get; set; }       // in/out
-            public decimal transferAmount { get; set; }    // Số tiền giao dịch
-            public decimal? accumulated { get; set; }      // Số dư lũy kế (nếu có)
+            public long transferAmount { get; set; }       // Số tiền giao dịch
+            public long? accumulated { get; set; }         // Số dư lũy kế (nếu có)
             public string subAccount { get; set; }         // Tài khoản phụ (nếu có)
             public string referenceCode { get; set; }      // Mã tham chiếu (SePay nhận diện)
             public string description { get; set; }        // Toàn bộ nội dung tin nhắn sms (nếu có)
@@ -160,9 +160,9 @@ namespace ASA_TENANT_BE.Controllers
                 }
 
                 // ✅ Đảm bảo payload hợp lệ
-                if (string.IsNullOrEmpty(payload.id))
+                if (payload.id <= 0)
                 {
-                    return BadRequest(new { success = false, message = "Missing id" });
+                    return BadRequest(new { success = false, message = "Invalid id" });
                 }
 
                 if (payload.transferAmount <= 0)
@@ -171,7 +171,7 @@ namespace ASA_TENANT_BE.Controllers
                 }
 
                 // ✅ Idempotency check (tránh xử lý trùng)
-                if (ProcessedTransactions.Contains(payload.id))
+                if (ProcessedTransactions.Contains(payload.id.ToString()))
                 {
                     return Ok(new { success = true, info = "already_processed" });
                 }
@@ -224,8 +224,8 @@ namespace ASA_TENANT_BE.Controllers
                     OrderId = order.OrderId,
                     UserId = order.CustomerId, // Sử dụng CustomerId thay vì UserId
                     PaymentStatus = "PAID",
-                    AppTransId = payload.id,
-                    ZpTransId = payload.id, // SePay transaction ID
+                    AppTransId = payload.id.ToString(),
+                    ZpTransId = payload.id.ToString(), // SePay transaction ID
                     ReturnCode = 0, // Success
                     ReturnMessage = "Payment successful via SePay",
                     CreatedAt = DateTime.UtcNow
@@ -248,7 +248,7 @@ namespace ASA_TENANT_BE.Controllers
                         order.OrderId, updateStatusResult.Message);
                 }
 
-                ProcessedTransactions.Add(payload.id);
+                ProcessedTransactions.Add(payload.id.ToString());
 
                 // Gửi thông báo real-time qua SignalR theo ShopId
                 var shopId = shop.ShopId;

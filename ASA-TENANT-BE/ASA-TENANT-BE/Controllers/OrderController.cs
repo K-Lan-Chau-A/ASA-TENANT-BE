@@ -20,10 +20,6 @@ namespace ASA_TENANT_BE.Controllers
         {
             try
             {
-                if (!requestDto.ShopId.HasValue || requestDto.ShopId.Value <= 0)
-                {
-                    return BadRequest("ShopId is required");
-                }
                 var result = await _orderService.GetFilteredOrdersAsync(requestDto, page, pageSize);
                 return Ok(result);
             }

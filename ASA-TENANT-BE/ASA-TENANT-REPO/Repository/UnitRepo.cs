@@ -38,5 +38,9 @@ namespace ASA_TENANT_REPO.Repository
             }
             return unit;
         }
+        public async Task<Unit> GetByIdAndShopIdAsync(string UnitName, long shopId)
+        {
+            return await _context.Units.FirstOrDefaultAsync(p => p.Name == UnitName && p.ShopId == shopId);
+        }
     }
 }

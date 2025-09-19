@@ -24,8 +24,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
         public long? ShopId { get; set; }
     }
     public class ShiftGetRequest
-    {
-        [Required(ErrorMessage = "ShopId is required")]
+    {   
         public long? ShiftId { get; set; }
 
         public long? UserId { get; set; }
@@ -40,6 +39,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
 
         public decimal? OpeningCash { get; set; }
 
+        [Required(ErrorMessage = "ShopId is required")]
         public long? ShopId { get; set; }
     }
 

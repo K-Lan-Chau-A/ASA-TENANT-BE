@@ -179,21 +179,26 @@ namespace ASA_TENANT_BE.Controllers
                 _logger.LogInformation("Nhận webhook từ SePay cho Shop {ShopId} ({ShopName}): {@Payload}", 
                     shop.ShopId, shop.ShopName, payload);
 
-                // Tìm Order theo content (ưu tiên): lấy số trước dấu '-' đầu tiên làm orderId
+                // Tìm Order theo content (ưu tiên): lấy số trước "SEVQR" làm orderId
                 OrderResponse order = null;
                 if (!string.IsNullOrWhiteSpace(payload.content))
                 {
                     try
                     {
                         var trimmedContent = payload.content.Trim();
-                        var dashIndex = trimmedContent.IndexOf('-');
-                        var firstSegment = dashIndex > 0 ? trimmedContent.Substring(0, dashIndex) : trimmedContent;
-                        if (long.TryParse(firstSegment, out long contentOrderId))
+                        var sevqrIndex = trimmedContent.IndexOf("SEVQR", StringComparison.OrdinalIgnoreCase);
+                        if (sevqrIndex > 0)
                         {
-                            var orderResult = await _orderService.GetByIdAsync(contentOrderId);
-                            if (orderResult.Success)
+                            var beforeSevqr = trimmedContent.Substring(0, sevqrIndex).TrimEnd('-');
+                            var lastDashIndex = beforeSevqr.LastIndexOf('-');
+                            var orderIdSegment = lastDashIndex >= 0 ? beforeSevqr.Substring(lastDashIndex + 1) : beforeSevqr;
+                            if (long.TryParse(orderIdSegment, out long contentOrderId))
                             {
-                                order = orderResult.Data;
+                                var orderResult = await _orderService.GetByIdAsync(contentOrderId);
+                                if (orderResult.Success)
+                                {
+                                    order = orderResult.Data;
+                                }
                             }
                         }
                     }

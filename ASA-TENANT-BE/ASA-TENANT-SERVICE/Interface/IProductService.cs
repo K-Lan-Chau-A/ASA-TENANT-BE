@@ -14,6 +14,6 @@ namespace ASA_TENANT_SERVICE.Interface
         Task<PagedResponse<ProductResponse>> GetFilteredProductsAsync(ProductGetRequest Filter, int page, int pageSize);
         Task<ApiResponse<ProductResponse>> CreateAsync(ProductRequest request);
         Task<ApiResponse<ProductResponse>> UpdateAsync(long id, ProductRequest request);
-        Task<ApiResponse<bool>> DeleteAsync(long id);
+        Task<ApiResponse<bool>> DeleteAsync(long id, long shopid);
     }
 }

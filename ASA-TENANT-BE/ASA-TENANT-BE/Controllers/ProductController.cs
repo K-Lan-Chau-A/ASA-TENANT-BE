@@ -32,7 +32,7 @@ namespace ASA_TENANT_BE.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<ProductResponse>> Create([FromBody] ProductRequest request)
+        public async Task<ActionResult<ProductResponse>> Create([FromForm] ProductRequest request)
         {
             var result = await _productService.CreateAsync(request);
             return Ok(result);
@@ -45,9 +45,9 @@ namespace ASA_TENANT_BE.Controllers
         }
 
         [HttpDelete("{id}")]
-        public async Task<ActionResult<bool>> Delete(long id)
+        public async Task<ActionResult<bool>> Delete(long id, long shopid)
         {
-            var result = await _productService.DeleteAsync(id);
+            var result = await _productService.DeleteAsync(id,shopid);
             return Ok(result);
         }
     }

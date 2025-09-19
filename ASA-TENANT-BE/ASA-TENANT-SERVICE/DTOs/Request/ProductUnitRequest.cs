@@ -20,7 +20,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
     {
         public long? ProductUnitId { get; set; }
         [Required(ErrorMessage = "ShopId is required")]
-        public long? ShopId { get; set; }
+        public long ShopId { get; set; }
         public long? UnitId { get; set; }
         public decimal? ConversionFactor { get; set; }
         public decimal? Price { get; set; }

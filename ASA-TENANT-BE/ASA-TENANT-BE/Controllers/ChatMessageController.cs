@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ASA_TENANT_BE.Controllers
 {
-    [Route("api/ChatMessage")]
+    [Route("api/chat-messages")]
     [ApiController]
     public class ChatMessageController : ControllerBase
     {

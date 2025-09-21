@@ -115,7 +115,7 @@ namespace ASA_TENANT_BE.Controllers
                 // Tạo query theo tài liệu VietQR: amount, addInfo, accountName
                 var delimiter = baseUrl.Contains('?') ? "&" : "?";
                 var amount = (long)decimal.Round(total, 0, MidpointRounding.AwayFromZero);
-                var addInfo = Uri.EscapeDataString("SEVQR");
+                var addInfo = Uri.EscapeDataString($"{order.OrderId}-SEVQR");
                 var accName = Uri.EscapeDataString(!string.IsNullOrWhiteSpace(shopBankName) ? shopBankName : (shop.ShopName ?? ""));
                 var qrUrl = $"{baseUrl}{delimiter}amount={amount}&addInfo={addInfo}&accountName={accName}";
 
@@ -179,9 +179,34 @@ namespace ASA_TENANT_BE.Controllers
                 _logger.LogInformation("Nhận webhook từ SePay cho Shop {ShopId} ({ShopName}): {@Payload}", 
                     shop.ShopId, shop.ShopName, payload);
 
-                // Tìm Order theo referenceCode (ưu tiên)
+                // Tìm Order theo content (ưu tiên): lấy số trước "SEVQR" làm orderId
                 OrderResponse order = null;
-                if (!string.IsNullOrEmpty(payload.referenceCode))
+                if (!string.IsNullOrWhiteSpace(payload.content))
+                {
+                    try
+                    {
+                        var trimmedContent = payload.content.Trim();
+                        var sevqrIndex = trimmedContent.IndexOf("SEVQR", StringComparison.OrdinalIgnoreCase);
+                        if (sevqrIndex > 0)
+                        {
+                            var beforeSevqr = trimmedContent.Substring(0, sevqrIndex).TrimEnd('-');
+                            var lastDashIndex = beforeSevqr.LastIndexOf('-');
+                            var orderIdSegment = lastDashIndex >= 0 ? beforeSevqr.Substring(lastDashIndex + 1) : beforeSevqr;
+                            if (long.TryParse(orderIdSegment, out long contentOrderId))
+                            {
+                                var orderResult = await _orderService.GetByIdAsync(contentOrderId);
+                                if (orderResult.Success)
+                                {
+                                    order = orderResult.Data;
+                                }
+                            }
+                        }
+                    }
+                    catch {}
+                }
+
+                // Nếu chưa tìm thấy, thử theo referenceCode
+                if (order == null && !string.IsNullOrEmpty(payload.referenceCode))
                 {
                     if (long.TryParse(payload.referenceCode, out long refOrderId))
                     {

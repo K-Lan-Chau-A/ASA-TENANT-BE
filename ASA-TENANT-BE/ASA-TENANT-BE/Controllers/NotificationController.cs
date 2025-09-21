@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ASA_TENANT_BE.Controllers
 {
-    [Route("api/Notification")]
+    [Route("api/notifications")]
     [ApiController]
     public class NotificationController : ControllerBase
     {

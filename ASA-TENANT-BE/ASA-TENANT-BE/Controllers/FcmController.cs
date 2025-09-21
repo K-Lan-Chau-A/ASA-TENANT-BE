@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ASA_TENANT_BE.Controllers
 {
-    [Route("api/Fcm")]
+    [Route("api/fcm")]
     [ApiController]
     public class FcmController : ControllerBase
     {

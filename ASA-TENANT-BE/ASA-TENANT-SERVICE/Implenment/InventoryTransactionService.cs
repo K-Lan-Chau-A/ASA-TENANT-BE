@@ -19,10 +19,12 @@ namespace ASA_TENANT_SERVICE.Implenment
     {
         private readonly InventoryTransactionRepo _inventoryTransactionRepo;
         private readonly IMapper _mapper;
-        public InventoryTransactionService(InventoryTransactionRepo inventoryTransactionRepo, IMapper mapper)
+        private readonly IPhotoService _photoService;
+        public InventoryTransactionService(InventoryTransactionRepo inventoryTransactionRepo, IMapper mapper, IPhotoService photoService)
         {
             _inventoryTransactionRepo = inventoryTransactionRepo;
             _mapper = mapper;
+            _photoService = photoService;
         }
 
         public async Task<ApiResponse<InventoryTransactionResponse>> CreateAsync(InventoryTransactionRequest request)
@@ -31,7 +33,11 @@ namespace ASA_TENANT_SERVICE.Implenment
             {
                 var entity = _mapper.Map<InventoryTransaction>(request);
                 entity.CreatedAt = DateTime.UtcNow;
-
+                if (request.ImageFile != null)
+                {
+                    var imageUrl = await _photoService.UploadImageAsync(request.ImageFile);
+                    entity.ImageUrl = imageUrl;
+                }
                 var affected = await _inventoryTransactionRepo.CreateAsync(entity);
 
                 if (affected > 0)
@@ -126,7 +132,11 @@ namespace ASA_TENANT_SERVICE.Implenment
                     };
 
                 _mapper.Map(request, existing);
-
+                if (request.ImageFile != null)
+                {
+                    var imageUrl = await _photoService.UploadImageAsync(request.ImageFile);
+                    existing.ImageUrl = imageUrl;
+                }
                 var affected = await _inventoryTransactionRepo.UpdateAsync(existing);
                 if (affected > 0)
                 {

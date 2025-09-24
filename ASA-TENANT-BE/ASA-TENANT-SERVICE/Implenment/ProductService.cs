@@ -270,10 +270,20 @@ namespace ASA_TENANT_SERVICE.Implenment
             };
         }
 
-        public async Task<ApiResponse<ProductResponse>> UpdateAsync(long id, ProductRequest request)
+        public async Task<ApiResponse<ProductResponse>> UpdateAsync(long id, ProductUpdateRequest request)
         {
             try
             {
+                // Kiểm tra barcode có trùng trong shop không
+                if (!string.IsNullOrEmpty(request.Barcode))
+                {
+                    var existingBarcode = await _productRepo.GetByBarcodeAsync(request.Barcode, request.ShopId);
+
+                    if (existingBarcode != null && existingBarcode.ProductId != id)
+                    {
+                        throw new Exception("Barcode đã tồn tại trong shop này.");
+                    }
+                }
                 var existing = await _productRepo.GetByIdAsync(id);
                 if (existing == null)
                     return new ApiResponse<ProductResponse>
@@ -283,9 +293,76 @@ namespace ASA_TENANT_SERVICE.Implenment
                         Data = null
                     };
 
+                if (existing.ShopId != request.ShopId)
+                {
+                    return new ApiResponse<ProductResponse>
+                    {
+                        Success = false,
+                        Message = $"Error: Product {id} không thuộc ShopId {request.ShopId}",
+                        Data = null
+                    };
+                }
+
+                if (request.CategoryId.HasValue)
+                {
+                    var category = await _categoryRepo.GetByIdAndShopIdAsync(request.CategoryId.Value, request.ShopId);
+                    if (category == null)
+                    {
+                        return new ApiResponse<ProductResponse>
+                        {
+                            Success = false,
+                            Message = $"Error: CategoryId {request.CategoryId.Value} không tồn tại trong ShopId {request.ShopId}",
+                            Data = null
+                        };
+                    }
+                }
+
                 // Map dữ liệu từ DTO sang entity, bỏ Id
                 _mapper.Map(request, existing);
                 existing.UpdateAt = DateTime.UtcNow;
+
+                // Upload ảnh sản phẩm nếu có
+                if (request.ImageFile != null)
+                {
+                    var imageUrl = await _photoService.UploadImageAsync(request.ImageFile);
+                    existing.ImageUrl = imageUrl;
+                }
+
+                // Update hoặc thêm mới đơn vị sản phẩm
+                foreach (var unitReq in request.Units)
+                {
+                    if (string.IsNullOrWhiteSpace(unitReq.Name))
+                        return new ApiResponse<ProductResponse>
+                        {
+                            Success = false,
+                            Message = "Error: Unit name không được để trống",
+                            Data = null
+                        };
+                    var unit = await _unitRepo.GetOrCreateAsync(unitReq.Name, request.ShopId);
+
+                    if (unitReq.IsBaseUnit)
+                        existing.UnitIdFk = unit.UnitId;
+
+                    var productUnit = await _productUnitRepo.GetByProductAndUnitAsync(existing.ProductId, unit.UnitId, request.ShopId);
+                    if (productUnit == null)
+                    {
+                        productUnit = new ProductUnit
+                        {
+                            ProductId = existing.ProductId,
+                            UnitId = unit.UnitId,
+                            ConversionFactor = unitReq.ConversionFactor,
+                            Price = unitReq.Price,
+                            ShopId = existing.ShopId
+                        };
+                        await _productUnitRepo.CreateAsync(productUnit);
+                    }
+                    else
+                    {
+                        productUnit.ConversionFactor = unitReq.ConversionFactor;
+                        productUnit.Price = unitReq.Price;
+                        await _productUnitRepo.UpdateAsync(productUnit);
+                    }
+                }
 
                 var affected = await _productRepo.UpdateAsync(existing);
                 if (affected > 0)

@@ -25,7 +25,21 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
 
         public InventoryTransactionProductRequest InventoryTransaction { get; set; }
     }
+    public class ProductUpdateRequest
+    {
+        // Thông tin chung của sản phẩm
+        public long ShopId { get; set; }
+        public string ProductName { get; set; }
+        public string Barcode { get; set; }
 
+        public long? CategoryId { get; set; }
+        public IFormFile? ImageFile { get; set; }
+        public decimal? Price { get; set; }
+        public decimal? Discount { get; set; }
+        public short? Status { get; set; }
+
+        public List<UnitProductRequest> Units { get; set; } = new List<UnitProductRequest>();
+    }
     public class UnitProductRequest
     {
         public string Name { get; set; }                   // VD: "Lon", "Lốc", "Thùng"

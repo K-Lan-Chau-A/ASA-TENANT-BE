@@ -29,7 +29,7 @@ namespace ASA_TENANT_REPO.Repository
         }
         public async Task<Unit> GetOrCreateAsync(string unitName, long shopId)
         {
-            var unit = await _context.Units.FirstOrDefaultAsync(u => u.Name == unitName);
+            var unit = await _context.Units.FirstOrDefaultAsync(u => u.Name.ToLower() == unitName.ToLower());
             if (unit == null)
             {
                 unit = new Unit { Name = unitName , ShopId = shopId};

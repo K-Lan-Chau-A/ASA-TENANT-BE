@@ -38,7 +38,7 @@ namespace ASA_TENANT_BE.Controllers
             return Ok(result);
         }
         [HttpPut("{id}")]
-        public async Task<ActionResult<ProductResponse>> Update(long id, [FromBody] ProductRequest request)
+        public async Task<ActionResult<ProductResponse>> Update(long id, [FromForm] ProductUpdateRequest request)
         {
             var result = await _productService.UpdateAsync(id, request);
             return Ok(result);

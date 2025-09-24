@@ -31,8 +31,6 @@ namespace ASA_TENANT_REPO.Repository
                 query = query.Where(it => it.UnitId == filter.UnitId);
             if (filter.Quantity > 0)
                 query = query.Where(it => it.Quantity == filter.Quantity);
-            if (!string.IsNullOrEmpty(filter.ImageUrl))
-                query = query.Where(it => it.ImageUrl.Contains(filter.ImageUrl));
             if (filter.Price.HasValue)
                 query = query.Where(it => it.Price == filter.Price);
             if (filter.ShopId > 0)

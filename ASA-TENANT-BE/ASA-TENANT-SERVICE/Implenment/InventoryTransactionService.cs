@@ -18,11 +18,13 @@ namespace ASA_TENANT_SERVICE.Implenment
     public class InventoryTransactionService : IInventoryTransactionService
     {
         private readonly InventoryTransactionRepo _inventoryTransactionRepo;
+        private readonly ProductRepo _productRepo;
         private readonly IMapper _mapper;
         private readonly IPhotoService _photoService;
-        public InventoryTransactionService(InventoryTransactionRepo inventoryTransactionRepo, IMapper mapper, IPhotoService photoService)
+        public InventoryTransactionService(InventoryTransactionRepo inventoryTransactionRepo, ProductRepo productRepo, IMapper mapper, IPhotoService photoService)
         {
             _inventoryTransactionRepo = inventoryTransactionRepo;
+            _productRepo = productRepo;
             _mapper = mapper;
             _photoService = photoService;
         }
@@ -131,11 +133,57 @@ namespace ASA_TENANT_SERVICE.Implenment
                         Data = null
                     };
 
+
+                var oldProductId = existing.ProductId;
+                var oldQuantity = existing.Quantity ?? 0;
+
                 _mapper.Map(request, existing);
                 if (request.ImageFile != null)
                 {
                     var imageUrl = await _photoService.UploadImageAsync(request.ImageFile);
                     existing.ImageUrl = imageUrl;
+                }
+
+                if (oldProductId == existing.ProductId)
+                {
+                    var product = await _productRepo.GetByIdAsync(existing.ProductId);
+                    if (product != null)
+                    {
+                        var currentQty = product.Quantity ?? 0;
+                        var delta = request.Quantity - oldQuantity;
+                        product.Quantity = currentQty + delta;
+
+                        if (request.Price.HasValue && request.Quantity > 0)
+                        {
+                            product.Cost = request.Price.Value / request.Quantity;
+                        }
+                        await _productRepo.UpdateAsync(product);
+                    }
+                }
+                else
+                {
+                    if (oldProductId.HasValue)
+                    {
+                        var oldProduct = await _productRepo.GetByIdAsync(oldProductId.Value);
+                        if (oldProduct != null)
+                        {
+                            var oldProdQty = oldProduct.Quantity ?? 0;
+                            oldProduct.Quantity = oldProdQty - oldQuantity;
+                            await _productRepo.UpdateAsync(oldProduct);
+                        }
+                    }
+
+                    var newProduct = await _productRepo.GetByIdAsync(existing.ProductId);
+                    if (newProduct != null)
+                    {
+                        var newProdQty = newProduct.Quantity ?? 0;
+                        newProduct.Quantity = newProdQty + request.Quantity;
+                        if (request.Price.HasValue && request.Quantity > 0)
+                        {
+                            newProduct.Cost = request.Price.Value / request.Quantity;
+                        }
+                        await _productRepo.UpdateAsync(newProduct);
+                    }
                 }
                 var affected = await _inventoryTransactionRepo.UpdateAsync(existing);
                 if (affected > 0)

@@ -34,12 +34,25 @@ namespace ASA_TENANT_BE.Controllers
         [HttpPost]
         public async Task<ActionResult<ProductResponse>> Create([FromForm] ProductRequest request)
         {
+            // Coalesce duplicated UnitsJson form fields into a single JSON array
+            if (Request.HasFormContentType && Request.Form.TryGetValue("UnitsJson", out var unitsValues) && unitsValues.Count > 1)
+            {
+                // If multiple values provided, wrap them into an array string
+                // Values are expected to be individual JSON objects
+                var joined = "[" + string.Join(',', unitsValues) + "]";
+                request.UnitsJson = joined;
+            }
             var result = await _productService.CreateAsync(request);
             return Ok(result);
         }
         [HttpPut("{id}")]
         public async Task<ActionResult<ProductResponse>> Update(long id, [FromForm] ProductUpdateRequest request)
         {
+            if (Request.HasFormContentType && Request.Form.TryGetValue("UnitsJson", out var unitsValues) && unitsValues.Count > 1)
+            {
+                var joined = "[" + string.Join(',', unitsValues) + "]";
+                request.UnitsJson = joined;
+            }
             var result = await _productService.UpdateAsync(id, request);
             return Ok(result);
         }

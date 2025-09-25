@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Text.Json;
 
 namespace ASA_TENANT_SERVICE.Implenment
 {
@@ -40,6 +41,7 @@ namespace ASA_TENANT_SERVICE.Implenment
         {
             try
             {
+                var units = DeserializeUnitsJson(request.UnitsJson);
                 if (request.CategoryId != null)
                 {
                     var category = await _categoryRepo.GetByIdAndShopIdAsync(request.CategoryId.Value, request.ShopId);
@@ -53,15 +55,25 @@ namespace ASA_TENANT_SERVICE.Implenment
                         };
                     }
                 }
+                if (units == null || units.Count == 0)
+                {
+                    return new ApiResponse<ProductResponse>
+                    {
+                        Success = false,
+                        Message = "Error: UnitsJson rỗng hoặc không hợp lệ. Vui lòng gửi mảng JSON hợp lệ.",
+                        Data = null
+                    };
+                }
+
                 var product = await _productRepo.GetByBarcodeAsync(request.Barcode, request.ShopId);
 
                 if (product == null)
                 {
-                    product = await CreateNewProductAsync(request);
+                    product = await CreateNewProductAsync(request, units);
                 }
                 else
                 {
-                    product = await UpdateExistingProductAsync(product, request);
+                    product = await UpdateExistingProductAsync(product, request, units);
                 }
 
                 var response = _mapper.Map<ProductResponse>(product);
@@ -83,7 +95,7 @@ namespace ASA_TENANT_SERVICE.Implenment
             }
         }
 
-        private async Task<Product> CreateNewProductAsync(ProductRequest request)
+        private async Task<Product> CreateNewProductAsync(ProductRequest request, List<UnitProductRequest> units)
         {
             var product = _mapper.Map<Product>(request);
 
@@ -98,7 +110,7 @@ namespace ASA_TENANT_SERVICE.Implenment
             await _productRepo.CreateAsync(product);
 
             // Thêm đơn vị sản phẩm
-            foreach (var unitReq in request.Units)
+            foreach (var unitReq in units)
             {
                 var unit = await _unitRepo.GetOrCreateAsync(unitReq.Name, request.ShopId);
 
@@ -149,7 +161,7 @@ namespace ASA_TENANT_SERVICE.Implenment
             return product;
         }
 
-        private async Task<Product> UpdateExistingProductAsync(Product product, ProductRequest request)
+        private async Task<Product> UpdateExistingProductAsync(Product product, ProductRequest request, List<UnitProductRequest> units)
         {
             // Upload ảnh sản phẩm nếu có
             if (request.ImageFile != null)
@@ -188,7 +200,7 @@ namespace ASA_TENANT_SERVICE.Implenment
             }
 
             // Update hoặc thêm mới đơn vị sản phẩm
-            foreach (var unitReq in request.Units)
+            foreach (var unitReq in units)
             {
                 var unit = await _unitRepo.GetOrCreateAsync(unitReq.Name, request.ShopId);
 
@@ -274,10 +286,20 @@ namespace ASA_TENANT_SERVICE.Implenment
         {
             try
             {
+                var units = DeserializeUnitsJson(request.UnitsJson);
                 // Kiểm tra barcode có trùng trong shop không
                 if (!string.IsNullOrEmpty(request.Barcode))
                 {
                     var existingBarcode = await _productRepo.GetByBarcodeAsync(request.Barcode, request.ShopId);
+                if (units == null || units.Count == 0)
+                {
+                    return new ApiResponse<ProductResponse>
+                    {
+                        Success = false,
+                        Message = "Error: UnitsJson rỗng hoặc không hợp lệ. Vui lòng gửi mảng JSON hợp lệ.",
+                        Data = null
+                    };
+                }
 
                     if (existingBarcode != null && existingBarcode.ProductId != id)
                     {
@@ -329,7 +351,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                 }
 
                 // Update hoặc thêm mới đơn vị sản phẩm
-                foreach (var unitReq in request.Units)
+                foreach (var unitReq in units)
                 {
                     if (string.IsNullOrWhiteSpace(unitReq.Name))
                         return new ApiResponse<ProductResponse>
@@ -392,6 +414,43 @@ namespace ASA_TENANT_SERVICE.Implenment
                     Data = null
                 };
             }
+        }
+
+        private static List<UnitProductRequest> DeserializeUnitsJson(string unitsJson)
+        {
+            if (string.IsNullOrWhiteSpace(unitsJson))
+            {
+                return new List<UnitProductRequest>();
+            }
+
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+
+            var trimmed = unitsJson.Trim();
+
+            try
+            {
+                // Case 1: JSON array
+                if (trimmed.StartsWith("["))
+                {
+                    return JsonSerializer.Deserialize<List<UnitProductRequest>>(trimmed, options) ?? new List<UnitProductRequest>();
+                }
+
+                // Case 2: single object → wrap to list
+                if (trimmed.StartsWith("{"))
+                {
+                    var single = JsonSerializer.Deserialize<UnitProductRequest>(trimmed, options);
+                    return single != null ? new List<UnitProductRequest> { single } : new List<UnitProductRequest>();
+                }
+            }
+            catch
+            {
+                // ignore and fall through to empty list
+            }
+
+            return new List<UnitProductRequest>();
         }
     }
 }

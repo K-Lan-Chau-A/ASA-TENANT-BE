@@ -21,7 +21,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
         public decimal? Discount { get; set; }
         public short? Status { get; set; }
 
-        public List<UnitProductRequest> Units { get; set; } = new List<UnitProductRequest>();
+        public string UnitsJson { get; set; }
 
         public InventoryTransactionProductRequest InventoryTransaction { get; set; }
     }
@@ -38,7 +38,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
         public decimal? Discount { get; set; }
         public short? Status { get; set; }
 
-        public List<UnitProductRequest> Units { get; set; } = new List<UnitProductRequest>();
+        public string UnitsJson { get; set; }
     }
     public class UnitProductRequest
     {

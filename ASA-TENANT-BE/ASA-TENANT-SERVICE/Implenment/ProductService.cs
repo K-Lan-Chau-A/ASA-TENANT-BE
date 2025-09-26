@@ -5,6 +5,7 @@ using ASA_TENANT_SERVICE.DTOs.Common;
 using ASA_TENANT_SERVICE.DTOs.Request;
 using ASA_TENANT_SERVICE.DTOs.Response;
 using ASA_TENANT_SERVICE.Interface;
+using ASA_TENANT_SERVICE.Enums;
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -23,15 +24,17 @@ namespace ASA_TENANT_SERVICE.Implenment
         private readonly ProductUnitRepo _productUnitRepo;
         private readonly InventoryTransactionRepo _inventoryTransactionRepo;
         private readonly CategoryRepo _categoryRepo;
+        private readonly PromotionProductRepo _promotionProductRepo;
         private readonly IPhotoService _photoService;
         private readonly IMapper _mapper;
-        public ProductService(ProductRepo productRepo, IMapper mapper, UnitRepo unitRepo, ProductUnitRepo productUnitRepo, InventoryTransactionRepo inventoryTransactionRepo,CategoryRepo categoryRepo, IPhotoService photoService)
+        public ProductService(ProductRepo productRepo, IMapper mapper, UnitRepo unitRepo, ProductUnitRepo productUnitRepo, InventoryTransactionRepo inventoryTransactionRepo,CategoryRepo categoryRepo, PromotionProductRepo promotionProductRepo, IPhotoService photoService)
         {
             _productRepo = productRepo;
             _mapper = mapper;
             _unitRepo = unitRepo;
             _productUnitRepo = productUnitRepo;
             _categoryRepo = categoryRepo;
+            _promotionProductRepo = promotionProductRepo;
             _photoService = photoService;
             _inventoryTransactionRepo = inventoryTransactionRepo;
         }
@@ -77,6 +80,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                 }
 
                 var response = _mapper.Map<ProductResponse>(product);
+                response.PromotionPrice = await CalculatePromotionPriceAsync(product);
                 return new ApiResponse<ProductResponse>
                 {
                     Success = true,
@@ -273,9 +277,15 @@ namespace ASA_TENANT_SERVICE.Implenment
             var totalCount = await query.CountAsync();
             var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
 
+            var responses = _mapper.Map<List<ProductResponse>>(items);
+            for (int i = 0; i < items.Count; i++)
+            {
+                responses[i].PromotionPrice = await CalculatePromotionPriceAsync(items[i]);
+            }
+
             return new PagedResponse<ProductResponse>
             {
-                Items = _mapper.Map<IEnumerable<ProductResponse>>(items),
+                Items = responses,
                 TotalCount = totalCount,
                 Page = page,
                 PageSize = pageSize
@@ -390,6 +400,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                 if (affected > 0)
                 {
                     var response = _mapper.Map<ProductResponse>(existing);
+                    response.PromotionPrice = await CalculatePromotionPriceAsync(existing);
                     return new ApiResponse<ProductResponse>
                     {
                         Success = true,
@@ -414,6 +425,86 @@ namespace ASA_TENANT_SERVICE.Implenment
                     Data = null
                 };
             }
+        }
+
+        private async Task<decimal?> CalculatePromotionPriceAsync(Product product)
+        {
+            if (product == null || product.Price == null || product.Price <= 0)
+                return null;
+
+            var filter = new PromotionProduct { ProductId = product.ProductId };
+            var promosQuery = _promotionProductRepo.GetFiltered(filter)
+                .Select(pp => pp.Promotion);
+
+            var promos = await promosQuery.ToListAsync();
+            if (promos == null || promos.Count == 0)
+                return null;
+
+            var now = DateTime.UtcNow;
+            var today = DateOnly.FromDateTime(now);
+            var currentTime = TimeOnly.FromDateTime(now);
+
+            decimal basePrice = product.Price.Value;
+            decimal currentPrice = basePrice;
+            bool anyApplied = false;
+
+            // Apply in deterministic order: Percentage first, then Money
+            foreach (var promo in promos
+                .Where(p => p != null)
+                .OrderBy(p => p.Type == (short)PromotionType.Percentage ? 0 : 1))
+            {
+                if (promo.Status != (short?)PromotionStatus.Active)
+                    continue;
+
+                if (promo.ShopId != null && product.ShopId != null && promo.ShopId != product.ShopId)
+                    continue;
+
+                // Date window
+                if (promo.StartDate != null && today < promo.StartDate.Value)
+                    continue;
+                if (promo.EndDate != null && today > promo.EndDate.Value)
+                    continue;
+
+                // Time window (if both set, enforce range within the day)
+                if (promo.StartTime != null && promo.EndTime != null)
+                {
+                    if (currentTime < promo.StartTime.Value || currentTime > promo.EndTime.Value)
+                        continue;
+                }
+                else if (promo.StartTime != null && currentTime < promo.StartTime.Value)
+                {
+                    continue;
+                }
+                else if (promo.EndTime != null && currentTime > promo.EndTime.Value)
+                {
+                    continue;
+                }
+
+                if (promo.Type == null || promo.Value == null)
+                    continue;
+
+                if (promo.Type == (short)PromotionType.Percentage)
+                {
+                    var pct = promo.Value.Value;
+                    if (pct < 0) pct = 0;
+                    if (pct > 100) pct = 100;
+                    currentPrice = currentPrice - (currentPrice * (pct / 100m));
+                    anyApplied = true;
+                }
+                else if (promo.Type == (short)PromotionType.Money)
+                {
+                    currentPrice = currentPrice - promo.Value.Value;
+                    anyApplied = true;
+                }
+
+                if (currentPrice < 0)
+                    currentPrice = 0;
+            }
+
+            if (!anyApplied)
+                return null;
+
+            return currentPrice;
         }
 
         private static List<UnitProductRequest> DeserializeUnitsJson(string unitsJson)

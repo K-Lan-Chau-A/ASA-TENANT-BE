@@ -36,7 +36,7 @@ namespace ASA_TENANT_REPO.Repository
             if (filter.ShopId > 0)
                 query = query.Where(it => it.ShopId == filter.ShopId);
 
-            return query.OrderBy(it => it.InventoryTransactionId);
+            return query.OrderByDescending(it => it.InventoryTransactionId);
         }
     }
 }

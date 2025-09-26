@@ -16,7 +16,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
         public string Barcode { get; set; }      
 
         public long? CategoryId { get; set; }
-        public IFormFile? ImageFile { get; set; }
+        public IFormFile? ProductImageFile { get; set; }
         public decimal? Price { get; set; }
         public decimal? Discount { get; set; }
         public short? Status { get; set; }
@@ -33,7 +33,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
         public string Barcode { get; set; }
 
         public long? CategoryId { get; set; }
-        public IFormFile? ImageFile { get; set; }
+        public IFormFile? ProductImageFile { get; set; }
         public decimal? Price { get; set; }
         public decimal? Discount { get; set; }
         public short? Status { get; set; }
@@ -52,7 +52,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
     {
         public int Quantity { get; set; }                  // Số lượng nhập
         public decimal? Price { get; set; }                // Giá bán mới (nếu muốn cập nhật)
-        public IFormFile? ImageFile { get; set; }               // Link hóa đơn/ảnh chứng từ
+        public IFormFile? InventoryTransImageFile { get; set; }               // Link hóa đơn/ảnh chứng từ
     }
 
 

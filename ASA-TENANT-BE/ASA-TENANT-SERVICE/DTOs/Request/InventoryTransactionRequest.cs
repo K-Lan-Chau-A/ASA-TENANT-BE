@@ -15,7 +15,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
         public long? OrderId { get; set; }
         public long UnitId { get; set; }
         public int Quantity { get; set; }
-        public IFormFile? ImageFile { get; set; }
+        public IFormFile? InventoryTransImageFile { get; set; }
         public decimal? Price { get; set; }
         public long ShopId { get; set; }
     }

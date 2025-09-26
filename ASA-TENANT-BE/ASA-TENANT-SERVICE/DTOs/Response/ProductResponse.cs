@@ -13,6 +13,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Response
         public int? Quantity { get; set; }
         public decimal? Cost { get; set; }
         public decimal? Price { get; set; }
+        public decimal? PromotionPrice { get; set; }
         public string? ProductImageURL { get; set; }
         public string? Barcode { get; set; }
         public decimal? Discount { get; set; }

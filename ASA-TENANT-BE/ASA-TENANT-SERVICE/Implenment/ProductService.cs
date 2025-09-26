@@ -99,9 +99,9 @@ namespace ASA_TENANT_SERVICE.Implenment
         {
             var product = _mapper.Map<Product>(request);
 
-            if(request.ImageFile != null)
+            if(request.ProductImageFile != null)
             {
-                var imageUrl = await _photoService.UploadImageAsync(request.ImageFile);
+                var imageUrl = await _photoService.UploadImageAsync(request.ProductImageFile);
                 product.ImageUrl = imageUrl;
             }
 
@@ -137,9 +137,9 @@ namespace ASA_TENANT_SERVICE.Implenment
                 product.UpdateAt = DateTime.UtcNow;
 
                 string invImageUrl = null;
-                if (request.InventoryTransaction.ImageFile != null)
+                if (request.InventoryTransaction.InventoryTransImageFile != null)
                 {
-                    invImageUrl = await _photoService.UploadImageAsync(request.InventoryTransaction.ImageFile);
+                    invImageUrl = await _photoService.UploadImageAsync(request.InventoryTransaction.InventoryTransImageFile);
                 }
 
                 var invTransaction = new InventoryTransaction
@@ -151,7 +151,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                     Price = request.InventoryTransaction.Price,
                     ImageUrl = invImageUrl,
                     CreatedAt = DateTime.UtcNow,
-                    Type = 1 // nhập kho
+                    Type = 2 // nhập kho
                 };
 
                 await _inventoryTransactionRepo.CreateAsync(invTransaction);
@@ -164,9 +164,9 @@ namespace ASA_TENANT_SERVICE.Implenment
         private async Task<Product> UpdateExistingProductAsync(Product product, ProductRequest request, List<UnitProductRequest> units)
         {
             // Upload ảnh sản phẩm nếu có
-            if (request.ImageFile != null)
+            if (request.ProductImageFile != null)
             {
-                var imageUrl = await _photoService.UploadImageAsync(request.ImageFile);
+                var imageUrl = await _photoService.UploadImageAsync(request.ProductImageFile);
                 product.ImageUrl = imageUrl;
             }
             // Cập nhật số lượng tồn kho
@@ -179,9 +179,9 @@ namespace ASA_TENANT_SERVICE.Implenment
                 product.UpdateAt = DateTime.UtcNow;
 
                 string invImageUrl = null;
-                if (request.InventoryTransaction?.ImageFile != null)
+                if (request.InventoryTransaction?.InventoryTransImageFile != null)
                 {
-                    invImageUrl = await _photoService.UploadImageAsync(request.InventoryTransaction.ImageFile);
+                    invImageUrl = await _photoService.UploadImageAsync(request.InventoryTransaction.InventoryTransImageFile);
                 }
 
                 var invTransaction = new InventoryTransaction
@@ -193,7 +193,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                     Price = request.InventoryTransaction.Price,
                     ImageUrl = invImageUrl,
                     CreatedAt = DateTime.UtcNow,
-                    Type = 1
+                    Type = 2
                 };
 
                 await _inventoryTransactionRepo.CreateAsync(invTransaction);
@@ -344,9 +344,9 @@ namespace ASA_TENANT_SERVICE.Implenment
                 existing.UpdateAt = DateTime.UtcNow;
 
                 // Upload ảnh sản phẩm nếu có
-                if (request.ImageFile != null)
+                if (request.ProductImageFile != null)
                 {
-                    var imageUrl = await _photoService.UploadImageAsync(request.ImageFile);
+                    var imageUrl = await _photoService.UploadImageAsync(request.ProductImageFile);
                     existing.ImageUrl = imageUrl;
                 }
 

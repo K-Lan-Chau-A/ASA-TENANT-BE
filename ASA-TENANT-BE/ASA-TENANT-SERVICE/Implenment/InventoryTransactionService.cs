@@ -35,9 +35,9 @@ namespace ASA_TENANT_SERVICE.Implenment
             {
                 var entity = _mapper.Map<InventoryTransaction>(request);
                 entity.CreatedAt = DateTime.UtcNow;
-                if (request.ImageFile != null)
+                if (request.InventoryTransImageFile != null)
                 {
-                    var imageUrl = await _photoService.UploadImageAsync(request.ImageFile);
+                    var imageUrl = await _photoService.UploadImageAsync(request.InventoryTransImageFile);
                     entity.ImageUrl = imageUrl;
                 }
                 var affected = await _inventoryTransactionRepo.CreateAsync(entity);
@@ -138,9 +138,9 @@ namespace ASA_TENANT_SERVICE.Implenment
                 var oldQuantity = existing.Quantity ?? 0;
 
                 _mapper.Map(request, existing);
-                if (request.ImageFile != null)
+                if (request.InventoryTransImageFile != null)
                 {
-                    var imageUrl = await _photoService.UploadImageAsync(request.ImageFile);
+                    var imageUrl = await _photoService.UploadImageAsync(request.InventoryTransImageFile);
                     existing.ImageUrl = imageUrl;
                 }
 

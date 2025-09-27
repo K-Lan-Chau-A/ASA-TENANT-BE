@@ -196,6 +196,16 @@ namespace ASA_TENANT_SERVICE.Implenment
 
                 // map data từ request sang entity
                 _mapper.Map(request, existing);
+                existing.StartDate = request.StartDate;
+                existing.EndDate = request.EndDate;
+                existing.StartTime = request.StartTime;
+                existing.EndTime = request.EndTime;
+                existing.Value = request.Value;
+                existing.Type = (short)request.Type;
+                existing.Status = request.Status;
+                existing.Name = request.Name;
+                existing.ShopId = request.ShopId;
+
 
                 // update promotion
                 var affected = await _promotionRepo.UpdateAsync(existing);

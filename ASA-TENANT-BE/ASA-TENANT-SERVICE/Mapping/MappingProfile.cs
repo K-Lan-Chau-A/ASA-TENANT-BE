@@ -30,10 +30,16 @@ namespace ASA_TENANT_SERVICE.Mapping
 
             //Product Mappings
             CreateMap<Product, ProductResponse>()
+                .ForMember(dest => dest.ProductImageURL, opt => opt.MapFrom(src => src.ImageUrl))
                 .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category.CategoryName))
                 .ReverseMap();
             CreateMap<ProductRequest, Product>().ReverseMap();
             CreateMap<ProductGetRequest, Product>().ReverseMap();
+            // For update: don't overwrite existing values with nulls; never map ImageUrl directly
+            CreateMap<ProductUpdateRequest, Product>()
+                .ForMember(dest => dest.ImageUrl, opt => opt.Ignore())
+                .ForAllMembers(opt => opt.Condition((src, dest, srcMember) => srcMember != null));
+            CreateMap<Product, ProductUpdateRequest>();
 
             // User Mappings
             CreateMap<User, UserResponse>().ReverseMap();
@@ -51,7 +57,8 @@ namespace ASA_TENANT_SERVICE.Mapping
             CreateMap<ShopGetRequest, Shop>().ReverseMap();
 
             // InventoryTransaction Mappings
-            CreateMap<InventoryTransaction, InventoryTransactionResponse>().ReverseMap();
+            CreateMap<InventoryTransaction, InventoryTransactionResponse>()
+                    .ForMember(dest => dest.InventoryTransImageURL, opt => opt.MapFrom(src => src.ImageUrl)).ReverseMap();
             CreateMap<InventoryTransactionRequest, InventoryTransaction>().ReverseMap();
             CreateMap<InventoryTransactionGetRequest, InventoryTransaction>().ReverseMap();
 

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Http;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -14,7 +15,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
         public long? OrderId { get; set; }
         public long UnitId { get; set; }
         public int Quantity { get; set; }
-        public string ImageUrl { get; set; }
+        public IFormFile? InventoryTransImageFile { get; set; }
         public decimal? Price { get; set; }
         public long ShopId { get; set; }
     }
@@ -27,7 +28,6 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
         public long? OrderId { get; set; }
         public long UnitId { get; set; }
         public int Quantity { get; set; }
-        public string? ImageUrl { get; set; }
         public decimal? Price { get; set; }
 
         [Required(ErrorMessage = "ShopId is required")]

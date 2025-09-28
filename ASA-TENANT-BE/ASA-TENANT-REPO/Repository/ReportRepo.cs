@@ -23,7 +23,7 @@ namespace ASA_TENANT_REPO.Repository
             // Tính tuần hiện tại (Mon–Sun)
             int dow = (int)localNow.DayOfWeek;
             int offsetToMonday = dow == 0 ? 6 : dow - 1;
-            var startOfWeek = DateOnly.FromDateTime(localNow.Date.AddDays(-offsetToMonday));
+            var startOfWeek = DateOnly.FromDateTime(localNow.Date.AddDays(-offsetToMonday - 7));
             var endOfWeek = startOfWeek.AddDays(6);
 
             var startDateTime = DateTime.SpecifyKind(startOfWeek.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);

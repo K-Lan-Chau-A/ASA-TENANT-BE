@@ -31,6 +31,15 @@ namespace ASA_TENANT_SERVICE.Implenment
         {
             try
             {
+                if (request.StartDate != null && request.EndDate != null && request.StartTime.Value >= request.EndTime.Value)
+                {
+                    return new ApiResponse<PromotionResponse>
+                    {
+                        Success = false,
+                        Message = "StartTime must be less than EndTime",
+                        Data = null
+                    };
+                }
                 if (request.ProductIds != null && request.ProductIds.Any())
                 {
                     var invalidIds = await _promotionRepo.GetInvalidProductIdsAsync(request.ProductIds);
@@ -179,6 +188,17 @@ namespace ASA_TENANT_SERVICE.Implenment
                         Data = null
                     };
 
+                // Validate date range
+                if (request.StartDate != null && request.EndDate != null && request.StartTime.Value >= request.EndTime.Value)
+                {
+                    return new ApiResponse<PromotionResponse>
+                    {
+                        Success = false,
+                        Message = "StartTime must be less than EndTime",
+                        Data = null
+                    };
+                }
+
                 // validate product ids
                 if (request.ProductIds != null && request.ProductIds.Any())
                 {
@@ -196,6 +216,16 @@ namespace ASA_TENANT_SERVICE.Implenment
 
                 // map data từ request sang entity
                 _mapper.Map(request, existing);
+                existing.StartDate = request.StartDate;
+                existing.EndDate = request.EndDate;
+                existing.StartTime = request.StartTime;
+                existing.EndTime = request.EndTime;
+                existing.Value = request.Value;
+                existing.Type = (short)request.Type;
+                existing.Status = request.Status;
+                existing.Name = request.Name;
+                existing.ShopId = request.ShopId;
+
 
                 // update promotion
                 var affected = await _promotionRepo.UpdateAsync(existing);

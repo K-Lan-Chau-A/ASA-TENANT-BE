@@ -118,6 +118,17 @@ namespace ASA_TENANT_SERVICE.Implenment
         {
             try
             {
+                // Check nếu shop đã có ca mở thì không cho mở tiếp
+                if (await _shiftRepo.HasOpenShiftAsync(shiftOpenRequest.ShopId))
+                {
+                    return new ApiResponse<ShiftResponse>
+                    {
+                        Success = false,
+                        Message = "This shop already has an open shift. Please close it before opening a new one.",
+                        Data = null
+                    };
+                }
+
                 var entity = _mapper.Map<Shift>(shiftOpenRequest);
                 entity.StartDate = DateTime.UtcNow;
                 entity.Status = (short)ShiftStatus.Open; // Open

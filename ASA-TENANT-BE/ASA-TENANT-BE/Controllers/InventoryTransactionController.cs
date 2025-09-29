@@ -32,13 +32,13 @@ namespace ASA_TENANT_BE.Controllers
             }
         }
         [HttpPost]
-        public async Task<ActionResult<InventoryTransactionResponse>> Create([FromBody] InventoryTransactionRequest request)
+        public async Task<ActionResult<InventoryTransactionResponse>> Create([FromForm] InventoryTransactionRequest request)
         {
             var result = await _inventoryTransactionService.CreateAsync(request);
             return Ok(result);
         }
         [HttpPut("{id}")]
-        public async Task<ActionResult<InventoryTransactionResponse>> Update(long id, [FromBody] InventoryTransactionRequest request)
+        public async Task<ActionResult<InventoryTransactionResponse>> Update(long id, [FromForm] InventoryTransactionRequest request)
         {
             var result = await _inventoryTransactionService.UpdateAsync(id, request);
             return Ok(result);

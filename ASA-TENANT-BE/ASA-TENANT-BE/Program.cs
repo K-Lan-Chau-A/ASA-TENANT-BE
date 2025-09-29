@@ -48,6 +48,7 @@ builder.Services.AddScoped<IReportDetailService, ReportDetailService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IShiftService, ShiftService>();
 builder.Services.AddScoped<IShopService, ShopService>();
+builder.Services.AddScoped<IShopSubscriptionService, ShopSubscriptionService>();
 builder.Services.AddScoped<ITransactionService, TransactionService>();
 builder.Services.AddScoped<IUnitService, UnitService>();
 builder.Services.AddScoped<IUserService, UserService>();
@@ -90,6 +91,7 @@ builder.Services.AddScoped<ReportDetailRepo>();
 builder.Services.AddScoped<ReportRepo>();
 builder.Services.AddScoped<ShiftRepo>();
 builder.Services.AddScoped<ShopRepo>();
+builder.Services.AddScoped<ShopSubscriptionRepo>();
 builder.Services.AddScoped<TransactionRepo>();
 builder.Services.AddScoped<UnitRepo>();
 builder.Services.AddScoped<UserRepo>();
@@ -115,7 +117,7 @@ builder.Services.AddQuartz(q =>
         .WithIdentity("WeeklyReportTrigger")
         .WithCronSchedule("0 5 0 ? * MON", x => x.InTimeZone(TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time")))); // 00:05 mỗi thứ Hai (UTC)
 
-    // Monthly job: chạy ngày 1 hàng tháng lúc 00:10 
+    // Monthly job: chạy ngày 1 hàng tháng lúc 00:30 
     var monthlyJobKey = new JobKey("MonthlyReportJob");
     q.AddJob<MonthlyReportJob>(opts => opts.WithIdentity(monthlyJobKey));
     q.AddTrigger(opts => opts

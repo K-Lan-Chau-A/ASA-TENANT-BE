@@ -1,6 +1,7 @@
 ﻿using ASA_TENANT_REPO.DBContext;
 using ASA_TENANT_REPO.Models;
 using EDUConnect_Repositories.Basic;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -37,7 +38,13 @@ namespace ASA_TENANT_REPO.Repository
             if(filter.ClosedDate.HasValue)
                 query = query.Where(c => c.ClosedDate <= filter.ClosedDate);
 
-            return query.OrderBy(c => c.ShiftId);
-        } 
+            return query.OrderByDescending(c => c.ShiftId);
+        }
+
+        public async Task<bool> HasOpenShiftAsync(long shopId)
+        {
+            return await _context.Shifts
+                .AnyAsync(s => s.ShopId == shopId && s.Status == 1);
+        }
     }
 }

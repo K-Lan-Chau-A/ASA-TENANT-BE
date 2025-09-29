@@ -14,5 +14,6 @@ namespace ASA_TENANT_SERVICE.Interface
         Task<ApiResponse<OrderResponse>> UpdateAsync(long id, OrderRequest request);
         Task<ApiResponse<OrderResponse>> UpdateStatusAsync(long id, short status);
         Task<ApiResponse<bool>> DeleteAsync(long id);
+        Task<ApiResponse<OrderResponse>> CancelOrderAsync(long id, string reason = "Đơn hàng hết hạn thanh toán");
     }
 }

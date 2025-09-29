@@ -122,6 +122,14 @@ builder.Services.AddQuartz(q =>
         .ForJob(monthlyJobKey)
         .WithIdentity("MonthlyReportTrigger")
         .WithCronSchedule("0 30 0 1 * ?", x => x.InTimeZone(TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time")))); // 00:10 UTC ngày 1 hàng tháng
+
+    // Order expiration job: chạy mỗi phút để kiểm tra đơn hàng hết hạn
+    var orderExpirationJobKey = new JobKey("OrderExpirationJob");
+    q.AddJob<OrderExpirationJob>(opts => opts.WithIdentity(orderExpirationJobKey));
+    q.AddTrigger(opts => opts
+        .ForJob(orderExpirationJobKey)
+        .WithIdentity("OrderExpirationTrigger")
+        .WithSimpleSchedule(x => x.WithIntervalInMinutes(1).RepeatForever())); // Chạy mỗi phút
 });
 
 //// Quartz test 5p và 10p

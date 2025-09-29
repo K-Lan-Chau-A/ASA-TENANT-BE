@@ -110,6 +110,9 @@ namespace ASA_TENANT_SERVICE.Implenment
                 // Set Datetime to current time (UTC for PostgreSQL compatibility)
                 entity.Datetime = DateTime.UtcNow;
                 
+                // Set CreatedAt to current time for expiration tracking
+                entity.CreatedAt = DateTime.UtcNow;
+                
                 // Set status mặc định = 0 (chờ thanh toán)
                 // Status: 0 = Chờ thanh toán, 1 = Đã thanh toán, 2 = Đã hủy
                 entity.Status = 0;
@@ -318,6 +321,68 @@ namespace ASA_TENANT_SERVICE.Implenment
                 {
                     Success = false,
                     Message = "Update failed",
+                    Data = null
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<OrderResponse>
+                {
+                    Success = false,
+                    Message = $"Error: {ex.Message}",
+                    Data = null
+                };
+            }
+        }
+
+        public async Task<ApiResponse<OrderResponse>> CancelOrderAsync(long id, string reason = "Đơn hàng hết hạn thanh toán")
+        {
+            try
+            {
+                var existing = await _orderRepo.GetByIdAsync(id);
+                if (existing == null)
+                {
+                    return new ApiResponse<OrderResponse>
+                    {
+                        Success = false,
+                        Message = "Order not found",
+                        Data = null
+                    };
+                }
+
+                // Kiểm tra xem đơn hàng có thể hủy không (chỉ hủy được khi status = 0 - chờ thanh toán)
+                if (existing.Status != 0)
+                {
+                    return new ApiResponse<OrderResponse>
+                    {
+                        Success = false,
+                        Message = $"Cannot cancel order with status {existing.Status}. Only pending orders can be cancelled.",
+                        Data = null
+                    };
+                }
+
+                // Cập nhật status thành 2 (Đã hủy) và note với lý do hủy
+                existing.Status = 2;
+                if (!string.IsNullOrEmpty(reason))
+                {
+                    existing.Note = string.IsNullOrEmpty(existing.Note) ? reason : $"{existing.Note} | {reason}";
+                }
+
+                var affected = await _orderRepo.UpdateAsync(existing);
+                if (affected > 0)
+                {
+                    var response = _mapper.Map<OrderResponse>(existing);
+                    return new ApiResponse<OrderResponse>
+                    {
+                        Success = true,
+                        Message = "Order cancelled successfully",
+                        Data = response
+                    };
+                }
+                return new ApiResponse<OrderResponse>
+                {
+                    Success = false,
+                    Message = "Cancel order failed",
                     Data = null
                 };
             }

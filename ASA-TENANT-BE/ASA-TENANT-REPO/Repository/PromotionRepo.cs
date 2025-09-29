@@ -1,6 +1,7 @@
 ﻿using ASA_TENANT_REPO.DBContext;
 using ASA_TENANT_REPO.Models;
 using EDUConnect_Repositories.Basic;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,7 +18,7 @@ namespace ASA_TENANT_REPO.Repository
          
         public IQueryable<Promotion> GetFiltered(Promotion filter)
         {
-            var query = _context.Promotions.AsQueryable();
+            var query = _context.Promotions.Include(p => p.PromotionProducts).ThenInclude(pp => pp.Product).AsQueryable();
             if (filter.PromotionId > 0)
                 query = query.Where(x => x.PromotionId == filter.PromotionId);
             if (filter.StartDate != null)

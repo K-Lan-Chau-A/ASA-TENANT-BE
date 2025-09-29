@@ -45,7 +45,9 @@ namespace ASA_TENANT_REPO.Repository
             if (filter.CreatedAt.HasValue)
                 query = query.Where(o => o.CreatedAt.HasValue && o.CreatedAt.Value.Date == filter.CreatedAt.Value.Date);
 
-            return query.OrderBy(o => o.OrderId);
+            return query
+                .OrderByDescending(o => o.CreatedAt)
+                .ThenByDescending(o => o.OrderId);
         }
 
         public async Task<Decimal?> GetTotalRevenueByShiftIdAsync(long shiftId)

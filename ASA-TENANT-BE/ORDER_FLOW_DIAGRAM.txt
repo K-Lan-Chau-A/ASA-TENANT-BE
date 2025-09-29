@@ -1,0 +1,48 @@
+FLOW DIAGRAM: Tự động hủy đơn hàng sau 5 phút
+
+1. TẠO ĐƠN HÀNG
+   POST /api/orders
+   ↓
+   OrderService.CreateAsync()
+   ↓
+   Set Status = 0 (Chờ thanh toán)
+   Set CreatedAt = DateTime.UtcNow
+   ↓
+   Lưu vào Database
+
+2. BACKGROUND JOB (Chạy mỗi phút)
+   OrderExpirationJob.Execute()
+   ↓
+   Query: Orders WHERE Status = 0 AND CreatedAt <= (Now - 5 minutes)
+   ↓
+   Nếu có đơn hàng hết hạn:
+   ↓
+   OrderService.CancelOrderAsync()
+   ↓
+   Set Status = 2 (Đã hủy)
+   Set Note = "Đơn hàng hết hạn thanh toán sau 5 phút"
+   ↓
+   Cập nhật Database
+
+3. HỦY THỦ CÔNG (Tùy chọn)
+   POST /api/orders/{id}/cancel
+   ↓
+   OrderService.CancelOrderAsync()
+   ↓
+   Set Status = 2 (Đã hủy)
+   Set Note = "Lý do hủy từ request"
+
+4. THANH TOÁN ĐƠN HÀNG
+   PUT /api/orders/{id}
+   ↓
+   OrderService.UpdateStatusAsync()
+   ↓
+   Set Status = 1 (Đã thanh toán)
+   ↓
+   Đơn hàng không còn bị hủy tự động
+
+STATUS FLOW:
+0 (Chờ thanh toán) → 1 (Đã thanh toán) ✅
+0 (Chờ thanh toán) → 2 (Đã hủy) ❌
+2 (Đã hủy) → Không thể thay đổi ❌
+1 (Đã thanh toán) → Không thể thay đổi ❌

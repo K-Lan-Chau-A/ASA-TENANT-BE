@@ -49,6 +49,29 @@ namespace ASA_TENANT_BE.Controllers
             var result = await _orderService.DeleteAsync(id);
             return Ok(result);
         }
+
+        [HttpPost("{id}/cancel")]
+        public async Task<ActionResult<OrderResponse>> Cancel(long id, [FromBody] CancelOrderRequest request)
+        {
+            try
+            {
+                var reason = request?.Reason ?? "Đơn hàng bị hủy thủ công";
+                var result = await _orderService.CancelOrderAsync(id, reason);
+                
+                if (result.Success)
+                {
+                    return Ok(result);
+                }
+                else
+                {
+                    return BadRequest(result);
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
     }
 }
 

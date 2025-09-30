@@ -169,7 +169,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                         // Tạo InventoryTransaction cho OrderDetail này
                         await CreateInventoryTransactionForOrderDetail(orderDetailWithOrderId, entity);
 
-                        // Trừ tồn kho sản phẩm tương ứng
+                        // Trước khi trừ tồn kho, kiểm tra số lượng đủ
                         if (orderDetailRequest.ProductId.HasValue)
                         {
                             var product = await _productRepo.GetByIdAsync(orderDetailRequest.ProductId.Value);
@@ -184,6 +184,16 @@ namespace ASA_TENANT_SERVICE.Implenment
                                     {
                                         quantityToDeduct = (int)(quantityToDeduct * productUnit.ConversionFactor.Value);
                                     }
+                                }
+                                // Nếu tồn kho không đủ, báo lỗi và dừng tạo order
+                                if (product.Quantity.Value < quantityToDeduct)
+                                {
+                                    return new ApiResponse<OrderResponse>
+                                    {
+                                        Success = false,
+                                        Message = $"Insufficient stock for product '{product.ProductName}'. Required={quantityToDeduct}, Available={product.Quantity.Value}",
+                                        Data = null
+                                    };
                                 }
                                 product.Quantity = Math.Max(0, (product.Quantity.Value - quantityToDeduct));
                                 await _productRepo.UpdateAsync(product);

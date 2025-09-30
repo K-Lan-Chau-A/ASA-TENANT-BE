@@ -5,6 +5,7 @@ using ASA_TENANT_SERVICE.DTOs.Request;
 using ASA_TENANT_SERVICE.DTOs.Response;
 using ASA_TENANT_SERVICE.Interface;
 using AutoMapper;
+using ASA_TENANT_SERVICE.Enums;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -21,13 +22,17 @@ namespace ASA_TENANT_SERVICE.Implenment
         private readonly IInventoryTransactionService _inventoryTransactionService;
         private readonly ProductUnitRepo _productUnitRepo;
         private readonly IMapper _mapper;
-        public OrderService(OrderRepo orderRepo, IOrderDetailService orderDetailService, IInventoryTransactionService inventoryTransactionService, ProductUnitRepo productUnitRepo, IMapper mapper)
+        private readonly VoucherRepo _voucherRepo;
+        private readonly ProductRepo _productRepo;
+        public OrderService(OrderRepo orderRepo, IOrderDetailService orderDetailService, IInventoryTransactionService inventoryTransactionService, ProductUnitRepo productUnitRepo, IMapper mapper, VoucherRepo voucherRepo, ProductRepo productRepo)
         {
             _orderRepo = orderRepo;
             _orderDetailService = orderDetailService;
             _inventoryTransactionService = inventoryTransactionService;
             _productUnitRepo = productUnitRepo;
             _mapper = mapper;
+            _voucherRepo = voucherRepo;
+            _productRepo = productRepo;
         }
 
         public async Task<ApiResponse<OrderResponse>> GetByIdAsync(long id)
@@ -113,9 +118,10 @@ namespace ASA_TENANT_SERVICE.Implenment
                 // Set CreatedAt to current time for expiration tracking
                 entity.CreatedAt = DateTime.UtcNow;
                 
-                // Set status mặc định = 0 (chờ thanh toán)
+                // Set status theo phương thức thanh toán
                 // Status: 0 = Chờ thanh toán, 1 = Đã thanh toán, 2 = Đã hủy
-                entity.Status = 0;
+                var isCash = request.PaymentMethod == PaymentMethodEnum.Cash;
+                entity.Status = (short)(isCash ? OrderStatus.Paid : OrderStatus.Pending);
                 
                 // Nếu có OrderDetails, bỏ qua TotalPrice từ request vì sẽ tính tự động
                 if (request.OrderDetails != null && request.OrderDetails.Any())
@@ -160,8 +166,29 @@ namespace ASA_TENANT_SERVICE.Implenment
                                 totalOrderPrice += orderDetailResult.Data.TotalPrice.Value;
                             }
 
-                            // Tạo InventoryTransaction cho OrderDetail này
-                            await CreateInventoryTransactionForOrderDetail(orderDetailWithOrderId, entity);
+                        // Tạo InventoryTransaction cho OrderDetail này
+                        await CreateInventoryTransactionForOrderDetail(orderDetailWithOrderId, entity);
+
+                        // Trừ tồn kho sản phẩm tương ứng
+                        if (orderDetailRequest.ProductId.HasValue)
+                        {
+                            var product = await _productRepo.GetByIdAsync(orderDetailRequest.ProductId.Value);
+                            if (product != null && product.Quantity.HasValue)
+                            {
+                                int quantityToDeduct = orderDetailRequest.Quantity ?? 0;
+                                // Áp dụng conversion factor nếu có ProductUnit
+                                if (orderDetailRequest.ProductUnitId.HasValue && orderDetailRequest.ProductUnitId.Value > 0)
+                                {
+                                    var productUnit = await _productUnitRepo.GetByIdAsync(orderDetailRequest.ProductUnitId.Value);
+                                    if (productUnit != null && productUnit.ConversionFactor.HasValue && productUnit.ConversionFactor.Value > 0)
+                                    {
+                                        quantityToDeduct = (int)(quantityToDeduct * productUnit.ConversionFactor.Value);
+                                    }
+                                }
+                                product.Quantity = Math.Max(0, (product.Quantity.Value - quantityToDeduct));
+                                await _productRepo.UpdateAsync(product);
+                            }
+                        }
                         }
                         // Nếu tạo OrderDetail thất bại, có thể rollback Order hoặc chỉ log lỗi
                         // Ở đây tôi sẽ log lỗi nhưng vẫn trả về Order đã tạo
@@ -173,8 +200,77 @@ namespace ASA_TENANT_SERVICE.Implenment
                 if (createdOrderDetails.Any())
                 {
                     entity.TotalPrice = totalOrderPrice;
-                    await _orderRepo.UpdateAsync(entity); // Cập nhật lại Order với TotalPrice đã tính
                 }
+
+                // Áp dụng discount (0..1) nếu có
+                var discountRate = request.Discount ?? 0m;
+                if (discountRate < 0m) discountRate = 0m;
+                if (discountRate > 1m) discountRate = 1m;
+                if (entity.TotalPrice.HasValue)
+                {
+                    entity.TotalPrice = entity.TotalPrice.Value * (1m - discountRate);
+                }
+
+                // Áp dụng voucher nếu có (kiểm tra hạn và đúng Shop)
+                if (request.VoucherId.HasValue)
+                {
+                    var voucher = await _voucherRepo.GetByIdAsync(request.VoucherId.Value);
+                    if (voucher == null)
+                    {
+                        return new ApiResponse<OrderResponse>
+                        {
+                            Success = false,
+                            Message = "Voucher not found",
+                            Data = null
+                        };
+                    }
+
+                    // Kiểm tra hết hạn
+                    if (voucher.Expired.HasValue && voucher.Expired.Value < DateTime.UtcNow)
+                    {
+                        return new ApiResponse<OrderResponse>
+                        {
+                            Success = false,
+                            Message = "Voucher expired",
+                            Data = null
+                        };
+                    }
+
+                    // Kiểm tra khớp Shop
+                    if (voucher.ShopId.HasValue && voucher.ShopId.Value != request.ShopId)
+                    {
+                        return new ApiResponse<OrderResponse>
+                        {
+                            Success = false,
+                            Message = "Voucher is not valid for this shop",
+                            Data = null
+                        };
+                    }
+
+                    if (voucher.Value.HasValue)
+                    {
+                        var currentTotal = entity.TotalPrice ?? 0m;
+                        decimal finalTotal = currentTotal;
+                        if (voucher.Type == 1)
+                        {
+                            // Trừ số tiền cố định
+                            finalTotal = currentTotal - voucher.Value.Value;
+                        }
+                        else if (voucher.Type == 2)
+                        {
+                            // Trừ theo phần trăm (0..1)
+                            var rate = voucher.Value.Value;
+                            if (rate < 0m) rate = 0m;
+                            if (rate > 1m) rate = 1m;
+                            finalTotal = currentTotal * (1m - rate);
+                        }
+                        if (finalTotal < 0m) finalTotal = 0m;
+                        entity.TotalPrice = finalTotal;
+                    }
+                }
+
+                // Lưu cập nhật TotalPrice cuối cùng
+                await _orderRepo.UpdateAsync(entity);
 
                 var response = _mapper.Map<OrderResponse>(entity);
                 response.OrderDetails = createdOrderDetails;

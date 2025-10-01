@@ -19,7 +19,16 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
         //public UserRole Role { get; set; }
         public string? Avatar { get; set; }
     }
-
+    public class UserAdminCreateRequest
+    {
+        public string? Username { get; set; }
+        [Required(ErrorMessage = "ShopId is required")]
+        public long? ShopId { get; set; }
+        public short? Status { get; set; }
+        //[EnumDataType(typeof(UserRole))]
+        //public UserRole Role { get; set; }
+        public string? Avatar { get; set; }
+    }
     public class UserUpdateRequest
     {
         public string? Username { get; set; }

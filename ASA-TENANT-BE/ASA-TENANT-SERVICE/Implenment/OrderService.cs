@@ -212,13 +212,13 @@ namespace ASA_TENANT_SERVICE.Implenment
                     entity.TotalPrice = totalOrderPrice;
                 }
 
-                // Áp dụng discount (0..1) nếu có
+                // Áp dụng discount (0..100%) nếu có
                 var discountRate = request.Discount ?? 0m;
                 if (discountRate < 0m) discountRate = 0m;
-                if (discountRate > 1m) discountRate = 1m;
+                if (discountRate > 100m) discountRate = 100m;
                 if (entity.TotalPrice.HasValue)
                 {
-                    entity.TotalPrice = entity.TotalPrice.Value * (1m - discountRate);
+                    entity.TotalPrice = entity.TotalPrice.Value * (1m - discountRate / 100m);
                 }
 
                 // Áp dụng voucher nếu có (kiểm tra hạn và đúng Shop)
@@ -268,11 +268,11 @@ namespace ASA_TENANT_SERVICE.Implenment
                         }
                         else if (voucher.Type == 2)
                         {
-                            // Trừ theo phần trăm (0..1)
+                            // Trừ theo phần trăm (0..100%)
                             var rate = voucher.Value.Value;
                             if (rate < 0m) rate = 0m;
-                            if (rate > 1m) rate = 1m;
-                            finalTotal = currentTotal * (1m - rate);
+                            if (rate > 100m) rate = 100m;
+                            finalTotal = currentTotal * (1m - rate / 100m);
                         }
                         if (finalTotal < 0m) finalTotal = 0m;
                         entity.TotalPrice = finalTotal;

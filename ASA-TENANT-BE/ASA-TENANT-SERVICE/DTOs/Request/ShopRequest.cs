@@ -30,6 +30,10 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
         public string? BankCode { get; set; }
 
         public string? BankNum { get; set; }
+
+        public long ProductId { get; set; }
+
+        public string Username { get; set; }
     }
 
     public class ShopGetRequest

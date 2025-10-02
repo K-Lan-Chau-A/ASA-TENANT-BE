@@ -98,11 +98,13 @@ builder.Services.AddScoped<UserRepo>();
 builder.Services.AddScoped<UserFeatureRepo>();
 builder.Services.AddScoped<VoucherRepo>();
 builder.Services.AddScoped<ZalopayRepo>();
+builder.Services.AddScoped<ShopSubscriptionRepo>();
+
 
 // Add HttpClient for BePlatform
 builder.Services.AddHttpClient("BePlatform", client =>
 {
-    client.BaseAddress = new Uri(builder.Configuration["BePlatformURL:Url"]);
+    client.BaseAddress = new Uri(builder.Configuration["BEPlatformUrl:Url"]);
     client.Timeout = TimeSpan.FromSeconds(60);
 });
 

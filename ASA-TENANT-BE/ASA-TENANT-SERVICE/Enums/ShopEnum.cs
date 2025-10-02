@@ -12,6 +12,8 @@ namespace ASA_TENANT_SERVICE.Enums
         [Description("Ngưng hoạt động")]
         Inactive = 0,
         [Description("Đang hoạt động")]
-        Active = 1
+        Active = 1,
+        [Description("Dùng thử")]
+        Trial = 2
     }
 }

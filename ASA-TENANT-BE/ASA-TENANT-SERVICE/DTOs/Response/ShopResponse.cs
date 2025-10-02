@@ -33,5 +33,9 @@ namespace ASA_TENANT_SERVICE.DTOs.Response
         public string BankCode { get; set; }
 
         public string BankNum { get; set; }
+
+        public string? CreatedAdminUsername { get; set; }
+
+        public string? CreatedAdminPassword { get; set; }
     }
 }

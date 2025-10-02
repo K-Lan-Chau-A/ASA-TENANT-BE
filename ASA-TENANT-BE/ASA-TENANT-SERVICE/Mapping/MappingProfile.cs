@@ -43,11 +43,14 @@ namespace ASA_TENANT_SERVICE.Mapping
 
             // User Mappings
             CreateMap<User, UserResponse>().ReverseMap();
+            CreateMap<User, UserAdminResponse>().ReverseMap();
             CreateMap<UserUpdateRequest, User>()
      .          ForMember(dest => dest.Role, opt => opt.MapFrom(src => (short)src.Role))
                 .ReverseMap()
      .          ForMember(dest => dest.Role, opt => opt.MapFrom(src => (UserRole)src.Role));
             CreateMap<UserCreateRequest, User>().ReverseMap();
+            CreateMap<UserAdminCreateRequest, User>().ReverseMap();
+
             CreateMap<UserGetRequest, User>().ReverseMap();
             CreateMap<LoginResponse, User>().ReverseMap();
 

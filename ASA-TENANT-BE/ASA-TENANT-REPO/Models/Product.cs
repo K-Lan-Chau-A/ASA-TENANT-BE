@@ -15,7 +15,7 @@ public partial class Product
 
     public int? Quantity { get; set; }
 
-    public bool? IsLow { get; set; }
+    public int? IsLow { get; set; }
 
     public decimal? Cost { get; set; }
 

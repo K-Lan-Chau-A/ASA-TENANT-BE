@@ -9,10 +9,6 @@ namespace ASA_TENANT_REPO.DBContext;
 
 public partial class ASATENANTDBContext : DbContext
 {
-    public ASATENANTDBContext()
-    {
-    }
-
     public ASATENANTDBContext(DbContextOptions<ASATENANTDBContext> options)
         : base(options)
     {
@@ -71,10 +67,6 @@ public partial class ASATENANTDBContext : DbContext
     public virtual DbSet<Voucher> Vouchers { get; set; }
 
     public virtual DbSet<Zalopay> Zalopays { get; set; }
-
-//    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-//#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-//        => optionsBuilder.UseNpgsql("Persist Security Info=True;Password=Hau@1310;Username=postgres;Database=ASA-TENANT-DB;Host=localhost");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

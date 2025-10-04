@@ -17,6 +17,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using System.Security.Cryptography;
 
 namespace ASA_TENANT_SERVICE.Implenment
 {
@@ -45,6 +46,24 @@ namespace ASA_TENANT_SERVICE.Implenment
             _mapper = mapper;
             _configuration = configuration;
             _httpClient = httpClientFactory.CreateClient("BEPlatformUrl");
+        }
+
+        private static string GenerateRandomPassword(int length = 8)
+        {
+            const string allowedChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            var bytes = new byte[length];
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(bytes);
+            }
+
+            var result = new char[length];
+            for (int i = 0; i < length; i++)
+            {
+                result[i] = allowedChars[bytes[i] % allowedChars.Length];
+            }
+
+            return new string(result);
         }
 
         public async Task<ApiResponse<ShopResponse>> CreateAsync(ShopRequest request)
@@ -124,11 +143,12 @@ namespace ASA_TENANT_SERVICE.Implenment
 
                 await _shopSubscriptionRepo.CreateAsync(subscription);
 
-                // Tạo người dùng quản trị với tên người dùng và mật khẩu mặc định được cung cấp
+                // Tạo người dùng quản trị với tên người dùng và mật khẩu ngẫu nhiên
+                var plainPassword = GenerateRandomPassword(8);
                 var adminUser = new User
                 {
                     Username = request.Username,
-                    Password = BCrypt.Net.BCrypt.HashPassword("123456"),
+                    Password = BCrypt.Net.BCrypt.HashPassword(plainPassword),
                     Status = 1,
                     ShopId = entity.ShopId,
                     Role = 1,
@@ -160,7 +180,7 @@ namespace ASA_TENANT_SERVICE.Implenment
 
                 var response = _mapper.Map<ShopResponse>(entity);
                 response.CreatedAdminUsername = request.Username;
-                response.CreatedAdminPassword = "123456";
+                response.CreatedAdminPassword = plainPassword;
                 return new ApiResponse<ShopResponse>
                 {
                     Success = true,

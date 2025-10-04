@@ -43,11 +43,14 @@ namespace ASA_TENANT_SERVICE.Mapping
 
             // User Mappings
             CreateMap<User, UserResponse>().ReverseMap();
+            CreateMap<User, UserAdminResponse>().ReverseMap();
             CreateMap<UserUpdateRequest, User>()
      .          ForMember(dest => dest.Role, opt => opt.MapFrom(src => (short)src.Role))
                 .ReverseMap()
      .          ForMember(dest => dest.Role, opt => opt.MapFrom(src => (UserRole)src.Role));
             CreateMap<UserCreateRequest, User>().ReverseMap();
+            CreateMap<UserAdminCreateRequest, User>().ReverseMap();
+
             CreateMap<UserGetRequest, User>().ReverseMap();
             CreateMap<LoginResponse, User>().ReverseMap();
 
@@ -192,6 +195,29 @@ namespace ASA_TENANT_SERVICE.Mapping
                 .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.User.Role));
             CreateMap<UserFeatureRequest, UserFeature>().ReverseMap();
             CreateMap<UserFeatureGetRequest, UserFeature>().ReverseMap();
+
+            // ShopSubscription Mappings
+            CreateMap<ShopSubscription, ShopSubscriptionResponse>()
+                .ForMember(dest => dest.shopSubscriptionId, opt => opt.MapFrom(src => src.ShopSubscriptionId))
+                .ForMember(dest => dest.shopId, opt => opt.MapFrom(src => src.ShopId))
+                .ForMember(dest => dest.platformProductId, opt => opt.MapFrom(src => src.PlatformProductId))
+                .ForMember(dest => dest.startDate, opt => opt.MapFrom(src => src.StartDate))
+                .ForMember(dest => dest.endDate, opt => opt.MapFrom(src => src.EndDate))
+                .ForMember(dest => dest.status, opt => opt.MapFrom(src => src.Status))
+                .ForMember(dest => dest.createdAt, opt => opt.MapFrom(src => src.CreatedAt));
+            CreateMap<ShopSubscriptionRequest, ShopSubscription>()
+                .ForMember(dest => dest.ShopId, opt => opt.MapFrom(src => src.shopId))
+                .ForMember(dest => dest.PlatformProductId, opt => opt.MapFrom(src => src.platformProductId))
+                .ForMember(dest => dest.StartDate, opt => opt.MapFrom(src => src.startDate))
+                .ForMember(dest => dest.EndDate, opt => opt.MapFrom(src => src.endDate))
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.status));
+            CreateMap<ShopSubscriptionGetRequest, ShopSubscription>()
+                .ForMember(dest => dest.ShopSubscriptionId, opt => opt.MapFrom(src => src.shopSubscriptionId ?? 0))
+                .ForMember(dest => dest.ShopId, opt => opt.MapFrom(src => src.shopId))
+                .ForMember(dest => dest.PlatformProductId, opt => opt.MapFrom(src => src.platformProductId))
+                .ForMember(dest => dest.StartDate, opt => opt.MapFrom(src => src.startDate ?? default(DateTime)))
+                .ForMember(dest => dest.EndDate, opt => opt.MapFrom(src => src.endDate ?? default(DateTime)))
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.status));
         }
     }
 }

@@ -110,7 +110,7 @@ namespace ASA_TENANT_SERVICE.Implenment
             }
 
             product.Quantity = request.InventoryTransaction.Quantity;
-            product.IsLow = false;
+            product.IsLow = request.IsLow;
             await _productRepo.CreateAsync(product);
 
             // Thêm đơn vị sản phẩm

@@ -15,6 +15,12 @@ public partial class Shop
 
     public string ShopToken { get; set; }
 
+    public string BankName { get; set; }
+
+    public string BankCode { get; set; }
+
+    public string BankNum { get; set; }
+
     public DateTime? CreatedAt { get; set; }
 
     public short? Status { get; set; }
@@ -26,13 +32,6 @@ public partial class Shop
     public int? CurrentRequest { get; set; }
 
     public int? CurrentAccount { get; set; }
-    
-    public string BankName { get; set; }
-
-    public string BankCode { get; set; }
-
-    public string BankNum { get; set; }
-
 
     public virtual ICollection<Category> Categories { get; set; } = new List<Category>();
 
@@ -71,6 +70,4 @@ public partial class Shop
     public virtual ICollection<Voucher> Vouchers { get; set; } = new List<Voucher>();
 
     public virtual ICollection<Zalopay> Zalopays { get; set; } = new List<Zalopay>();
-
-   
 }

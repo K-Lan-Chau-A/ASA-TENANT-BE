@@ -48,6 +48,7 @@ builder.Services.AddScoped<IReportDetailService, ReportDetailService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IShiftService, ShiftService>();
 builder.Services.AddScoped<IShopService, ShopService>();
+builder.Services.AddScoped<IShopSubscriptionService, ShopSubscriptionService>();
 builder.Services.AddScoped<ITransactionService, TransactionService>();
 builder.Services.AddScoped<IUnitService, UnitService>();
 builder.Services.AddScoped<IUserService, UserService>();
@@ -90,17 +91,20 @@ builder.Services.AddScoped<ReportDetailRepo>();
 builder.Services.AddScoped<ReportRepo>();
 builder.Services.AddScoped<ShiftRepo>();
 builder.Services.AddScoped<ShopRepo>();
+builder.Services.AddScoped<ShopSubscriptionRepo>();
 builder.Services.AddScoped<TransactionRepo>();
 builder.Services.AddScoped<UnitRepo>();
 builder.Services.AddScoped<UserRepo>();
 builder.Services.AddScoped<UserFeatureRepo>();
 builder.Services.AddScoped<VoucherRepo>();
 builder.Services.AddScoped<ZalopayRepo>();
+builder.Services.AddScoped<ShopSubscriptionRepo>();
+
 
 // Add HttpClient for BePlatform
 builder.Services.AddHttpClient("BePlatform", client =>
 {
-    client.BaseAddress = new Uri(builder.Configuration["BePlatformURL:Url"]);
+    client.BaseAddress = new Uri(builder.Configuration["BEPlatformUrl:Url"]);
     client.Timeout = TimeSpan.FromSeconds(60);
 });
 
@@ -122,6 +126,14 @@ builder.Services.AddQuartz(q =>
         .ForJob(monthlyJobKey)
         .WithIdentity("MonthlyReportTrigger")
         .WithCronSchedule("0 30 0 1 * ?", x => x.InTimeZone(TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time")))); // 00:10 UTC ngày 1 hàng tháng
+
+    // Order expiration job: chạy mỗi phút để kiểm tra đơn hàng hết hạn
+    var orderExpirationJobKey = new JobKey("OrderExpirationJob");
+    q.AddJob<OrderExpirationJob>(opts => opts.WithIdentity(orderExpirationJobKey));
+    q.AddTrigger(opts => opts
+        .ForJob(orderExpirationJobKey)
+        .WithIdentity("OrderExpirationTrigger")
+        .WithSimpleSchedule(x => x.WithIntervalInMinutes(1).RepeatForever())); // Chạy mỗi phút
 });
 
 //// Quartz test 5p và 10p

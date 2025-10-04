@@ -39,7 +39,7 @@ namespace ASA_TENANT_BE.Controllers
             return Ok(result);
         }
         [HttpPost("create-admin")]
-        public async Task<ActionResult<UserResponse>> CreateAdmin([FromBody] UserCreateRequest request)
+        public async Task<ActionResult<UserAdminResponse>> CreateAdmin([FromBody] UserAdminCreateRequest request)
         {
             var result = await _userService.CreateAdminAsync(request);
             return Ok(result);

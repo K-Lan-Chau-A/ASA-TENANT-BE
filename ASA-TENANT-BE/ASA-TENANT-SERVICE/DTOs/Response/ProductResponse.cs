@@ -17,7 +17,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Response
         public string? ProductImageURL { get; set; }
         public string? Barcode { get; set; }
         public decimal? Discount { get; set; }
-        public bool? IsLow { get; set; }
+        public int? IsLow { get; set; }
         public short? Status { get; set; }
         public long ShopId { get; set; }
         public long CategoryId { get; set; }

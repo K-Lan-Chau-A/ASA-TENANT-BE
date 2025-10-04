@@ -17,6 +17,8 @@ public partial class Customer
 
     public short? Gender { get; set; }
 
+    public int? RankId { get; set; }
+
     public short? Status { get; set; }
 
     public long? ShopId { get; set; }
@@ -30,8 +32,6 @@ public partial class Customer
     public string Avatar { get; set; }
 
     public string Email { get; set; }
-
-    public int? RankId { get; set; }
 
     public virtual ICollection<Nfc> Nfcs { get; set; } = new List<Nfc>();
 

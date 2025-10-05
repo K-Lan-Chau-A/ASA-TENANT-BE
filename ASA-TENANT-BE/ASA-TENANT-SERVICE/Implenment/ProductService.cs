@@ -111,6 +111,7 @@ namespace ASA_TENANT_SERVICE.Implenment
 
             product.Quantity = request.InventoryTransaction.Quantity;
             product.IsLow = request.IsLow;
+            product.IsLowStockNotified = false;
             await _productRepo.CreateAsync(product);
 
             // Thêm đơn vị sản phẩm
@@ -181,6 +182,14 @@ namespace ASA_TENANT_SERVICE.Implenment
                 product.Price = request.Price ?? product.Price;
                 product.Discount = request.Discount ?? product.Discount;
                 product.UpdateAt = DateTime.UtcNow;
+
+                // Nếu là nhập kho (type = 2) hoặc nói chung có tăng số lượng và tồn vượt ngưỡng, reset cờ
+                var threshold = product.IsLow ?? 0;
+                var currentQty = product.Quantity ?? 0;
+                if (currentQty > threshold && (product.IsLowStockNotified ?? false))
+                {
+                    product.IsLowStockNotified = false;
+                }
 
                 string invImageUrl = null;
                 if (request.InventoryTransaction?.InventoryTransImageFile != null)

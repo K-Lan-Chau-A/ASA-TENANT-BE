@@ -1,5 +1,6 @@
 ﻿using ASA_TENANT_REPO.Models;
 using ASA_TENANT_REPO.Repository;
+using ASA_TENANT_REPO.Models;
 using ASA_TENANT_SERVICE.DTOs.Common;
 using ASA_TENANT_SERVICE.DTOs.Request;
 using ASA_TENANT_SERVICE.DTOs.Response;
@@ -7,6 +8,7 @@ using ASA_TENANT_SERVICE.Interface;
 using AutoMapper;
 using ASA_TENANT_SERVICE.Enums;
 using Microsoft.EntityFrameworkCore;
+using ASA_TENANT_REPO.Repository;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,7 +26,12 @@ namespace ASA_TENANT_SERVICE.Implenment
         private readonly IMapper _mapper;
         private readonly VoucherRepo _voucherRepo;
         private readonly ProductRepo _productRepo;
-        public OrderService(OrderRepo orderRepo, IOrderDetailService orderDetailService, IInventoryTransactionService inventoryTransactionService, ProductUnitRepo productUnitRepo, IMapper mapper, VoucherRepo voucherRepo, ProductRepo productRepo)
+        private readonly INotificationService _notificationService;
+        private readonly IFcmService _fcmService;
+        private readonly IRealtimeNotifier _realtimeNotifier;
+        private readonly UnitRepo _unitRepo;
+        private readonly UserRepo _userRepo;
+        public OrderService(OrderRepo orderRepo, IOrderDetailService orderDetailService, IInventoryTransactionService inventoryTransactionService, ProductUnitRepo productUnitRepo, IMapper mapper, VoucherRepo voucherRepo, ProductRepo productRepo, INotificationService notificationService, IFcmService fcmService, IRealtimeNotifier realtimeNotifier, UserRepo userRepo, UnitRepo unitRepo)
         {
             _orderRepo = orderRepo;
             _orderDetailService = orderDetailService;
@@ -33,6 +40,11 @@ namespace ASA_TENANT_SERVICE.Implenment
             _mapper = mapper;
             _voucherRepo = voucherRepo;
             _productRepo = productRepo;
+            _notificationService = notificationService;
+            _fcmService = fcmService;
+            _realtimeNotifier = realtimeNotifier;
+            _userRepo = userRepo;
+            _unitRepo = unitRepo;
         }
 
         public async Task<ApiResponse<OrderResponse>> GetByIdAsync(long id)
@@ -197,6 +209,87 @@ namespace ASA_TENANT_SERVICE.Implenment
                                 }
                                 product.Quantity = Math.Max(0, (product.Quantity.Value - quantityToDeduct));
                                 await _productRepo.UpdateAsync(product);
+
+                                // Low stock check and notify
+                                var threshold = product.IsLow ?? 0;
+                                var currentQty = product.Quantity ?? 0;
+                                if (currentQty <= threshold)
+                                {
+                                    if (!(product.IsLowStockNotified ?? false))
+                                    {
+                                        var title = "Cảnh báo sắp hết hàng";
+                                        string unitName = string.Empty;
+                                        if (product.UnitIdFk.HasValue)
+                                        {
+                                            var unit = await _unitRepo.GetByIdAsync(product.UnitIdFk.Value);
+                                            unitName = unit?.Name ?? string.Empty;
+                                        }
+                                        var content = $"Sản phẩm {product.ProductName} chỉ còn {currentQty} {unitName} (Mức cảnh báo: {threshold}).";
+
+                                        // Đặt cờ trước để tránh spam kể cả khi dispatch lỗi
+                                        product.IsLowStockNotified = true;
+                                        await _productRepo.UpdateAsync(product);
+
+                                        try
+                                        {
+                                            // Create DB notification (Type = 1 Warning, IsRead = false)
+                                            await _notificationService.CreateAsync(new NotificationRequest
+                                            {
+                                                ShopId = entity.ShopId,
+                                                UserId = null,
+                                                Title = title,
+                                                Content = content,
+                                                Type = (short)NotificationType.Warning,
+                                                IsRead = false,
+                                                CreatedAt = DateTime.UtcNow
+                                            });
+
+                                            var payload = new
+                                            {
+                                                type = (short)NotificationType.Warning,
+                                                shopId = entity.ShopId,
+                                                productId = product.ProductId,
+                                                productName = product.ProductName,
+                                                currentQuantity = currentQty,
+                                                threshold = threshold,
+                                                title = title,
+                                                content = content,
+                                                createdAt = DateTime.UtcNow
+                                            };
+
+                                            // Emit SignalR to shop group
+                                            if (entity.ShopId.HasValue)
+                                            {
+                                                await _realtimeNotifier.EmitLowStockAlertToShop(entity.ShopId.Value, payload);
+                                            }
+
+                                            // Send FCM to all users of the shop
+                                            if (entity.ShopId.HasValue)
+                                            {
+                                                var usersInShop = await _userRepo
+                                                    .GetFiltered(new User { ShopId = entity.ShopId })
+                                                    .Select(u => (int)u.UserId)
+                                                    .ToListAsync();
+                                                if (usersInShop.Count > 0)
+                                                {
+                                                    await _fcmService.SendNotificationToManyUsersAsync(usersInShop, title, content);
+                                                }
+                                            }
+                                        }
+                                        catch
+                                        {
+                                            // Nuốt lỗi gửi thông báo để không làm hỏng luồng tạo đơn
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    if (product.IsLowStockNotified == true)
+                                    {
+                                        product.IsLowStockNotified = false;
+                                        await _productRepo.UpdateAsync(product);
+                                    }
+                                }
                             }
                         }
                         }

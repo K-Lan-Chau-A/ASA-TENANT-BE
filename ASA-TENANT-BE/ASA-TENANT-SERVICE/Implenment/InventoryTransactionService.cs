@@ -44,6 +44,20 @@ namespace ASA_TENANT_SERVICE.Implenment
 
                 if (affected > 0)
                 {
+                    if (entity.Type == 2 && entity.ProductId.HasValue)
+                    {
+                        var product = await _productRepo.GetByIdAsync(entity.ProductId.Value);
+                        if (product != null)
+                        {
+                            var threshold = product.IsLow ?? 0;
+                            var currentQty = product.Quantity ?? 0;
+                            if (currentQty > threshold && (product.IsLowStockNotified ?? false))
+                            {
+                                product.IsLowStockNotified = false;
+                                await _productRepo.UpdateAsync(product);
+                            }
+                        }
+                    }
                     var response = _mapper.Map<InventoryTransactionResponse>(entity);
                     return new ApiResponse<InventoryTransactionResponse>
                     {
@@ -158,6 +172,18 @@ namespace ASA_TENANT_SERVICE.Implenment
                             product.Cost = request.Price.Value / request.Quantity;
                         }
                         await _productRepo.UpdateAsync(product);
+
+                        // Nếu là nhập kho (type = 2), kiểm tra và reset cờ khi vượt ngưỡng
+                        if (existing.Type == 2)
+                        {
+                            var threshold = product.IsLow ?? 0;
+                            var qty = product.Quantity ?? 0;
+                            if (qty > threshold && (product.IsLowStockNotified ?? false))
+                            {
+                                product.IsLowStockNotified = false;
+                                await _productRepo.UpdateAsync(product);
+                            }
+                        }
                     }
                 }
                 else
@@ -183,6 +209,17 @@ namespace ASA_TENANT_SERVICE.Implenment
                             newProduct.Cost = request.Price.Value / request.Quantity;
                         }
                         await _productRepo.UpdateAsync(newProduct);
+
+                        if (existing.Type == 2)
+                        {
+                            var threshold = newProduct.IsLow ?? 0;
+                            var qty = newProduct.Quantity ?? 0;
+                            if (qty > threshold && (newProduct.IsLowStockNotified ?? false))
+                            {
+                                newProduct.IsLowStockNotified = false;
+                                await _productRepo.UpdateAsync(newProduct);
+                            }
+                        }
                     }
                 }
                 var affected = await _inventoryTransactionRepo.UpdateAsync(existing);

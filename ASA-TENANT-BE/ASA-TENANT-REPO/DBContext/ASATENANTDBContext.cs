@@ -407,6 +407,9 @@ public partial class ASATENANTDBContext : DbContext
                 .HasColumnName("discount");
             entity.Property(e => e.ImageUrl).HasColumnName("image_url");
             entity.Property(e => e.IsLow).HasColumnName("is_low");
+            entity.Property(e => e.IsLowStockNotified)
+                .HasDefaultValue(false)
+                .HasColumnName("is_low_stock_notified");
             entity.Property(e => e.Price)
                 .HasPrecision(18, 2)
                 .HasColumnName("price");

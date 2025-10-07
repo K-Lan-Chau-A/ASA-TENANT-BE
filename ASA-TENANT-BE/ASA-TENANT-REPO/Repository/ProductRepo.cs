@@ -47,6 +47,10 @@ namespace ASA_TENANT_REPO.Repository
         {
             return await _context.Products.FirstOrDefaultAsync(p => p.Barcode == barcode && p.ShopId == shopId);
         }
+        public async Task<Product> GetByNameAsync(string name, long shopId)
+        {
+            return await _context.Products.FirstOrDefaultAsync(p => p.ProductName.ToLower() == name.ToLower() && p.ShopId == shopId);
+        }
         public async Task<bool> UnActiveProduct(long productId, long shopId)
         {
             var product = await _context.Products

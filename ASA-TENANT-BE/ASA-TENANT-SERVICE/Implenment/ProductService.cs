@@ -68,7 +68,15 @@ namespace ASA_TENANT_SERVICE.Implenment
                     };
                 }
 
-                var product = await _productRepo.GetByBarcodeAsync(request.Barcode, request.ShopId);
+                Product product = null;
+                if (!string.IsNullOrWhiteSpace(request.Barcode))
+                {
+                    product = await _productRepo.GetByBarcodeAsync(request.Barcode, request.ShopId);
+                }
+                else if (!string.IsNullOrWhiteSpace(request.ProductName))
+                {
+                    product = await _productRepo.GetByNameAsync(request.ProductName, request.ShopId);
+                }
 
                 if (product == null)
                 {
@@ -183,7 +191,6 @@ namespace ASA_TENANT_SERVICE.Implenment
                 product.Discount = request.Discount ?? product.Discount;
                 product.UpdateAt = DateTime.UtcNow;
 
-                // Nếu là nhập kho (type = 2) hoặc nói chung có tăng số lượng và tồn vượt ngưỡng, reset cờ
                 var threshold = product.IsLow ?? 0;
                 var currentQty = product.Quantity ?? 0;
                 if (currentQty > threshold && (product.IsLowStockNotified ?? false))

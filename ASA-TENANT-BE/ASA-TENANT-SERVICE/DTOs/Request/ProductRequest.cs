@@ -13,7 +13,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
         // Thông tin chung của sản phẩm
         public long ShopId { get; set; }    
         public string ProductName { get; set; }   
-        public string Barcode { get; set; }
+        public string? Barcode { get; set; }
         public int? IsLow { get; set; }
         public long? CategoryId { get; set; }
         public IFormFile? ProductImageFile { get; set; }

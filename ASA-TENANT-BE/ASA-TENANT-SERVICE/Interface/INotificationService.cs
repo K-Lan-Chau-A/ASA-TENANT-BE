@@ -15,5 +15,7 @@ namespace ASA_TENANT_SERVICE.Interface
         Task<ApiResponse<NotificationResponse>> CreateAsync(NotificationRequest request);
         Task<ApiResponse<NotificationResponse>> UpdateAsync(long id, NotificationRequest request);
         Task<ApiResponse<bool>> DeleteAsync(long id);
+        Task<ApiResponse<bool>> MarkAsReadAsync(long id);
+        Task<ApiResponse<int>> MarkAllAsReadByUserAsync(long userId);
     }
 }

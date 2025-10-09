@@ -156,5 +156,73 @@ namespace ASA_TENANT_SERVICE.Implenment
                 };
             }
         }
+
+        public async Task<ApiResponse<bool>> MarkAsReadAsync(long id)
+        {
+            try
+            {
+                var existing = await _notificationRepo.GetByIdAsync(id);
+                if (existing == null)
+                {
+                    return new ApiResponse<bool>
+                    {
+                        Success = false,
+                        Message = "Notification not found",
+                        Data = false
+                    };
+                }
+
+                existing.IsRead = true;
+                var affected = await _notificationRepo.UpdateAsync(existing);
+                return new ApiResponse<bool>
+                {
+                    Success = affected > 0,
+                    Message = affected > 0 ? "Đánh dấu đã đọc" : "Update failed",
+                    Data = affected > 0
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = $"Error: {ex.Message}",
+                    Data = false
+                };
+            }
+        }
+
+        public async Task<ApiResponse<int>> MarkAllAsReadByUserAsync(long userId)
+        {
+            try
+            {
+                var query = _notificationRepo.GetFiltered(new Notification { UserId = userId, IsRead = false });
+                var list = await query.ToListAsync();
+                foreach (var n in list)
+                {
+                    n.IsRead = true;
+                }
+                var count = 0;
+                foreach (var n in list)
+                {
+                    count += await _notificationRepo.UpdateAsync(n) > 0 ? 1 : 0;
+                }
+                return new ApiResponse<int>
+                {
+                    Success = true,
+                    Message = "Đánh dấu tất cả đã đọc",
+                    Data = count
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<int>
+                {
+                    Success = false,
+                    Message = $"Error: {ex.Message}",
+                    Data = 0
+                };
+            }
+        }
     }
 }

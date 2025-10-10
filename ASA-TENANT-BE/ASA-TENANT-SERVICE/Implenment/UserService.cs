@@ -19,10 +19,12 @@ namespace ASA_TENANT_SERVICE.Implenment
     {
         private readonly UserRepo _userRepo;
         private readonly IMapper _mapper;
-        public UserService(UserRepo userRepo, IMapper mapper)
+        private readonly IPhotoService _photoService;
+        public UserService(UserRepo userRepo, IMapper mapper, IPhotoService photoService)
         {
             _userRepo = userRepo;
             _mapper = mapper;
+            _photoService = photoService;
         }
 
         public async Task<ApiResponse<UserResponse>> CreateStaffAsync(UserCreateRequest request)
@@ -43,8 +45,18 @@ namespace ASA_TENANT_SERVICE.Implenment
                 var entity = _mapper.Map<User>(request);
 
                 entity.CreatedAt = DateTime.UtcNow;
-                entity.Password = HashPassword(request.Password);
+                entity.Status = 1; // Default active
+                if (!string.IsNullOrWhiteSpace(request.Password))
+                {
+                    entity.Password = HashPassword(request.Password);
+                }
                 entity.Role = 2; // Default role is staff
+
+                if (request.AvatarFile != null)
+                {
+                    var imageUrl = await _photoService.UploadImageAsync(request.AvatarFile);
+                    entity.Avatar = imageUrl;
+                }
 
                 var affected = await _userRepo.CreateAsync(entity);
 
@@ -189,23 +201,18 @@ namespace ASA_TENANT_SERVICE.Implenment
                         Data = null
                     };
 
-                // Check if admin user already exists
-                if (request.Role == Enums.UserRole.Admin) // 1 = Admin
+                _mapper.Map(request, existing);
+
+                if (request.AvatarFile != null)
                 {
-                    var existingAdmin = await _userRepo.GetFirstUserAdmin(request.ShopId);
-                    if (existingAdmin != null)
-                    {
-                        return new ApiResponse<UserResponse>
-                        {
-                            Success = false,
-                            Message = "Only 1 admin user can exists in shop, try another role",
-                            Data = null
-                        };
-                    }
+                    var imageUrl = await _photoService.UploadImageAsync(request.AvatarFile);
+                    existing.Avatar = imageUrl;
                 }
 
-                _mapper.Map(request, existing);
-                existing.Password = HashPassword(request.Password);
+                if (!string.IsNullOrWhiteSpace(request.Password))
+                {
+                    existing.Password = HashPassword(request.Password);
+                }
 
                 var affected = await _userRepo.UpdateAsync(existing);
                 if (affected > 0)

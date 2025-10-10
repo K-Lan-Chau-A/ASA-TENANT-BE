@@ -755,12 +755,21 @@ public partial class ASATENANTDBContext : DbContext
 
             entity.Property(e => e.UserId).HasColumnName("user_id");
             entity.Property(e => e.Avatar).HasColumnName("avatar");
+            entity.Property(e => e.CitizenIdNumber)
+                .HasMaxLength(20)
+                .HasColumnName("citizen_id_number");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
+            entity.Property(e => e.FullName)
+                .HasMaxLength(150)
+                .HasColumnName("full_name");
             entity.Property(e => e.Password)
                 .HasMaxLength(255)
                 .HasColumnName("password");
+            entity.Property(e => e.PhoneNumber)
+                .HasMaxLength(20)
+                .HasColumnName("phone_number");
             entity.Property(e => e.Role).HasColumnName("role");
             entity.Property(e => e.ShopId).HasColumnName("shop_id");
             entity.Property(e => e.Status).HasColumnName("status");

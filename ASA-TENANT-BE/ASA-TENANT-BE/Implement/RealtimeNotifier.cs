@@ -18,6 +18,16 @@ namespace ASA_TENANT_SERVICE.Implement
         {
             await _hubContext.Clients.Group($"Shop_{shopId}").SendAsync("LowStockAlert", payload);
         }
+
+        public async Task EmitSubscriptionExpiryReminderToUser(long userId, object payload)
+        {
+            await _hubContext.Clients.Group($"User_{userId}").SendAsync("SubscriptionExpiryReminder", payload);
+        }
+
+        public async Task EmitCustomerRankUpToShop(long shopId, object payload)
+        {
+            await _hubContext.Clients.Group($"Shop_{shopId}").SendAsync("CustomerRankUp", payload);
+        }
     }
 }
 

@@ -179,31 +179,54 @@ namespace ASA_TENANT_SERVICE.Implenment
             return true;
         }
 
-        public async Task<bool> SendNotificationToManyUsersAsync(List<int> userIds, string title, string body)
+        public async Task<bool> SendNotificationToManyUsersAsync(List<long> userIds, string title, string body)
         {
+            Console.WriteLine($"SendNotificationToManyUsersAsync: userIds = [{string.Join(", ", userIds)}], title = '{title}', body = '{body}'");
+            
             var listTokens = new List<string>();
             bool allSuccess = false;
             foreach (var userId in userIds)
             {
                 var tokens = await _fcmRepo.GetActiveTokensByUserIdAsync(userId);
+                Console.WriteLine($"User {userId}: found {tokens?.Count ?? 0} active FCM tokens");
+                
                 if (tokens == null || tokens.Count == 0)
                 {
+                    Console.WriteLine($"User {userId}: no active FCM tokens");
                     allSuccess = false;
                     continue;
                 }
                 foreach (var t in tokens)
                 {
-                    listTokens.Add(t.FcmToken);
+                    if (!string.IsNullOrEmpty(t.FcmToken))
+                    {
+                        listTokens.Add(t.FcmToken);
+                    }
                 }
             }
+            
+            Console.WriteLine($"Total FCM tokens collected: {listTokens.Count}");
+            
             if (listTokens.Count > 0)
             {
                 allSuccess = await SendNotificationAsync(listTokens, title, body);
+            }
+            else
+            {
+                Console.WriteLine("No valid FCM tokens found for any users");
             }
             return allSuccess;
         }
         private async Task<bool> SendNotificationAsync(List<string> tokens, string title, string body)
         {
+            Console.WriteLine($"SendNotificationAsync: tokens count = {tokens?.Count ?? -1}, title = '{title}', body = '{body}'");
+            
+            if (tokens == null || tokens.Count == 0)
+            {
+                Console.WriteLine("No FCM tokens provided, skipping notification");
+                return false;
+            }
+
             var message = new FirebaseAdmin.Messaging.MulticastMessage
             {
                 Tokens = tokens,
@@ -215,10 +238,16 @@ namespace ASA_TENANT_SERVICE.Implenment
             };
 
             var messaging = FirebaseAdmin.Messaging.FirebaseMessaging.DefaultInstance;
+            if (messaging == null)
+            {
+                Console.WriteLine("FirebaseMessaging.DefaultInstance is null!");
+                return false;
+            }
 
             try
             {
                 var response = await messaging.SendEachForMulticastAsync(message);
+                Console.WriteLine($"FCM sent: SuccessCount = {response.SuccessCount}, FailureCount = {response.FailureCount}");
                 return response.SuccessCount > 0;
             }
             catch (Exception ex)

@@ -135,6 +135,14 @@ builder.Services.AddQuartz(q =>
         .ForJob(orderExpirationJobKey)
         .WithIdentity("OrderExpirationTrigger")
         .WithSimpleSchedule(x => x.WithIntervalInMinutes(1).RepeatForever())); // Chạy mỗi phút
+
+    // Subscription expiry reminder: chạy mỗi phút (TEST)
+    var subExpiryJobKey = new JobKey("SubscriptionExpiryReminderJob");
+    q.AddJob<SubscriptionExpiryReminderJob>(opts => opts.WithIdentity(subExpiryJobKey));
+    q.AddTrigger(opts => opts
+        .ForJob(subExpiryJobKey)
+        .WithIdentity("SubscriptionExpiryReminderTrigger")
+        .WithSimpleSchedule(x => x.WithIntervalInMinutes(1).RepeatForever()));
 });
 
 //// Quartz test 5p và 10p

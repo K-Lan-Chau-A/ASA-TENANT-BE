@@ -16,6 +16,15 @@ namespace ASA_TENANT_REPO.Repository
         {
         }
 
+        // Override GetByIdAsync để include Rank
+        public new async Task<Customer> GetByIdAsync(long? id)
+        {
+            if (!id.HasValue) return null;
+            return await _context.Customers
+                .Include(c => c.Rank)
+                .FirstOrDefaultAsync(c => c.CustomerId == id.Value);
+        }
+
         public IQueryable<Customer> GetFiltered(Customer filter)
         {
             var query = _context.Customers.Include(c => c.Rank).AsQueryable();

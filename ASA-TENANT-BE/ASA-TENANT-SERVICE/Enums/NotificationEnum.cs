@@ -9,9 +9,15 @@ namespace ASA_TENANT_SERVICE.Enums
 {
     public enum NotificationType
     {
+        [Description("Mặc định")]
+        Default = 0,
         [Description("Cảnh báo")]
         Warning = 1,
-        [Description("Thông tin")]
-        Information = 2
+        [Description("Ưu đãi")]
+        Promotion = 2,
+        [Description("Gợi ý")]
+        Suggestion = 3,
+        [Description("Thành công")]
+        Success = 4
     }
 }

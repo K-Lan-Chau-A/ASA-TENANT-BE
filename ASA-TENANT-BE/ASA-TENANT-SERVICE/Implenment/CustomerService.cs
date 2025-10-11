@@ -5,6 +5,7 @@ using ASA_TENANT_SERVICE.DTOs.Common;
 using ASA_TENANT_SERVICE.DTOs.Request;
 using ASA_TENANT_SERVICE.DTOs.Response;
 using ASA_TENANT_SERVICE.Interface;
+using ASA_TENANT_SERVICE.Enums;
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -19,10 +20,17 @@ namespace ASA_TENANT_SERVICE.Implenment
     {
         private readonly CustomerRepo _customerRepo;
         private readonly IMapper _mapper;
-        public CustomerService(CustomerRepo customerRepo, IMapper mapper)
+        private readonly ASATENANTDBContext _context;
+        private readonly IFcmService _fcmService;
+        private readonly IRealtimeNotifier _realtimeNotifier;
+        
+        public CustomerService(CustomerRepo customerRepo, IMapper mapper, ASATENANTDBContext context, IFcmService fcmService, IRealtimeNotifier realtimeNotifier)
         {
             _customerRepo = customerRepo;
             _mapper = mapper;
+            _context = context;
+            _fcmService = fcmService;
+            _realtimeNotifier = realtimeNotifier;
         }
 
         public async Task<ApiResponse<CustomerResponse>> CreateAsync(CustomerRequest request)
@@ -156,6 +164,237 @@ namespace ASA_TENANT_SERVICE.Implenment
                     Message = $"Error: {ex.Message}",
                     Data = null
                 };
+            }
+        }
+
+        public async Task<ApiResponse<bool>> UpdateCustomerSpentAndRankAsync(long customerId, decimal orderTotalPrice)
+        {
+            try
+            {
+                Console.WriteLine($"=== UpdateCustomerSpentAndRankAsync: CustomerId={customerId}, OrderTotalPrice={orderTotalPrice}");
+                
+                var customer = await _context.Customers
+                    .Include(c => c.Rank)
+                    .FirstOrDefaultAsync(c => c.CustomerId == customerId);
+
+                if (customer == null)
+                {
+                    Console.WriteLine($"Customer {customerId} not found");
+                    return new ApiResponse<bool>
+                    {
+                        Success = false,
+                        Message = "Customer not found",
+                        Data = false
+                    };
+                }
+
+                var oldSpent = customer.Spent ?? 0;
+                var oldRankId = customer.RankId;
+                
+                // Cộng TotalPrice vào Spent
+                customer.Spent = oldSpent + orderTotalPrice;
+                customer.UpdatedAt = DateTime.UtcNow;
+
+                Console.WriteLine($"Customer {customerId}: Spent {oldSpent} + {orderTotalPrice} = {customer.Spent}, Current Rank = {oldRankId}");
+
+                // Kiểm tra và cập nhật rank nếu cần
+                await UpdateCustomerRankAsync(customer);
+
+                var affected = await _context.SaveChangesAsync();
+                
+                return new ApiResponse<bool>
+                {
+                    Success = affected > 0,
+                    Message = affected > 0 ? "Customer spent and rank updated successfully" : "Update failed",
+                    Data = affected > 0
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = $"Error: {ex.Message}",
+                    Data = false
+                };
+            }
+        }
+
+        private async Task UpdateCustomerRankAsync(Customer customer)
+        {
+            try
+            {
+                // Lấy tất cả ranks của shop theo thứ tự threshold tăng dần
+                var ranks = await _context.Ranks
+                    .Where(r => r.ShopId == customer.ShopId)
+                    .OrderBy(r => r.Threshold)
+                    .ToListAsync();
+
+                if (!ranks.Any()) return;
+
+                // Logic: Nếu spent vượt qua threshold của rank hiện tại thì lên rank tiếp theo
+                int? newRankId = customer.RankId; // Mặc định giữ nguyên rank hiện tại
+                
+                // Tìm rank hiện tại của customer
+                var currentRank = ranks.FirstOrDefault(r => r.RankId == customer.RankId);
+                if (currentRank == null) return; // Không tìm thấy rank hiện tại
+                
+                // Nếu rank hiện tại có threshold null (rank cao nhất), không thể lên cao hơn
+                if (currentRank.Threshold == null)
+                {
+                    Console.WriteLine($"Customer {customer.CustomerId} đã ở rank cao nhất (Kim Cương)");
+                    return;
+                }
+                
+                // Kiểm tra xem spent có vượt qua threshold của rank hiện tại không
+                if (customer.Spent >= (decimal)currentRank.Threshold)
+                {
+                    // Tìm rank tiếp theo (rank có threshold cao hơn)
+                    var nextRank = ranks
+                        .Where(r => r.Threshold != null && r.Threshold > currentRank.Threshold)
+                        .OrderBy(r => r.Threshold)
+                        .FirstOrDefault();
+                    
+                    if (nextRank != null)
+                    {
+                        newRankId = nextRank.RankId;
+                        Console.WriteLine($"Customer {customer.CustomerId} vượt qua threshold {currentRank.Threshold} của rank {currentRank.RankName}, lên rank {nextRank.RankName} (threshold: {nextRank.Threshold})");
+                    }
+                    else
+                    {
+                        // Nếu không có rank tiếp theo, lên rank cao nhất (Kim Cương)
+                        var highestRank = ranks.FirstOrDefault(r => r.Threshold == null);
+                        if (highestRank != null)
+                        {
+                            newRankId = highestRank.RankId;
+                            Console.WriteLine($"Customer {customer.CustomerId} vượt qua tất cả threshold, lên rank cao nhất {highestRank.RankName}");
+                        }
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"Customer {customer.CustomerId} spent {customer.Spent} chưa vượt qua threshold {currentRank.Threshold} của rank {currentRank.RankName}");
+                }
+
+                // Debug log để kiểm tra
+                Console.WriteLine($"Customer {customer.CustomerId}: Spent = {customer.Spent}, Current Rank = {customer.RankId}, New Rank = {newRankId}");
+                Console.WriteLine($"Available ranks for shop {customer.ShopId}:");
+                foreach (var rank in ranks)
+                {
+                    Console.WriteLine($"  RankId: {rank.RankId}, Name: {rank.RankName}, Threshold: {rank.Threshold}");
+                }
+
+                // Cập nhật rank nếu có thay đổi
+                if (newRankId.HasValue && customer.RankId != newRankId.Value)
+                {
+                    var oldRankId = customer.RankId;
+                    customer.RankId = newRankId.Value;
+                    
+                    // Lấy thông tin rank cũ và mới
+                    var oldRank = ranks.FirstOrDefault(r => r.RankId == oldRankId);
+                    var newRank = ranks.FirstOrDefault(r => r.RankId == newRankId.Value);
+                    
+                    Console.WriteLine($"Updated customer {customer.CustomerId} rank from {oldRank?.RankName} to {newRank?.RankName}");
+                    
+                    // Gửi notification khi customer lên rank mới
+                    if (newRank != null)
+                    {
+                        await SendCustomerRankUpNotificationAsync(customer, oldRank, newRank);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log error nhưng không throw để không ảnh hưởng đến việc cập nhật spent
+                Console.WriteLine($"Error updating customer rank: {ex.Message}");
+            }
+        }
+
+        private async Task SendCustomerRankUpNotificationAsync(Customer customer, Rank oldRank, Rank newRank)
+        {
+            try
+            {
+                Console.WriteLine($"=== SendCustomerRankUpNotificationAsync: Customer {customer.CustomerId} ({customer.FullName}) từ rank {oldRank?.RankName ?? "Chưa có"} lên {newRank.RankName}");
+                
+                var title = "Khách hàng lên hạng thành viên!";
+                var body = $"Khách hàng {customer.FullName} đã lên từ hạng {oldRank?.RankName ?? "Chưa có"} lên hạng {newRank.RankName}!";
+
+                // Lấy tất cả user trong shop
+                var shopUsers = await _context.Users
+                    .Where(u => u.ShopId == customer.ShopId && u.Status == 1)
+                    .Select(u => u.UserId)
+                    .ToListAsync();
+
+                Console.WriteLine($"Shop {customer.ShopId} có {shopUsers.Count} user active: [{string.Join(", ", shopUsers)}]");
+
+                if (shopUsers.Any())
+                {
+                    // Gửi FCM notification (không throw exception nếu fail)
+                    try
+                    {
+                        var fcmSuccess = await _fcmService.SendNotificationToManyUsersAsync(shopUsers, title, body);
+                        Console.WriteLine($"FCM notification result: {fcmSuccess}");
+                    }
+                    catch (Exception fcmEx)
+                    {
+                        Console.WriteLine($"FCM notification failed: {fcmEx.Message}");
+                    }
+
+                    // Gửi SignalR notification tới shop group
+                    try
+                    {
+                        await _realtimeNotifier.EmitCustomerRankUpToShop(customer.ShopId ?? 0, new
+                        {
+                            title,
+                            body,
+                            type = 0, 
+                            customerId = customer.CustomerId,
+                            customerName = customer.FullName,
+                            oldRankName = oldRank?.RankName ?? "Chưa có",
+                            newRankName = newRank.RankName,
+                            shopId = customer.ShopId
+                        });
+                        Console.WriteLine($"SignalR notification sent to Shop_{customer.ShopId}");
+                    }
+                    catch (Exception signalREx)
+                    {
+                        Console.WriteLine($"SignalR notification failed: {signalREx.Message}");
+                    }
+
+                    // Lưu notification vào database cho tất cả user trong shop
+                    try
+                    {
+                        var notifications = shopUsers.Select(userId => new Notification
+                        {
+                            ShopId = customer.ShopId,
+                            UserId = userId,
+                            Title = title,
+                            Content = body,
+                            Type = 0, 
+                            IsRead = false,
+                            CreatedAt = DateTime.UtcNow
+                        }).ToList();
+
+                        await _context.Notifications.AddRangeAsync(notifications);
+                        await _context.SaveChangesAsync();
+                        Console.WriteLine($"Database notifications saved: {notifications.Count} records");
+                    }
+                    catch (Exception dbEx)
+                    {
+                        Console.WriteLine($"Database notification failed: {dbEx.Message}");
+                    }
+
+                    Console.WriteLine($"✅ Đã gửi notification rank up cho {shopUsers.Count} user trong shop {customer.ShopId}");
+                }
+                else
+                {
+                    Console.WriteLine($"⚠️ Shop {customer.ShopId} không có user active nào");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error sending customer rank up notification: {ex.Message}");
+                Console.WriteLine($"   Stack trace: {ex.StackTrace}");
             }
         }
     }

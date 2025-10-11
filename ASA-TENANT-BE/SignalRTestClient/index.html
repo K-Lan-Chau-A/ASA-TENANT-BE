@@ -28,7 +28,13 @@
       <input id="shopId" placeholder="Nhập shopId để join nhóm Shop_{id}" />
     </div>
     <div class="row">
-      <button id="btnConnect">Kết nối & Join Shop Group</button>
+      <label for="userId">User ID</label>
+      <input id="userId" placeholder="Nhập userId để join nhóm User_{id}" />
+    </div>
+    <div class="row">
+      <button id="btnConnect">Kết nối</button>
+      <button id="btnJoinShop">Join Shop Group</button>
+      <button id="btnJoinUser">Join User Group</button>
       <button id="btnDisconnect">Ngắt kết nối</button>
     </div>
 
@@ -40,7 +46,10 @@
       const statusEl = document.getElementById('status');
       const hubUrlEl = document.getElementById('hubUrl');
       const shopIdEl = document.getElementById('shopId');
+      const userIdEl = document.getElementById('userId');
       const btnConnect = document.getElementById('btnConnect');
+      const btnJoinShop = document.getElementById('btnJoinShop');
+      const btnJoinUser = document.getElementById('btnJoinUser');
       const btnDisconnect = document.getElementById('btnDisconnect');
 
       let connection = null;
@@ -84,9 +93,7 @@
         const ok = await ensureSignalR();
         if (!ok) { return; }
         const hubUrl = hubUrlEl.value.trim();
-        const shopId = shopIdEl.value.trim();
         if (!hubUrl) { log('Thiếu Hub URL', 'err'); return; }
-        if (!shopId) { log('Thiếu Shop ID', 'err'); return; }
 
         if (connection) {
           try { await connection.stop(); } catch {}
@@ -107,7 +114,12 @@
         connection.on('ReceiveNotification', (packet) => {
           log('ReceiveNotification: ' + JSON.stringify(packet), 'ok');
         });
-
+        connection.on('SubscriptionExpiryReminder', (payload) => {
+          log('SubscriptionExpiryReminder: ' + JSON.stringify(payload), 'ok');
+        });
+        connection.on('CustomerRankUp', (payload) => {
+          log('CustomerRankUp: ' + JSON.stringify(payload), 'ok');
+        });
         connection.onreconnecting(() => statusEl.textContent = 'Đang reconnect...');
         connection.onreconnected(() => statusEl.textContent = 'Đã reconnect');
         connection.onclose(() => statusEl.textContent = 'Đã ngắt kết nối');
@@ -116,11 +128,33 @@
           await connection.start();
           statusEl.textContent = 'Đã kết nối';
           log('Connected to hub: ' + hubUrl, 'ok');
-          await connection.invoke('JoinShopGroup', Number(shopId));
-          log('Joined group: Shop_' + shopId, 'ok');
         } catch (err) {
           log('Connect error: ' + (err && err.message ? err.message : err), 'err');
           statusEl.textContent = 'Lỗi kết nối';
+        }
+      }
+
+      async function joinShopGroup() {
+        if (!connection) { log('Chưa kết nối', 'err'); return; }
+        const shopId = shopIdEl.value.trim();
+        if (!shopId) { log('Thiếu Shop ID', 'err'); return; }
+        try {
+          await connection.invoke('JoinShopGroup', Number(shopId));
+          log('Joined group: Shop_' + shopId, 'ok');
+        } catch (err) {
+          log('Join Shop Group error: ' + (err && err.message ? err.message : err), 'err');
+        }
+      }
+
+      async function joinUserGroup() {
+        if (!connection) { log('Chưa kết nối', 'err'); return; }
+        const userId = userIdEl.value.trim();
+        if (!userId) { log('Thiếu User ID', 'err'); return; }
+        try {
+          await connection.invoke('JoinUserGroup', Number(userId));
+          log('Joined group: User_' + userId, 'ok');
+        } catch (err) {
+          log('Join User Group error: ' + (err && err.message ? err.message : err), 'err');
         }
       }
 
@@ -136,6 +170,8 @@
       }
 
       btnConnect.addEventListener('click', connect);
+      btnJoinShop.addEventListener('click', joinShopGroup);
+      btnJoinUser.addEventListener('click', joinUserGroup);
       btnDisconnect.addEventListener('click', disconnect);
     </script>
   </body>

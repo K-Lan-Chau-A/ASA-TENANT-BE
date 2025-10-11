@@ -233,5 +233,41 @@ namespace ASA_TENANT_SERVICE.Implenment
                 };
             }
         }
+
+        public async Task<ApiResponse<bool>> UpdateTotalPriceAsync(long orderDetailId, decimal newTotalPrice)
+        {
+            try
+            {
+                var existing = await _orderDetailRepo.GetByIdAsync(orderDetailId);
+                if (existing == null)
+                {
+                    return new ApiResponse<bool>
+                    {
+                        Success = false,
+                        Message = "OrderDetail not found",
+                        Data = false
+                    };
+                }
+
+                existing.TotalPrice = newTotalPrice;
+                var affected = await _orderDetailRepo.UpdateAsync(existing);
+                
+                return new ApiResponse<bool>
+                {
+                    Success = affected > 0,
+                    Message = affected > 0 ? "OrderDetail total price updated successfully" : "Update failed",
+                    Data = affected > 0
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = $"Error: {ex.Message}",
+                    Data = false
+                };
+            }
+        }
     }
 }

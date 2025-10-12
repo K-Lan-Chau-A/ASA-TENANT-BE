@@ -63,5 +63,19 @@ namespace ASA_TENANT_BE.Controllers
             var result = await _notificationService.MarkAllAsReadByUserAsync(userId);
             return Ok(result);
         }
+
+        [HttpPost("broadcast")]
+        public async Task<ActionResult<ApiResponse<bool>>> BroadcastToAllShops([FromBody] BroadcastNotificationRequest request)
+        {
+            try
+            {
+                var result = await _notificationService.BroadcastToAllShopsAsync(request);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
     }
 }

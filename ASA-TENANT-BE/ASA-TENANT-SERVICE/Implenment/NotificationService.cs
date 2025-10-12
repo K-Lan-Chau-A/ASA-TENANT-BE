@@ -19,10 +19,21 @@ namespace ASA_TENANT_SERVICE.Implenment
     {
         private readonly NotificationRepo _notificationRepo;
         private readonly IMapper _mapper;
-        public NotificationService(NotificationRepo notificationRepo, IMapper mapper)
+        private readonly ASATENANTDBContext _dbContext;
+        private readonly UserRepo _userRepo;
+        private readonly IFcmService _fcmService;
+        private readonly IRealtimeNotifier _realtimeNotifier;
+        
+        public NotificationService(NotificationRepo notificationRepo, IMapper mapper, 
+            ASATENANTDBContext dbContext, UserRepo userRepo, 
+            IFcmService fcmService, IRealtimeNotifier realtimeNotifier)
         {
             _notificationRepo = notificationRepo;
             _mapper = mapper;
+            _dbContext = dbContext;
+            _userRepo = userRepo;
+            _fcmService = fcmService;
+            _realtimeNotifier = realtimeNotifier;
         }
 
         public async Task<ApiResponse<NotificationResponse>> CreateAsync(NotificationRequest request)
@@ -221,6 +232,112 @@ namespace ASA_TENANT_SERVICE.Implenment
                     Success = false,
                     Message = $"Error: {ex.Message}",
                     Data = 0
+                };
+            }
+        }
+
+        public async Task<ApiResponse<bool>> BroadcastToAllShopsAsync(BroadcastNotificationRequest request)
+        {
+            try
+            {
+                Console.WriteLine($"BroadcastToAllShopsAsync: Starting broadcast to all shops");
+                Console.WriteLine($"Title: {request.Title}, Content: {request.Content}, Type: {request.Type}");
+
+                // Lấy tất cả user active từ tất cả shop
+                var allUsers = await _userRepo.GetFiltered(new User { Status = 1 })
+                    .Select(u => new { u.UserId, u.ShopId })
+                    .ToListAsync();
+
+                Console.WriteLine($"Found {allUsers.Count} active users across all shops");
+
+                var totalNotifications = 0;
+                var successfulNotifications = 0;
+
+                // Group users by shop để gửi SignalR theo shop
+                var usersByShop = allUsers.GroupBy(u => u.ShopId).ToList();
+
+                foreach (var shopGroup in usersByShop)
+                {
+                    var shopId = shopGroup.Key ?? 0; // Handle null shopId
+                    var userIds = shopGroup.Select(u => u.UserId).ToList();
+
+                    Console.WriteLine($"Processing Shop {shopId} with {userIds.Count} users");
+
+                    // Gửi SignalR cho shop này
+                    try
+                    {
+                        await _realtimeNotifier.EmitLowStockAlertToShop(shopId, new
+                        {
+                            title = request.Title,
+                            content = request.Content,
+                            type = request.Type
+                        });
+                        Console.WriteLine($"SignalR sent to Shop_{shopId}");
+                    }
+                    catch (Exception signalREx)
+                    {
+                        Console.WriteLine($"SignalR failed for Shop_{shopId}: {signalREx.Message}");
+                    }
+
+                    // Gửi FCM cho tất cả user trong shop này
+                    try
+                    {
+                        var fcmSuccess = await _fcmService.SendNotificationToManyUsersAsync(userIds, request.Title, request.Content);
+                        Console.WriteLine($"FCM sent to {userIds.Count} users in Shop_{shopId}, Success: {fcmSuccess}");
+                    }
+                    catch (Exception fcmEx)
+                    {
+                        Console.WriteLine($"FCM failed for Shop_{shopId}: {fcmEx.Message}");
+                    }
+
+                    // Lưu notification vào DB cho từng user
+                    foreach (var userId in userIds)
+                    {
+                        try
+                        {
+                            var notification = new Notification
+                            {
+                                UserId = userId,
+                                ShopId = shopId,
+                                Title = request.Title,
+                                Content = request.Content,
+                                Type = request.Type,
+                                IsRead = false,
+                                CreatedAt = DateTime.UtcNow
+                            };
+
+                            var affected = await _notificationRepo.CreateAsync(notification);
+                            totalNotifications++;
+                            if (affected > 0)
+                            {
+                                successfulNotifications++;
+                            }
+                        }
+                        catch (Exception dbEx)
+                        {
+                            Console.WriteLine($"Failed to save notification for User {userId}: {dbEx.Message}");
+                            totalNotifications++;
+                        }
+                    }
+                }
+
+                Console.WriteLine($"Broadcast completed: {successfulNotifications}/{totalNotifications} notifications saved");
+
+                return new ApiResponse<bool>
+                {
+                    Success = successfulNotifications > 0,
+                    Message = $"Broadcast completed. {successfulNotifications}/{totalNotifications} notifications sent successfully.",
+                    Data = successfulNotifications > 0
+                };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"BroadcastToAllShopsAsync error: {ex.Message}");
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = $"Error: {ex.Message}",
+                    Data = false
                 };
             }
         }

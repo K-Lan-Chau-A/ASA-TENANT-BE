@@ -15,7 +15,7 @@ public partial class Product
 
     public int? Quantity { get; set; }
 
-    public bool? IsLow { get; set; }
+    public int? IsLow { get; set; }
 
     public decimal? Cost { get; set; }
 
@@ -36,6 +36,8 @@ public partial class Product
     public long? UnitIdFk { get; set; }
 
     public long? ShopId { get; set; }
+
+    public bool? IsLowStockNotified { get; set; }
 
     public virtual Category Category { get; set; }
 

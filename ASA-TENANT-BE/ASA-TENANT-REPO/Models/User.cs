@@ -13,6 +13,12 @@ public partial class User
 
     public string Password { get; set; }
 
+    public string FullName { get; set; }
+
+    public string PhoneNumber { get; set; }
+
+    public string CitizenIdNumber { get; set; }
+
     public short? Status { get; set; }
 
     public long? ShopId { get; set; }

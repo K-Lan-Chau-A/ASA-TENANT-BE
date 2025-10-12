@@ -44,11 +44,25 @@ namespace ASA_TENANT_SERVICE.Mapping
             // User Mappings
             CreateMap<User, UserResponse>().ReverseMap();
             CreateMap<User, UserAdminResponse>().ReverseMap();
+            // User Mappings
+            CreateMap<User, UserResponse>().ReverseMap();
+            CreateMap<User, UserAdminResponse>().ReverseMap();
+
+            // Update: do not overwrite with null/empty; ignore Username and Role updates; ignore Avatar (handled by service)
             CreateMap<UserUpdateRequest, User>()
-     .          ForMember(dest => dest.Role, opt => opt.MapFrom(src => (short)src.Role))
-                .ReverseMap()
-     .          ForMember(dest => dest.Role, opt => opt.MapFrom(src => (UserRole)src.Role));
-            CreateMap<UserCreateRequest, User>().ReverseMap();
+                .ForMember(dest => dest.Username, opt => opt.Ignore())
+                .ForMember(dest => dest.Role, opt => opt.Ignore())
+                .ForMember(dest => dest.Avatar, opt => opt.Ignore())
+                .ForAllMembers(opt => opt.Condition((src, dest, srcMember) =>
+                    srcMember switch {
+                        string s => !string.IsNullOrWhiteSpace(s),
+                        _ => srcMember != null
+                    }
+                ));
+
+            // Create: ignore Avatar (service sets it from file)
+            CreateMap<UserCreateRequest, User>()
+                .ForMember(dest => dest.Avatar, opt => opt.Ignore());
             CreateMap<UserAdminCreateRequest, User>().ReverseMap();
 
             CreateMap<UserGetRequest, User>().ReverseMap();
@@ -146,7 +160,7 @@ namespace ASA_TENANT_SERVICE.Mapping
 
             //ProductUnit Mappings
             CreateMap<ProductUnit, ProductUnitResponse>()
-     .          ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product.ProductName))
+                .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src => src.Product.ProductName))
                 .ForMember(dest => dest.UnitName, opt => opt.MapFrom(src => src.Unit.Name));
             CreateMap<ProductUnitRequest, ProductUnit>().ReverseMap();
             CreateMap<ProductUnitGetRequest, ProductUnit>().ReverseMap();

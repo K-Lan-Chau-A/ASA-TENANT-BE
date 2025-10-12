@@ -9,10 +9,6 @@ namespace ASA_TENANT_REPO.DBContext;
 
 public partial class ASATENANTDBContext : DbContext
 {
-    public ASATENANTDBContext()
-    {
-    }
-
     public ASATENANTDBContext(DbContextOptions<ASATENANTDBContext> options)
         : base(options)
     {
@@ -71,10 +67,6 @@ public partial class ASATENANTDBContext : DbContext
     public virtual DbSet<Voucher> Vouchers { get; set; }
 
     public virtual DbSet<Zalopay> Zalopays { get; set; }
-
-//    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-//#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-//        => optionsBuilder.UseNpgsql("Persist Security Info=True;Password=Hau@1310;Username=postgres;Database=ASA-TENANT-DB;Host=localhost");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -415,6 +407,9 @@ public partial class ASATENANTDBContext : DbContext
                 .HasColumnName("discount");
             entity.Property(e => e.ImageUrl).HasColumnName("image_url");
             entity.Property(e => e.IsLow).HasColumnName("is_low");
+            entity.Property(e => e.IsLowStockNotified)
+                .HasDefaultValue(false)
+                .HasColumnName("is_low_stock_notified");
             entity.Property(e => e.Price)
                 .HasPrecision(18, 2)
                 .HasColumnName("price");
@@ -760,12 +755,21 @@ public partial class ASATENANTDBContext : DbContext
 
             entity.Property(e => e.UserId).HasColumnName("user_id");
             entity.Property(e => e.Avatar).HasColumnName("avatar");
+            entity.Property(e => e.CitizenIdNumber)
+                .HasMaxLength(20)
+                .HasColumnName("citizen_id_number");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
+            entity.Property(e => e.FullName)
+                .HasMaxLength(150)
+                .HasColumnName("full_name");
             entity.Property(e => e.Password)
                 .HasMaxLength(255)
                 .HasColumnName("password");
+            entity.Property(e => e.PhoneNumber)
+                .HasMaxLength(20)
+                .HasColumnName("phone_number");
             entity.Property(e => e.Role).HasColumnName("role");
             entity.Property(e => e.ShopId).HasColumnName("shop_id");
             entity.Property(e => e.Status).HasColumnName("status");

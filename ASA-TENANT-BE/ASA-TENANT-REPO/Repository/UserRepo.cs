@@ -23,6 +23,12 @@ namespace ASA_TENANT_REPO.Repository
                 query = query.Where(u => u.UserId == filter.UserId);
             if (!string.IsNullOrEmpty(filter.Username))
                 query = query.Where(u => u.Username.Contains(filter.Username));
+            if (!string.IsNullOrEmpty(filter.FullName))
+                query = query.Where(u => u.FullName.Contains(filter.FullName));
+            if (!string.IsNullOrEmpty(filter.PhoneNumber))
+                query = query.Where(u => u.PhoneNumber.Contains(filter.PhoneNumber));
+            if (!string.IsNullOrEmpty(filter.CitizenIdNumber))
+                query = query.Where(u => u.CitizenIdNumber.Contains(filter.CitizenIdNumber));
             if (filter.ShopId.HasValue && filter.ShopId > 0)
                 query = query.Where(u => u.ShopId == filter.ShopId);
             if (filter.Status.HasValue)

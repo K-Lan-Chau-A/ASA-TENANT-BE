@@ -10,6 +10,9 @@ namespace ASA_TENANT_SERVICE.Interface
         Task<string> GenerateCustomerAnalysisAsync(long shopId, string question, CustomerAnalyticsDto data);
         Task<string> GenerateInventoryAnalysisAsync(long shopId, string question, InventoryAnalyticsDto data);
         Task<string> GenerateProductAnalysisAsync(long shopId, string question, ProductPerformanceDto data);
+        Task<string> GenerateStrategyAnalysisAsync(long shopId, string question, StrategyAnalyticsDto data);
+        Task<string> GenerateProductSuggestionAsync(long shopId, string question, ProductSuggestionDto data);
+        Task<string> GenerateComprehensiveAnalysisAsync(long shopId, string question, ComprehensiveAnalysisDto data);
     }
 
     public class GeminiRequestDto

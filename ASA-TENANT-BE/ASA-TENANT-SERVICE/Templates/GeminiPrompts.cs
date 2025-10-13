@@ -16,8 +16,11 @@ QUY TẮC QUAN TRỌNG:
 3. Định dạng số tiền theo định dạng Việt Nam (VD: 1.000.000 VNĐ)
 4. Đưa ra insights và gợi ý cải thiện khi có thể
 5. Nếu không có đủ dữ liệu, hãy nói rõ và đưa ra gợi ý
-6. Giữ câu trả lời ngắn gọn, dễ hiểu nhưng đầy đủ thông tin
-7. Sử dụng emoji phù hợp để làm câu trả lời sinh động hơn
+6. TRẢ LỜI NGẮN GỌN, ĐI THẲNG VÀO VẤN ĐỀ, KHÔNG DÀI DÒNG
+7. Sử dụng định dạng văn bản đơn giản, không emoji, không icon
+8. Không sử dụng bảng, chỉ dùng danh sách có dấu đầu dòng
+9. Tránh sử dụng các ký hiệu đặc biệt và biểu tượng
+10. KHÔNG lặp lại thông tin cửa hàng trừ khi được hỏi cụ thể
 
 THÔNG TIN CỬA HÀNG:
 - Tên cửa hàng: {ShopName}
@@ -124,6 +127,84 @@ HƯỚNG DẪN PHÂN TÍCH:
 - Hiệu suất: Trung bình X VNĐ/đơn hàng
 - Đánh giá: Tốt/Khá/Cần cải thiện
 ";
+
+            public const string StrategyAnalysisPrompt = @"
+Bạn là chuyên gia tư vấn chiến lược kinh doanh cho cửa hàng.
+
+DỮ LIỆU CHIẾN LƯỢC:
+{StrategyData}
+
+NHIỆM VỤ:
+1. Phân tích tình hình hiện tại của cửa hàng dựa trên dữ liệu
+2. Đưa ra chiến lược cụ thể để cải thiện doanh thu, khách hàng, sản phẩm
+3. Đưa ra các biện pháp thực thi cụ thể và khả thi
+4. Ưu tiên các giải pháp có tác động lớn nhất
+
+HƯỚNG DẪN TƯ VẤN:
+- Phân tích SWOT (Điểm mạnh, điểm yếu, cơ hội, thách thức)
+- Đưa ra chiến lược ngắn hạn (1-3 tháng) và dài hạn (3-12 tháng)
+- Tập trung vào các chỉ số quan trọng: doanh thu, khách hàng, sản phẩm
+- Đưa ra các biện pháp marketing, bán hàng, quản lý cụ thể
+
+ĐỊNH DẠNG TRẢ LỜI:
+- Sử dụng định dạng văn bản đơn giản, không emoji
+- Chia thành các phần: Phân tích → Chiến lược → Biện pháp cụ thể
+- Đưa ra timeline và mục tiêu cụ thể
+- Kết thúc bằng action items ưu tiên
+- Sử dụng danh sách có dấu đầu dòng thay vì bảng
+";
+
+            public const string ProductSuggestionAnalysisPrompt = @"
+Bạn là chuyên gia tư vấn sản phẩm tạp hóa với kiến thức sâu về xu hướng thị trường.
+
+DỮ LIỆU SẢN PHẨM:
+{ProductSuggestionData}
+
+NHIỆM VỤ:
+1. Phân tích tình hình sản phẩm hiện tại của cửa hàng
+2. Đưa ra gợi ý sản phẩm hot trên thị trường dựa trên xu hướng
+3. Đề xuất sản phẩm phù hợp với đối tượng khách hàng
+4. Tối ưu hóa danh mục sản phẩm để tăng doanh thu
+
+HƯỚNG DẪN GỢI Ý:
+- Phân tích xu hướng thị trường hiện tại (2024)
+- Đưa ra sản phẩm theo mùa và thời điểm
+- Gợi ý sản phẩm dựa trên hiệu suất hiện tại của cửa hàng
+- Bao gồm cả sản phẩm truyền thống và sản phẩm mới nổi
+- Đưa ra lý do tại sao sản phẩm đó phù hợp
+
+ĐỊNH DẠNG TRẢ LỜI:
+- Sử dụng định dạng văn bản đơn giản, không emoji
+- Chia thành các danh mục: Đồ uống, Thực phẩm, Tiện lợi, Sức khỏe
+- Đưa ra sản phẩm cụ thể với thương hiệu
+- Giải thích lý do tại sao sản phẩm đó hot
+- Đưa ra gợi ý về giá và lợi nhuận
+- Sử dụng danh sách có dấu đầu dòng thay vì bảng
+";
+
+            public const string ComprehensiveAnalysisPrompt = @"
+Bạn là chuyên gia tư vấn kinh doanh với khả năng phân tích thông minh.
+
+NHIỆM VỤ:
+1. Trả lời câu hỏi cụ thể của khách hàng một cách chính xác và hữu ích
+2. Chỉ sử dụng thông tin cửa hàng làm context, KHÔNG trả lời lại thông tin đó trừ khi được hỏi cụ thể
+3. Tập trung vào câu trả lời ngắn gọn, súc tích và thực tế
+4. Đưa ra gợi ý cụ thể có thể áp dụng ngay
+
+HƯỚNG DẪN TRẢ LỜI:
+- Đọc kỹ câu hỏi và trả lời đúng trọng tâm
+- KHÔNG lặp lại thông tin cửa hàng trừ khi câu hỏi về doanh thu, thông tin cửa hàng
+- Sử dụng dữ liệu cửa hàng để đưa ra gợi ý phù hợp với tình hình thực tế
+- Trả lời ngắn gọn, đi thẳng vào vấn đề
+- Đưa ra số liệu cụ thể khi cần thiết
+
+ĐỊNH DẠNG TRẢ LỜI:
+- Sử dụng định dạng văn bản đơn giản, không emoji
+- Trả lời trực tiếp câu hỏi, không cần phần 'Tổng quan' hay 'Phân tích chi tiết'
+- Chia thành các phần nhỏ nếu cần: Gợi ý → Lý do → Cách thực hiện
+- Sử dụng danh sách có dấu đầu dòng thay vì bảng
+- Kết thúc bằng lời khuyên thực tế
+";
         }
 
         public static class PromptTemplates
@@ -167,6 +248,23 @@ HƯỚNG DẪN PHÂN TÍCH:
                     .Replace("{AnalysisType}", "Tổng quan")
                     + SystemPrompts.GeneralAnalysisPrompt.Replace("{GeneralData}", DataFormatters.FormatGeneralData(data));
             }
+
+            public static string GetStrategyPrompt(string shopName, long shopId, StrategyAnalyticsDto data)
+            {
+                return SystemPrompts.BaseSystemPrompt.Replace("{ShopName}", shopName)
+                    .Replace("{ShopId}", shopId.ToString())
+                    .Replace("{AnalysisType}", "Chiến lược")
+                    + SystemPrompts.StrategyAnalysisPrompt.Replace("{StrategyData}", DataFormatters.FormatStrategyData(data));
+            }
+
+            public static string GetProductSuggestionPrompt(string shopName, long shopId, ProductSuggestionDto data)
+            {
+                return SystemPrompts.BaseSystemPrompt.Replace("{ShopName}", shopName)
+                    .Replace("{ShopId}", shopId.ToString())
+                    .Replace("{AnalysisType}", "Gợi ý sản phẩm")
+                    + SystemPrompts.ProductSuggestionAnalysisPrompt.Replace("{ProductSuggestionData}", DataFormatters.FormatProductSuggestionData(data));
+            }
+
         }
 
         public static class DataFormatters
@@ -277,17 +375,170 @@ TRUNG BÌNH ĐƠN HÀNG: {data.AverageOrderValue:N0} VNĐ
 TRẠNG THÁI: {data.Status}
 ";
             }
+
+            public static string FormatStrategyData(StrategyAnalyticsDto data)
+            {
+                var topProducts = string.Join("\n", data.TopSellingProducts.Take(5).Select(p => 
+                    $"- {p.ProductName}: {p.TotalSold} đơn vị, {p.Revenue:N0} VNĐ (lợi nhuận {p.ProfitMargin:F1}%)"));
+                
+                var topCategories = string.Join("\n", data.TopCategories.Select(c => 
+                    $"- {c.CategoryName}: {c.Revenue:N0} VNĐ"));
+
+                return $@"
+DỮ LIỆU CHIẾN LƯỢC CỬA HÀNG {data.ShopName}:
+
+DOANH THU:
+- Doanh thu tháng này: {data.ThisMonthRevenue:N0} VNĐ
+- Doanh thu tháng trước: {data.LastMonthRevenue:N0} VNĐ
+- Tăng trưởng: {data.RevenueGrowth:F1}%
+- Tổng doanh thu: {data.TotalRevenue:N0} VNĐ
+- Giá trị đơn hàng trung bình: {data.AverageOrderValue:N0} VNĐ
+- Tổng đơn hàng: {data.TotalOrders}
+
+KHÁCH HÀNG:
+- Tổng khách hàng: {data.TotalCustomers}
+- Khách hàng thành viên: {data.MemberCustomers} ({data.MemberPercentage:F1}%)
+- Khách hàng chưa thành viên: {data.NonMemberCustomers}
+
+SẢN PHẨM:
+- Tổng sản phẩm: {data.TotalProducts}
+- Sản phẩm sắp hết hàng: {data.LowStockProducts}
+- Sản phẩm hết hàng: {data.OutOfStockProducts}
+
+SẢN PHẨM BÁN CHẠY:
+{topProducts}
+
+DANH MỤC BÁN CHẠY:
+{topCategories}
+";
+            }
+
+            public static string FormatProductSuggestionData(ProductSuggestionDto data)
+            {
+                var topProducts = string.Join("\n", data.TopSellingProducts.Take(5).Select(p => 
+                    $"- {p.ProductName} ({p.CategoryName}): {p.TotalSold} đã bán, {p.Revenue:N0} VNĐ, lợi nhuận {p.ProfitMargin:F1}%"));
+                
+                var topCategories = string.Join("\n", data.CategoriesPerformance.Take(3).Select(c => 
+                    $"- {c.CategoryName}: {c.ProductCount} sản phẩm, {c.TotalRevenue:N0} VNĐ, {c.AverageProfitMargin:F1}% lợi nhuận TB"));
+
+                var lowStockProducts = string.Join("\n", data.LowStockProducts.Take(3).Select(p => 
+                    $"- {p.ProductName}: còn {p.CurrentStock} đơn vị"));
+
+                return $@"
+DỮ LIỆU GỢI Ý SẢN PHẨM CỬA HÀNG {data.ShopName}:
+
+TÌNH HÌNH HIỆN TẠI:
+- Tổng sản phẩm: {data.CurrentProductsCount}
+- Tổng doanh thu: {data.TotalRevenue:N0} VNĐ
+- Giá trị đơn hàng trung bình: {data.AverageOrderValue:N0} VNĐ
+
+SẢN PHẨM BÁN CHẠY HIỆN TẠI:
+{topProducts}
+
+DANH MỤC HIỆU QUẢ NHẤT:
+{topCategories}
+
+SẢN PHẨM CẦN BỔ SUNG:
+{lowStockProducts}
+
+SẢN PHẨM BÁN CHẬM:
+{string.Join("\n", data.SlowMovingProducts.Take(3).Select(p => $"- {p.ProductName}: chỉ bán {p.TotalSold} đơn vị"))}
+";
+            }
+
+        public static string FormatComprehensiveData(ComprehensiveAnalysisDto data)
+        {
+            var shopSummary = $@"
+THÔNG TIN CỬA HÀNG:
+- Tên cửa hàng: {data.ShopName}
+- ID cửa hàng: {data.ShopId}
+- Tổng sản phẩm: {data.ShopData.TotalProducts}
+- Tổng khách hàng: {data.ShopData.TotalCustomers}
+- Tổng đơn hàng: {data.ShopData.TotalOrders}
+- Tổng doanh thu: {data.ShopData.TotalRevenue:N0} VNĐ
+- Giá trị đơn hàng TB: {data.ShopData.AverageOrderValue:N0} VNĐ";
+
+            var strategySummary = $@"
+CHIẾN LƯỢC:
+- Doanh thu tháng này: {data.StrategyData.ThisMonthRevenue:N0} VNĐ
+- Tăng trưởng: {data.StrategyData.RevenueGrowth:F1}%
+- Tổng khách hàng: {data.StrategyData.TotalCustomers} (Thành viên: {data.StrategyData.MemberCustomers})
+- Sản phẩm: {data.StrategyData.TotalProducts} (Hết hàng: {data.StrategyData.OutOfStockProducts})";
+
+            var productSummary = $@"
+SẢN PHẨM:
+- Tổng sản phẩm: {data.ProductData.CurrentProductsCount}
+- Sản phẩm bán chạy: {data.ProductData.TopSellingProducts.Count}
+- Sản phẩm sắp hết: {data.ProductData.LowStockProducts.Count}";
+
+            var revenueSummary = $@"
+DOANH THU:
+- Tổng doanh thu: {data.RevenueData.TotalRevenue:N0} VNĐ
+- Tháng này: {data.RevenueData.ThisMonthRevenue:N0} VNĐ
+- Tháng trước: {data.RevenueData.LastMonthRevenue:N0} VNĐ";
+
+            var customerSummary = $@"
+KHÁCH HÀNG:
+- Tổng khách hàng: {data.CustomerData.TotalCustomers}
+- Thành viên: {data.CustomerData.MemberCustomers} ({data.CustomerData.MemberPercentage:F1}%)
+- Chưa thành viên: {data.CustomerData.NonMemberCustomers}";
+
+            var inventorySummary = $@"
+TỒN KHO:
+- Tổng sản phẩm: {data.InventoryData.TotalProducts}
+- Sắp hết hàng: {data.InventoryData.LowStockProducts}
+- Hết hàng: {data.InventoryData.OutOfStockProducts}
+- Sản phẩm sắp hết hàng: {string.Join(", ", data.InventoryData.LowStockItems.Select(p => $"{p.ProductName} (còn {p.CurrentStock})"))}";
+
+            return $@"
+DỮ LIỆU TOÀN DIỆN CỬA HÀNG {data.ShopName}:
+
+{shopSummary}
+
+{strategySummary}
+
+{productSummary}
+
+{revenueSummary}
+
+{customerSummary}
+
+{inventorySummary}
+
+CÂU HỎI: {data.Question}
+LOẠI PHÂN TÍCH: {data.AnalysisType}
+";
+        }
         }
 
         public static class QuestionTypes
         {
             public static readonly Dictionary<string, string[]> QuestionPatterns = new()
             {
+                ["strategy"] = new[]
+                {
+                    "chiến lược", "strategy", "cách tăng", "làm sao", "làm thế nào", "gợi ý", "suggestion",
+                    "cải thiện", "improve", "tăng trưởng", "growth", "phát triển", "development",
+                    "kế hoạch", "plan", "giải pháp", "solution", "biện pháp", "measure",
+                    "tăng doanh thu", "tăng khách hàng", "tăng bán hàng", "marketing", "quảng cáo",
+                    "khuyến mãi", "promotion", "giảm giá", "discount", "ưu đãi", "offer",
+                    "nên làm gì", "cần làm gì", "hướng dẫn", "guide", "tips", "mẹo",
+                },
+                ["product_suggestion"] = new[]
+                {
+                    "sản phẩm hot", "hot trend", "xu hướng", "trending", "sản phẩm mới", "new product",
+                    "gợi ý sản phẩm", "product suggestion", "sản phẩm phổ biến", "popular product",
+                    "tạp hóa", "grocery", "hàng hóa", "goods", "mặt hàng", "item",
+                    "sản phẩm bán chạy", "best seller", "được yêu thích", "favorite",
+                    "thị trường", "market", "hiện tại", "current", "mới nhất", "latest",
+                    "nên bán", "should sell", "cần nhập", "need to import", "đề xuất", "recommend", 
+                    "sản phẩm đang hot", "tìm sản phẩm", "hot", "đang hot", "tìm"
+                },
                 ["revenue"] = new[]
                 {
                     "doanh thu", "revenue", "tiền", "bán", "thu nhập", "lợi nhuận",
                     "tổng thu", "thu về", "kiếm được", "bán được", "doanh số",
-                    "hôm nay", "tuần này", "tháng này", "năm nay", "so với"
+                    "hôm nay", "tuần này", "tháng này", "năm nay", "so với", "bao nhiêu"
                 },
                 ["customer"] = new[]
                 {
@@ -297,7 +548,7 @@ TRẠNG THÁI: {data.Status}
                 },
                 ["inventory"] = new[]
                 {
-                    "tồn kho", "inventory", "hàng", "sản phẩm", "stock", "kho", "tồn",
+                    "tồn kho", "inventory", "stock", "kho", "tồn",
                     "số lượng", "quantity", "còn lại", "còn", "hết", "out of stock",
                     "sắp hết", "low stock", "cần nhập", "cảnh báo"
                 },
@@ -305,23 +556,110 @@ TRẠNG THÁI: {data.Status}
                 {
                     "sản phẩm", "product", "mặt hàng", "bán chạy", "ít bán", "item",
                     "hàng hóa", "goods", "bán nhiều", "bán ít", "performance",
-                    "lợi nhuận", "profit", "hiệu suất", "chậm", "nhanh"
+                    "lợi nhuận", "profit", "hiệu suất", "chậm", "nhanh",
+                    "tên sản phẩm", "tên", "cụ thể", "chi tiết"
                 }
             };
 
             public static string DetermineQuestionType(string question)
             {
                 var questionLower = question.ToLower();
+                var keywordMatches = new Dictionary<string, int>();
                 
+                // Count keyword matches for each category
                 foreach (var kvp in QuestionPatterns)
                 {
-                    if (kvp.Value.Any(keyword => questionLower.Contains(keyword)))
+                    var matchCount = kvp.Value.Count(keyword => questionLower.Contains(keyword));
+                    if (matchCount > 0)
                     {
-                        return kvp.Key;
+                        keywordMatches[kvp.Key] = matchCount;
                     }
                 }
                 
-                return "general";
+                if (!keywordMatches.Any())
+                    return "general";
+                
+                // If multiple categories have matches, use intelligent prioritization
+                if (keywordMatches.Count > 1)
+                {
+                    return DetermineBestCategory(questionLower, keywordMatches);
+                }
+                
+                // Single category match
+                return keywordMatches.First().Key;
+            }
+
+            private static string DetermineBestCategory(string questionLower, Dictionary<string, int> matches)
+            {
+                // Priority rules for mixed questions
+                
+                // 0. Special case: If question contains "hot" or "trending", prioritize product_suggestion
+                if ((questionLower.Contains("hot") || questionLower.Contains("trending") || questionLower.Contains("xu hướng")) 
+                    && matches.ContainsKey("product_suggestion"))
+                {
+                    return "product_suggestion";
+                }
+                
+                // 0.1. Special case: If question asks for specific product names, prioritize product analysis
+                if ((questionLower.Contains("tên sản phẩm") || questionLower.Contains("tên") || questionLower.Contains("cụ thể")) 
+                    && matches.ContainsKey("product"))
+                {
+                    return "product";
+                }
+                
+                // 1. Strategy + Product questions -> Strategy (business planning is more important)
+                if (matches.ContainsKey("strategy") && matches.ContainsKey("product_suggestion"))
+                {
+                    return "strategy";
+                }
+                
+                // 2. Strategy + Revenue questions -> Strategy (strategy includes revenue planning)
+                if (matches.ContainsKey("strategy") && matches.ContainsKey("revenue"))
+                {
+                    return "strategy";
+                }
+                
+                // 3. Product + Revenue questions -> Product (product focus with revenue context)
+                if (matches.ContainsKey("product") && matches.ContainsKey("revenue"))
+                {
+                    return "product";
+                }
+                
+                // 4. Customer + Strategy questions -> Strategy (customer strategy)
+                if (matches.ContainsKey("strategy") && matches.ContainsKey("customer"))
+                {
+                    return "strategy";
+                }
+                
+                // 5. Product Suggestion + Inventory/Product questions -> Product Suggestion (suggestion is more specific)
+                if (matches.ContainsKey("product_suggestion") && (matches.ContainsKey("inventory") || matches.ContainsKey("product")))
+                {
+                    return "product_suggestion";
+                }
+                
+                // 6. Inventory + Product questions -> Inventory (inventory management focus)
+                if (matches.ContainsKey("inventory") && matches.ContainsKey("product"))
+                {
+                    return "inventory";
+                }
+                
+                // 7. For other combinations, choose the one with most keyword matches
+                var bestMatch = matches.OrderByDescending(x => x.Value).First();
+                
+                // 8. If tie in keyword count, use priority order
+                if (matches.Any(x => x.Value == bestMatch.Value && x.Key != bestMatch.Key))
+                {
+                    var priorityOrder = new[] { "strategy", "product_suggestion", "revenue", "customer", "inventory", "product" };
+                    foreach (var category in priorityOrder)
+                    {
+                        if (matches.ContainsKey(category))
+                        {
+                            return category;
+                        }
+                    }
+                }
+                
+                return bestMatch.Key;
             }
         }
     }

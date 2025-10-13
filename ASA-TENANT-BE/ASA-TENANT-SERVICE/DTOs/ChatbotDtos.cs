@@ -155,4 +155,89 @@ namespace ASA_TENANT_SERVICE.DTOs
         
         public DateTime? DateRangeEnd { get; set; }
     }
+
+    public class StrategyAnalyticsDto
+    {
+        public long ShopId { get; set; }
+        public string ShopName { get; set; } = string.Empty;
+        public decimal TotalRevenue { get; set; }
+        public decimal ThisMonthRevenue { get; set; }
+        public decimal LastMonthRevenue { get; set; }
+        public decimal RevenueGrowth { get; set; }
+        public decimal AverageOrderValue { get; set; }
+        public int TotalOrders { get; set; }
+        public int TotalCustomers { get; set; }
+        public int MemberCustomers { get; set; }
+        public int NonMemberCustomers { get; set; }
+        public double MemberPercentage { get; set; }
+        public int TotalProducts { get; set; }
+        public int LowStockProducts { get; set; }
+        public int OutOfStockProducts { get; set; }
+        public List<ProductStrategyDto> TopSellingProducts { get; set; } = new();
+        public List<CategoryStrategyDto> TopCategories { get; set; } = new();
+    }
+
+    public class ProductStrategyDto
+    {
+        public long ProductId { get; set; }
+        public string ProductName { get; set; } = string.Empty;
+        public int TotalSold { get; set; }
+        public decimal Revenue { get; set; }
+        public decimal ProfitMargin { get; set; }
+    }
+
+    public class CategoryStrategyDto
+    {
+        public string CategoryName { get; set; } = string.Empty;
+        public decimal Revenue { get; set; }
+    }
+
+    public class ProductSuggestionDto
+    {
+        public long ShopId { get; set; }
+        public string ShopName { get; set; } = string.Empty;
+        public int CurrentProductsCount { get; set; }
+        public List<ProductTrendDto> TopSellingProducts { get; set; } = new();
+        public List<CategoryTrendDto> CategoriesPerformance { get; set; } = new();
+        public List<ProductTrendDto> LowStockProducts { get; set; } = new();
+        public List<ProductTrendDto> SlowMovingProducts { get; set; } = new();
+        public decimal TotalRevenue { get; set; }
+        public decimal AverageOrderValue { get; set; }
+    }
+
+    public class ProductTrendDto
+    {
+        public long ProductId { get; set; }
+        public string ProductName { get; set; } = string.Empty;
+        public string CategoryName { get; set; } = string.Empty;
+        public int TotalSold { get; set; }
+        public decimal Revenue { get; set; }
+        public decimal ProfitMargin { get; set; }
+        public int CurrentStock { get; set; }
+        public decimal Price { get; set; }
+        public decimal Cost { get; set; }
+    }
+
+    public class CategoryTrendDto
+    {
+        public string CategoryName { get; set; } = string.Empty;
+        public int ProductCount { get; set; }
+        public decimal TotalRevenue { get; set; }
+        public int TotalSold { get; set; }
+        public decimal AverageProfitMargin { get; set; }
+    }
+
+    public class ComprehensiveAnalysisDto
+    {
+        public long ShopId { get; set; }
+        public string ShopName { get; set; } = string.Empty;
+        public ShopAnalyticsDto ShopData { get; set; } = new();
+        public StrategyAnalyticsDto StrategyData { get; set; } = new();
+        public ProductSuggestionDto ProductData { get; set; } = new();
+        public RevenueAnalyticsDto RevenueData { get; set; } = new();
+        public CustomerAnalyticsDto CustomerData { get; set; } = new();
+        public InventoryAnalyticsDto InventoryData { get; set; } = new();
+        public string Question { get; set; } = string.Empty;
+        public string AnalysisType { get; set; } = string.Empty;
+    }
 }

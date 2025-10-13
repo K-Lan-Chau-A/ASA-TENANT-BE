@@ -7,6 +7,7 @@ using ASA_TENANT_SERVICE.Implement;
 using ASA_TENANT_SERVICE.Implenment;
 using ASA_TENANT_SERVICE.Interface;
 using ASA_TENANT_SERVICE.Mapping;
+using ASA_TENANT_SERVICE.Extensions;
 using CloudinaryDotNet;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -87,6 +88,7 @@ builder.Services.AddScoped<ProductRepo>();
 builder.Services.AddScoped<ProductUnitRepo>();
 builder.Services.AddScoped<PromotionRepo>();
 builder.Services.AddScoped<PromotionProductRepo>();
+builder.Services.AddScoped<RankRepo>();
 builder.Services.AddScoped<PromptRepo>();
 builder.Services.AddScoped<ReportDetailRepo>();
 builder.Services.AddScoped<ReportRepo>();
@@ -101,6 +103,8 @@ builder.Services.AddScoped<VoucherRepo>();
 builder.Services.AddScoped<ZalopayRepo>();
 builder.Services.AddScoped<ShopSubscriptionRepo>();
 
+// Add Chatbot Services
+builder.Services.AddChatbotWithFallback(builder.Configuration);
 
 // Add HttpClient for BePlatform
 builder.Services.AddHttpClient("BePlatform", client =>

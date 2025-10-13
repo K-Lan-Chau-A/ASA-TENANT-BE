@@ -240,6 +240,33 @@ namespace ASA_TENANT_SERVICE.Implenment
                     sb.AppendLine($"\n{GeminiPrompts.SystemPrompts.ProductAnalysisPrompt}");
                     break;
 
+                case "strategy":
+                    if (request.Data != null && request.Data.TryGetValue("StrategyData", out var strategyObj))
+                    {
+                        sb.AppendLine($"\n{DATA_MARKER}");
+                        sb.AppendLine(JsonSerializer.Serialize(strategyObj, new JsonSerializerOptions { WriteIndented = true }));
+                    }
+                    sb.AppendLine($"\n{GeminiPrompts.SystemPrompts.StrategyAnalysisPrompt}");
+                    break;
+
+                case "product_suggestion":
+                    if (request.Data != null && request.Data.TryGetValue("ProductSuggestionData", out var suggestionObj))
+                    {
+                        sb.AppendLine($"\n{DATA_MARKER}");
+                        sb.AppendLine(JsonSerializer.Serialize(suggestionObj, new JsonSerializerOptions { WriteIndented = true }));
+                    }
+                    sb.AppendLine($"\n{GeminiPrompts.SystemPrompts.ProductSuggestionAnalysisPrompt}");
+                    break;
+
+                case "comprehensive":
+                    if (request.Data != null)
+                    {
+                        sb.AppendLine($"\n{DATA_MARKER}");
+                        sb.AppendLine(JsonSerializer.Serialize(request.Data, new JsonSerializerOptions { WriteIndented = true }));
+                    }
+                    sb.AppendLine($"\n{GeminiPrompts.SystemPrompts.ComprehensiveAnalysisPrompt}");
+                    break;
+
                 default:
                     if (request.Data != null)
                     {
@@ -346,11 +373,14 @@ namespace ASA_TENANT_SERVICE.Implenment
         {
             return analysisType.ToLower() switch
             {
-                "revenue" => "Hiện tại tôi không thể phân tích dữ liệu doanh thu. Vui lòng thử lại sau hoặc liên hệ hỗ trợ kỹ thuật. 📊",
-                "customer" => "Tôi gặp sự cố khi phân tích dữ liệu khách hàng. Hãy thử lại trong vài phút. 👥",
-                "inventory" => "Không thể truy cập thông tin tồn kho lúc này. Vui lòng thử lại sau. 📦",
-                "product" => "Dữ liệu sản phẩm tạm thời không khả dụng. Hãy thử lại sau. 🛍️",
-                _ => "Xin lỗi, tôi gặp sự cố khi xử lý yêu cầu của bạn. Vui lòng thử lại sau. 🤖"
+                "revenue" => "Hiện tại tôi không thể phân tích dữ liệu doanh thu. Vui lòng thử lại sau hoặc liên hệ hỗ trợ kỹ thuật.",
+                "customer" => "Tôi gặp sự cố khi phân tích dữ liệu khách hàng. Hãy thử lại trong vài phút.",
+                "inventory" => "Không thể truy cập thông tin tồn kho lúc này. Vui lòng thử lại sau.",
+                "product" => "Dữ liệu sản phẩm tạm thời không khả dụng. Hãy thử lại sau.",
+                "strategy" => "Không thể tạo chiến lược lúc này. Vui lòng thử lại sau.",
+                "product_suggestion" => "Không thể đưa ra gợi ý sản phẩm lúc này. Vui lòng thử lại sau.",
+                "comprehensive" => "Tôi gặp sự cố khi phân tích tổng hợp. Hãy thử hỏi câu hỏi cụ thể hơn.",
+                _ => "Xin lỗi, tôi gặp sự cố khi xử lý yêu cầu của bạn. Vui lòng thử lại sau."
             };
         }
 
@@ -387,6 +417,75 @@ namespace ASA_TENANT_SERVICE.Implenment
         private class GeminiCandidate
         {
             public GeminiContent? content { get; set; }
+        }
+
+        public async Task<string> GenerateStrategyAnalysisAsync(long shopId, string question, StrategyAnalyticsDto data)
+        {
+            try
+            {
+                var request = new GeminiRequestDto
+                {
+                    ShopId = shopId,
+                    ShopName = data.ShopName,
+                    AnalysisType = "strategy",
+                    Context = question,
+                    Data = ConvertToDictionary(data)
+                };
+
+                var response = await GenerateResponseAsync(request);
+                return response.Response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating strategy analysis for shop {ShopId}", shopId);
+                return GetFallbackResponse("strategy");
+            }
+        }
+
+        public async Task<string> GenerateProductSuggestionAsync(long shopId, string question, ProductSuggestionDto data)
+        {
+            try
+            {
+                var request = new GeminiRequestDto
+                {
+                    ShopId = shopId,
+                    ShopName = data.ShopName,
+                    AnalysisType = "product_suggestion",
+                    Context = question,
+                    Data = ConvertToDictionary(data)
+                };
+
+                var response = await GenerateResponseAsync(request);
+                return response.Response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating product suggestion for shop {ShopId}", shopId);
+                return GetFallbackResponse("product_suggestion");
+            }
+        }
+
+        public async Task<string> GenerateComprehensiveAnalysisAsync(long shopId, string question, ComprehensiveAnalysisDto data)
+        {
+            try
+            {
+                var request = new GeminiRequestDto
+                {
+                    ShopId = shopId,
+                    ShopName = data.ShopName,
+                    AnalysisType = "comprehensive",
+                    Context = question,
+                    Data = ConvertToDictionary(data)
+                };
+
+                var response = await GenerateResponseAsync(request);
+                return response.Response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating comprehensive analysis for shop {ShopId}", shopId);
+                return GetFallbackResponse("comprehensive");
+            }
         }
 
         private class GeminiContent

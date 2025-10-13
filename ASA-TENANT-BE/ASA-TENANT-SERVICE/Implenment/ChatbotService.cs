@@ -88,29 +88,8 @@ namespace ASA_TENANT_SERVICE.Implenment
         {
             try
             {
-                // Use Gemini AI for intelligent response generation
-                switch (analysisType)
-                {
-                    case "revenue":
-                        var revenueData = await GetRevenueAnalyticsAsync(shopId);
-                        return await _geminiService.GenerateRevenueAnalysisAsync(shopId, question, revenueData);
-                    
-                    case "customer":
-                        var customerData = await GetCustomerAnalyticsAsync(shopId);
-                        return await _geminiService.GenerateCustomerAnalysisAsync(shopId, question, customerData);
-                    
-                    case "inventory":
-                        var inventoryData = await GetInventoryAnalyticsAsync(shopId);
-                        return await _geminiService.GenerateInventoryAnalysisAsync(shopId, question, inventoryData);
-                    
-                    case "product":
-                        var productData = await GetProductPerformanceAsync(shopId);
-                        return await _geminiService.GenerateProductAnalysisAsync(shopId, question, productData);
-                    
-                    default:
-                        var shopData = await GetShopAnalyticsAsync(shopId);
-                        return await _geminiService.GenerateShopAnalysisAsync(shopId, question, shopData);
-                }
+                // Always use comprehensive analysis for all questions to provide best AI responses
+                return await GenerateComprehensiveAnswerAsync(shopId, question, analysisType);
             }
             catch (Exception ex)
             {
@@ -121,10 +100,76 @@ namespace ASA_TENANT_SERVICE.Implenment
             }
         }
 
+        private bool IsComplexQuestion(string questionLower)
+        {
+            // Check for multiple topic indicators
+            var topicKeywords = new[]
+            {
+                new[] { "chiến lược", "strategy", "cách tăng", "gợi ý" },
+                new[] { "sản phẩm", "product", "hàng hóa", "tạp hóa" },
+                new[] { "doanh thu", "revenue", "tiền", "lợi nhuận" },
+                new[] { "khách hàng", "customer", "member", "thành viên" },
+                new[] { "tồn kho", "inventory", "stock", "hàng" }
+            };
+
+            var matchedTopics = topicKeywords.Count(topic => 
+                topic.Any(keyword => questionLower.Contains(keyword)));
+
+            // If 2 or more topics are mentioned, it's a complex question
+            return matchedTopics >= 2;
+        }
+
+        private async Task<string> GenerateComprehensiveAnswerAsync(long shopId, string question, string analysisType)
+        {
+            try
+            {
+                // Gather comprehensive data for all questions
+                var strategyData = await GetStrategyAnalyticsAsync(shopId);
+                var productData = await GetProductSuggestionDataAsync(shopId);
+                var revenueData = await GetRevenueAnalyticsAsync(shopId);
+                var customerData = await GetCustomerAnalyticsAsync(shopId);
+                var inventoryData = await GetInventoryAnalyticsAsync(shopId);
+                var shopData = await GetShopAnalyticsAsync(shopId);
+
+                // Create comprehensive data object with all shop information
+                var comprehensiveData = new ComprehensiveAnalysisDto
+                {
+                    ShopId = shopId,
+                    ShopName = strategyData.ShopName,
+                    ShopData = shopData,
+                    StrategyData = strategyData,
+                    ProductData = productData,
+                    RevenueData = revenueData,
+                    CustomerData = customerData,
+                    InventoryData = inventoryData,
+                    Question = question,
+                    AnalysisType = analysisType
+                };
+
+                // Use Gemini AI with comprehensive prompt
+                return await _geminiService.GenerateComprehensiveAnalysisAsync(shopId, question, comprehensiveData);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating comprehensive analysis for shop {ShopId}", shopId);
+                
+                // Fallback to primary analysis type
+                return await GenerateFallbackAnswerAsync(shopId, question, analysisType);
+            }
+        }
+
         private async Task<string> GenerateFallbackAnswerAsync(long shopId, string question, string analysisType)
         {
             switch (analysisType)
             {
+                case "strategy":
+                    var strategyData = await GetStrategyAnalyticsAsync(shopId);
+                    return GenerateStrategyAnswer(question, strategyData);
+                
+                case "product_suggestion":
+                    var suggestionData = await GetProductSuggestionDataAsync(shopId);
+                    return GenerateProductSuggestionAnswer(question, suggestionData);
+                
                 case "revenue":
                     var revenueData = await GetRevenueAnalyticsAsync(shopId);
                     return GenerateRevenueAnswer(question, revenueData);
@@ -285,9 +330,9 @@ namespace ASA_TENANT_SERVICE.Implenment
             var categories = await _categoryRepo.GetByShopIdAsync(shopId);
             var orderDetails = await _orderDetailRepo.GetByShopIdAsync(shopId);
 
-            var lowStockProducts = products.Where(p => p.IsLow == 1).ToList();
+            var lowStockProducts = products.Where(p => (p.Quantity ?? 0) <= (p.IsLow ?? 0) && (p.Quantity ?? 0) > 0).ToList();
             var outOfStockProducts = products.Where(p => (p.Quantity ?? 0) <= 0).ToList();
-            var inStockProducts = products.Where(p => (p.Quantity ?? 0) > 0).ToList();
+            var inStockProducts = products.Where(p => (p.Quantity ?? 0) > (p.IsLow ?? 0)).ToList();
 
             var totalInventoryValue = products.Sum(p => (p.Quantity ?? 0) * (p.Cost ?? 0));
 
@@ -304,7 +349,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                     ProfitMargin = (p.Price ?? 0m) > 0 && (p.Cost ?? 0m) > 0 ? (((p.Price ?? 0m) - (p.Cost ?? 0m)) / (p.Price ?? 0m) * 100) : 0m,
                     TotalSold = orderDetails.Where(od => od.ProductId == p.ProductId).Sum(od => od.Quantity ?? 0),
                     TotalRevenue = orderDetails.Where(od => od.ProductId == p.ProductId).Sum(od => od.TotalPrice ?? 0m),
-                    StockStatus = p.Quantity <= 0 ? "Out of Stock" : p.IsLow == 1 ? "Low Stock" : "In Stock"
+                    StockStatus = (p.Quantity ?? 0) <= 0 ? "Out of Stock" : (p.Quantity ?? 0) <= (p.IsLow ?? 0) ? "Low Stock" : "In Stock"
                 })
                 .ToList();
 
@@ -328,7 +373,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                     ProfitMargin = (x.Product.Price ?? 0m) > 0 && (x.Product.Cost ?? 0m) > 0 ? (((x.Product.Price ?? 0m) - (x.Product.Cost ?? 0m)) / (x.Product.Price ?? 0m) * 100) : 0m,
                     TotalSold = x.TotalSold,
                     TotalRevenue = orderDetails.Where(od => od.ProductId == x.Product.ProductId).Sum(od => od.TotalPrice ?? 0m),
-                    StockStatus = x.Product.Quantity <= 0 ? "Out of Stock" : x.Product.IsLow == 1 ? "Low Stock" : "In Stock"
+                    StockStatus = (x.Product.Quantity ?? 0) <= 0 ? "Out of Stock" : (x.Product.Quantity ?? 0) <= (x.Product.IsLow ?? 0) ? "Low Stock" : "In Stock"
                 })
                 .ToList();
 
@@ -353,7 +398,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                     ProfitMargin = (x.Product.Price ?? 0m) > 0 && (x.Product.Cost ?? 0m) > 0 ? (((x.Product.Price ?? 0m) - (x.Product.Cost ?? 0m)) / (x.Product.Price ?? 0m) * 100) : 0m,
                     TotalSold = x.TotalSold,
                     TotalRevenue = orderDetails.Where(od => od.ProductId == x.Product.ProductId).Sum(od => od.TotalPrice ?? 0m),
-                    StockStatus = x.Product.Quantity <= 0 ? "Out of Stock" : x.Product.IsLow == 1 ? "Low Stock" : "In Stock"
+                    StockStatus = (x.Product.Quantity ?? 0) <= 0 ? "Out of Stock" : (x.Product.Quantity ?? 0) <= (x.Product.IsLow ?? 0) ? "Low Stock" : "In Stock"
                 })
                 .ToList();
 
@@ -460,6 +505,182 @@ namespace ASA_TENANT_SERVICE.Implenment
             };
         }
 
+        public async Task<StrategyAnalyticsDto> GetStrategyAnalyticsAsync(long shopId)
+        {
+            // Gather comprehensive data for strategy analysis
+            var shop = await _shopRepo.GetByIdAsync(shopId);
+            var orders = await _orderRepo.GetByShopIdAsync(shopId);
+            var customers = await _customerRepo.GetByShopIdAsync(shopId);
+            var products = await _productRepo.GetByShopIdAsync(shopId);
+            var orderDetails = await _orderDetailRepo.GetByShopIdAsync(shopId);
+            var transactions = await _transactionRepo.GetByShopIdAsync(shopId);
+
+            var completedOrders = orders.Where(o => o.Status == 1).ToList();
+            var totalRevenue = completedOrders.Sum(o => o.TotalPrice ?? 0);
+            var totalOrders = completedOrders.Count();
+            var averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+            var today = DateTime.Today;
+            var thisMonthRevenue = completedOrders.Where(o => o.Datetime >= new DateTime(today.Year, today.Month, 1)).Sum(o => o.TotalPrice ?? 0);
+            var lastMonthRevenue = completedOrders.Where(o => o.Datetime >= new DateTime(today.Year, today.Month, 1).AddMonths(-1) && o.Datetime < new DateTime(today.Year, today.Month, 1)).Sum(o => o.TotalPrice ?? 0);
+            
+            var revenueGrowth = lastMonthRevenue > 0 ? ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue * 100) : 0;
+
+            var memberCustomers = customers.Where(c => c.RankId.HasValue).Count();
+            var nonMemberCustomers = customers.Count() - memberCustomers;
+            var memberPercentage = customers.Any() ? (double)memberCustomers / customers.Count() * 100 : 0;
+
+            var lowStockProducts = products.Where(p => p.IsLow == 1).Count();
+            var outOfStockProducts = products.Where(p => (p.Quantity ?? 0) <= 0).Count();
+
+            var topSellingProducts = products
+                .Select(p => new
+                {
+                    Product = p,
+                    TotalSold = orderDetails.Where(od => od.ProductId == p.ProductId).Sum(od => od.Quantity ?? 0)
+                })
+                .OrderByDescending(x => x.TotalSold)
+                .Take(5)
+                .ToList();
+
+            var topCategories = orderDetails
+                .Join(completedOrders, od => od.OrderId, o => o.OrderId, (od, o) => new { od, o })
+                .GroupBy(x => x.od.Product?.Category?.CategoryName ?? "Chưa phân loại")
+                .Select(g => new { Category = g.Key, Revenue = g.Sum(x => x.od.TotalPrice ?? 0) })
+                .OrderByDescending(x => x.Revenue)
+                .Take(3)
+                .ToList();
+
+            return new StrategyAnalyticsDto
+            {
+                ShopId = shopId,
+                ShopName = shop.ShopName ?? "Unknown",
+                TotalRevenue = totalRevenue,
+                ThisMonthRevenue = thisMonthRevenue,
+                LastMonthRevenue = lastMonthRevenue,
+                RevenueGrowth = revenueGrowth,
+                AverageOrderValue = averageOrderValue,
+                TotalOrders = totalOrders,
+                TotalCustomers = customers.Count(),
+                MemberCustomers = memberCustomers,
+                NonMemberCustomers = nonMemberCustomers,
+                MemberPercentage = memberPercentage,
+                TotalProducts = products.Count(),
+                LowStockProducts = lowStockProducts,
+                OutOfStockProducts = outOfStockProducts,
+                TopSellingProducts = topSellingProducts.Select(x => new ProductStrategyDto
+                {
+                    ProductId = x.Product.ProductId,
+                    ProductName = x.Product.ProductName ?? "Unknown",
+                    TotalSold = x.TotalSold,
+                    Revenue = orderDetails.Where(od => od.ProductId == x.Product.ProductId).Sum(od => od.TotalPrice ?? 0),
+                    ProfitMargin = (x.Product.Price ?? 0) > 0 && (x.Product.Cost ?? 0) > 0 ? (((x.Product.Price ?? 0) - (x.Product.Cost ?? 0)) / (x.Product.Price ?? 0) * 100) : 0
+                }).ToList(),
+                TopCategories = topCategories.Select(x => new CategoryStrategyDto
+                {
+                    CategoryName = x.Category,
+                    Revenue = x.Revenue
+                }).ToList()
+            };
+        }
+
+        public async Task<ProductSuggestionDto> GetProductSuggestionDataAsync(long shopId)
+        {
+            var shop = await _shopRepo.GetByIdAsync(shopId);
+            var products = await _productRepo.GetByShopIdAsync(shopId);
+            var categories = await _categoryRepo.GetByShopIdAsync(shopId);
+            var orderDetails = await _orderDetailRepo.GetByShopIdAsync(shopId);
+            var orders = await _orderRepo.GetByShopIdAsync(shopId);
+
+            var completedOrders = orders.Where(o => o.Status == 1).ToList();
+            
+            // Analyze current product performance
+            var currentProducts = products.Select(p => new
+            {
+                Product = p,
+                TotalSold = orderDetails.Where(od => od.ProductId == p.ProductId).Sum(od => od.Quantity ?? 0),
+                TotalRevenue = orderDetails.Where(od => od.ProductId == p.ProductId).Sum(od => od.TotalPrice ?? 0m),
+                ProfitMargin = (p.Price ?? 0) > 0 && (p.Cost ?? 0) > 0 ? (((p.Price ?? 0) - (p.Cost ?? 0)) / (p.Price ?? 0) * 100) : 0
+            }).ToList();
+
+            var topSellingProducts = currentProducts
+                .OrderByDescending(x => x.TotalSold)
+                .Take(10)
+                .Select(x => new ProductTrendDto
+                {
+                    ProductId = x.Product.ProductId,
+                    ProductName = x.Product.ProductName ?? "Unknown",
+                    CategoryName = x.Product.Category?.CategoryName ?? "Chưa phân loại",
+                    TotalSold = x.TotalSold,
+                    Revenue = x.TotalRevenue,
+                    ProfitMargin = x.ProfitMargin,
+                    CurrentStock = x.Product.Quantity ?? 0,
+                    Price = x.Product.Price ?? 0m,
+                    Cost = x.Product.Cost ?? 0m
+                })
+                .ToList();
+
+            var categoriesPerformance = currentProducts
+                .GroupBy(x => x.Product.Category?.CategoryName ?? "Chưa phân loại")
+                .Select(g => new CategoryTrendDto
+                {
+                    CategoryName = g.Key,
+                    ProductCount = g.Count(),
+                    TotalRevenue = g.Sum(x => x.TotalRevenue),
+                    TotalSold = g.Sum(x => x.TotalSold),
+                    AverageProfitMargin = (decimal)g.Average(x => x.ProfitMargin)
+                })
+                .OrderByDescending(c => c.TotalRevenue)
+                .ToList();
+
+            var lowStockProducts = currentProducts
+                .Where(x => x.Product.IsLow == 1 || x.Product.Quantity <= 0)
+                .Select(x => new ProductTrendDto
+                {
+                    ProductId = x.Product.ProductId,
+                    ProductName = x.Product.ProductName ?? "Unknown",
+                    CategoryName = x.Product.Category?.CategoryName ?? "Chưa phân loại",
+                    TotalSold = x.TotalSold,
+                    Revenue = x.TotalRevenue,
+                    ProfitMargin = x.ProfitMargin,
+                    CurrentStock = x.Product.Quantity ?? 0,
+                    Price = x.Product.Price ?? 0m,
+                    Cost = x.Product.Cost ?? 0m
+                })
+                .ToList();
+
+            var slowMovingProducts = currentProducts
+                .Where(x => x.TotalSold < 5)
+                .OrderBy(x => x.TotalSold)
+                .Take(10)
+                .Select(x => new ProductTrendDto
+                {
+                    ProductId = x.Product.ProductId,
+                    ProductName = x.Product.ProductName ?? "Unknown",
+                    CategoryName = x.Product.Category?.CategoryName ?? "Chưa phân loại",
+                    TotalSold = x.TotalSold,
+                    Revenue = x.TotalRevenue,
+                    ProfitMargin = x.ProfitMargin,
+                    CurrentStock = x.Product.Quantity ?? 0,
+                    Price = x.Product.Price ?? 0m,
+                    Cost = x.Product.Cost ?? 0m
+                })
+                .ToList();
+
+            return new ProductSuggestionDto
+            {
+                ShopId = shopId,
+                ShopName = shop.ShopName ?? "Unknown",
+                CurrentProductsCount = products.Count(),
+                TopSellingProducts = topSellingProducts,
+                CategoriesPerformance = categoriesPerformance,
+                LowStockProducts = lowStockProducts,
+                SlowMovingProducts = slowMovingProducts,
+                TotalRevenue = completedOrders.Sum(o => o.TotalPrice ?? 0),
+                AverageOrderValue = completedOrders.Any() ? completedOrders.Average(o => o.TotalPrice ?? 0) : 0
+            };
+        }
+
         public async Task<ProductPerformanceDto> GetProductPerformanceAsync(long shopId)
         {
             var products = await _productRepo.GetByShopIdAsync(shopId);
@@ -489,7 +710,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                     ProfitMargin = x.ProfitMargin ?? 0m,
                     TotalSold = x.TotalSold,
                     TotalRevenue = x.TotalRevenue,
-                    StockStatus = x.Product.Quantity <= 0 ? "Out of Stock" : x.Product.IsLow == 1 ? "Low Stock" : "In Stock"
+                    StockStatus = (x.Product.Quantity ?? 0) <= 0 ? "Out of Stock" : (x.Product.Quantity ?? 0) <= (x.Product.IsLow ?? 0) ? "Low Stock" : "In Stock"
                 })
                 .ToList();
 
@@ -508,7 +729,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                     ProfitMargin = x.ProfitMargin ?? 0m,
                     TotalSold = x.TotalSold,
                     TotalRevenue = x.TotalRevenue,
-                    StockStatus = x.Product.Quantity <= 0 ? "Out of Stock" : x.Product.IsLow == 1 ? "Low Stock" : "In Stock"
+                    StockStatus = (x.Product.Quantity ?? 0) <= 0 ? "Out of Stock" : (x.Product.Quantity ?? 0) <= (x.Product.IsLow ?? 0) ? "Low Stock" : "In Stock"
                 })
                 .ToList();
 
@@ -528,7 +749,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                     ProfitMargin = x.ProfitMargin ?? 0m,
                     TotalSold = x.TotalSold,
                     TotalRevenue = x.TotalRevenue,
-                    StockStatus = x.Product.Quantity <= 0 ? "Out of Stock" : x.Product.IsLow == 1 ? "Low Stock" : "In Stock"
+                    StockStatus = (x.Product.Quantity ?? 0) <= 0 ? "Out of Stock" : (x.Product.Quantity ?? 0) <= (x.Product.IsLow ?? 0) ? "Low Stock" : "In Stock"
                 })
                 .ToList();
 
@@ -548,7 +769,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                     ProfitMargin = x.ProfitMargin ?? 0m,
                     TotalSold = x.TotalSold,
                     TotalRevenue = x.TotalRevenue,
-                    StockStatus = x.Product.Quantity <= 0 ? "Out of Stock" : x.Product.IsLow == 1 ? "Low Stock" : "In Stock"
+                    StockStatus = (x.Product.Quantity ?? 0) <= 0 ? "Out of Stock" : (x.Product.Quantity ?? 0) <= (x.Product.IsLow ?? 0) ? "Low Stock" : "In Stock"
                 })
                 .ToList();
 
@@ -704,6 +925,192 @@ namespace ASA_TENANT_SERVICE.Implenment
             
             return $"Cửa hàng có {data.TopSellingProducts.Count} sản phẩm bán chạy và " +
                    $"{data.ProductsNeedAttention.Count} sản phẩm cần chú ý.";
+        }
+
+        private string GenerateStrategyAnswer(string question, StrategyAnalyticsDto data)
+        {
+            var questionLower = question.ToLower();
+            var strategies = new List<string>();
+
+            // Revenue growth strategies
+            if (ContainsKeywords(questionLower, new[] { "doanh thu", "revenue", "tăng doanh thu" }))
+            {
+                strategies.Add($"Chiến lược tăng doanh thu:");
+                
+                if (data.RevenueGrowth < 10)
+                {
+                    strategies.Add($"• Doanh thu tháng này tăng {data.RevenueGrowth:F1}%, cần cải thiện:");
+                    strategies.Add($"• Tăng giá trị đơn hàng trung bình (hiện tại: {data.AverageOrderValue:N0} VNĐ)");
+                    strategies.Add($"• Tăng tần suất mua hàng của khách hàng");
+                }
+                else
+                {
+                    strategies.Add($"• Doanh thu đang tăng trưởng tốt ({data.RevenueGrowth:F1}%)");
+                    strategies.Add($"• Tiếp tục duy trì và mở rộng chiến lược hiện tại");
+                }
+
+                if (data.TopCategories.Any())
+                {
+                    strategies.Add($"• Tập trung vào danh mục bán chạy: {string.Join(", ", data.TopCategories.Take(2).Select(c => c.CategoryName))}");
+                }
+            }
+
+            // Customer strategies
+            if (ContainsKeywords(questionLower, new[] { "khách hàng", "customer", "tăng khách" }))
+            {
+                strategies.Add($"👥 **Chiến lược khách hàng:**");
+                strategies.Add($"• Tỷ lệ thành viên hiện tại: {data.MemberPercentage:F1}% ({data.MemberCustomers}/{data.TotalCustomers})");
+                
+                if (data.MemberPercentage < 50)
+                {
+                    strategies.Add($"• Cần tăng tỷ lệ thành viên:");
+                    strategies.Add($"• Tạo chương trình ưu đãi cho thành viên mới");
+                    strategies.Add($"• Khuyến khích khách hàng đăng ký thành viên");
+                }
+                
+                strategies.Add($"• Chăm sóc khách hàng thân thiết");
+                strategies.Add($"• Tạo chương trình khuyến mãi theo mùa");
+            }
+
+            // Product strategies
+            if (ContainsKeywords(questionLower, new[] { "sản phẩm", "product", "hàng hóa" }))
+            {
+                strategies.Add($"📦 **Chiến lược sản phẩm:**");
+                
+                if (data.TopSellingProducts.Any())
+                {
+                    strategies.Add($"• Sản phẩm bán chạy: {string.Join(", ", data.TopSellingProducts.Take(3).Select(p => p.ProductName))}");
+                    strategies.Add($"• Tăng cường marketing cho sản phẩm bán chạy");
+                    strategies.Add($"• Tạo combo sản phẩm từ các mặt hàng phổ biến");
+                }
+
+                if (data.LowStockProducts > 0)
+                {
+                    strategies.Add($"• ⚠️ Có {data.LowStockProducts} sản phẩm sắp hết hàng, cần nhập thêm");
+                }
+                
+                strategies.Add($"• Phân tích sản phẩm bán chậm và điều chỉnh giá");
+                strategies.Add($"• Đa dạng hóa danh mục sản phẩm");
+            }
+
+            // General business strategies
+            strategies.Add($"💡 **Chiến lược tổng thể:**");
+            strategies.Add($"• Tối ưu hóa trải nghiệm khách hàng");
+            strategies.Add($"• Sử dụng dữ liệu để đưa ra quyết định kinh doanh");
+            strategies.Add($"• Tạo chương trình loyalty program");
+            strategies.Add($"• Phát triển kênh bán hàng online");
+            strategies.Add($"• Tăng cường quảng cáo trên mạng xã hội");
+
+            if (!strategies.Any())
+            {
+                strategies.Add($"Phân tích tình hình cửa hàng {data.ShopName}:");
+                strategies.Add($"• Doanh thu tháng này: {data.ThisMonthRevenue:N0} VNĐ (tăng {data.RevenueGrowth:F1}%)");
+                strategies.Add($"• Trung bình đơn hàng: {data.AverageOrderValue:N0} VNĐ");
+                strategies.Add($"• Khách hàng thành viên: {data.MemberPercentage:F1}%");
+                strategies.Add($"• Tổng sản phẩm: {data.TotalProducts}");
+                
+                strategies.Add($"\nGợi ý cải thiện:");
+                strategies.Add($"• Tăng giá trị đơn hàng trung bình");
+                strategies.Add($"• Nâng cao tỷ lệ khách hàng thành viên");
+                strategies.Add($"• Tối ưu hóa quản lý tồn kho");
+                strategies.Add($"• Phát triển chiến lược marketing");
+            }
+
+            return string.Join("\n", strategies);
+        }
+
+        private string GenerateProductSuggestionAnswer(string question, ProductSuggestionDto data)
+        {
+            var questionLower = question.ToLower();
+            var suggestions = new List<string>();
+
+            // Market trend suggestions based on current performance
+            suggestions.Add($"Gợi ý sản phẩm tạp hóa hot cho cửa hàng {data.ShopName}:\n");
+
+            // Analyze current top-selling categories
+            if (data.CategoriesPerformance.Any())
+            {
+                suggestions.Add($"Phân tích danh mục hiện tại:");
+                var topCategories = data.CategoriesPerformance.Take(3);
+                foreach (var category in topCategories)
+                {
+                    suggestions.Add($"- {category.CategoryName}: {category.ProductCount} sản phẩm, doanh thu {category.TotalRevenue:N0} VNĐ");
+                }
+            }
+
+            // Product suggestions based on current performance
+            suggestions.Add($"\nSản phẩm đang bán chạy tại cửa hàng:");
+            if (data.TopSellingProducts.Any())
+            {
+                var topProducts = data.TopSellingProducts.Take(5);
+                foreach (var product in topProducts)
+                {
+                    suggestions.Add($"- {product.ProductName} ({product.CategoryName}) - Đã bán {product.TotalSold} đơn vị");
+                }
+            }
+
+            // Market trend suggestions
+            suggestions.Add($"\nGợi ý sản phẩm hot trên thị trường hiện tại:");
+            
+            // Food & Beverage trends
+            suggestions.Add($"Đồ uống và Thực phẩm:");
+            suggestions.Add($"- Nước uống có ga không đường (Coca Zero, Pepsi Zero)");
+            suggestions.Add($"- Trà sữa các loại (trà sữa matcha, trà sữa trân châu)");
+            suggestions.Add($"- Nước tăng lực (Red Bull, Sting, Number One)");
+            suggestions.Add($"- Bánh kẹo nhập khẩu (bánh Oreo, kẹo Mentos)");
+            suggestions.Add($"- Snack cao cấp (Pringles, Lay's, Cheetos)");
+
+            // Health & Wellness trends
+            suggestions.Add($"\nSản phẩm sức khỏe và dinh dưỡng:");
+            suggestions.Add($"- Nước suối đóng chai (Aquafina, Dasani, Lavie)");
+            suggestions.Add($"- Sữa tươi các loại (Vinamilk, TH True Milk)");
+            suggestions.Add($"- Ngũ cốc ăn sáng (Kellogg's, Nestle)");
+            suggestions.Add($"- Bánh mì sandwich, bánh mì nguyên cám");
+            suggestions.Add($"- Trái cây sấy khô, hạt dinh dưỡng");
+
+            // Convenience items
+            suggestions.Add($"\nSản phẩm tiện lợi:");
+            suggestions.Add($"- Mì ăn liền cao cấp (Shin Ramyun, Indomie)");
+            suggestions.Add($"- Thức ăn nhanh đóng hộp");
+            suggestions.Add($"- Gia vị nấu ăn (nước mắm, tương ớt, mayonnaise)");
+            suggestions.Add($"- Đồ đông lạnh (chả cá, chả lụa)");
+            suggestions.Add($"- Sản phẩm vệ sinh cá nhân (khẩu trang, nước rửa tay)");
+
+            // Seasonal suggestions
+            suggestions.Add($"\nSản phẩm theo mùa (hiện tại - {DateTime.Now.Month}/2024):");
+            if (DateTime.Now.Month >= 10 || DateTime.Now.Month <= 2)
+            {
+                suggestions.Add($"- Đồ uống nóng (cà phê hòa tan, trà túi lọc)");
+                suggestions.Add($"- Thực phẩm giữ ấm (cháo ăn liền, súp)");
+                suggestions.Add($"- Bánh kẹo Tết (kẹo dẻo, bánh quy)");
+            }
+            else
+            {
+                suggestions.Add($"- Đồ uống mát lạnh (nước đá, kem)");
+                suggestions.Add($"- Trái cây tươi (dưa hấu, cam, táo)");
+                suggestions.Add($"- Đồ ăn nhẹ mùa hè (kem, yaourt)");
+            }
+
+            // Recommendations based on current inventory
+            if (data.LowStockProducts.Any())
+            {
+                suggestions.Add($"\nSản phẩm cần bổ sung ngay:");
+                var lowStock = data.LowStockProducts.Take(3);
+                foreach (var product in lowStock)
+                {
+                    suggestions.Add($"- {product.ProductName} (hiện còn {product.CurrentStock} đơn vị)");
+                }
+            }
+
+            // Profit optimization suggestions
+            suggestions.Add($"\nGợi ý tối ưu lợi nhuận:");
+            suggestions.Add($"- Tập trung vào danh mục có lợi nhuận cao nhất");
+            suggestions.Add($"- Nhập thêm sản phẩm bán chạy để tránh hết hàng");
+            suggestions.Add($"- Thử nghiệm 1-2 sản phẩm mới mỗi tháng");
+            suggestions.Add($"- Theo dõi xu hướng trên mạng xã hội");
+            suggestions.Add($"- Quan sát đối thủ cạnh tranh");
+
+            return string.Join("\n", suggestions);
         }
 
         private string GenerateGeneralAnswer(string question, ShopAnalyticsDto data)

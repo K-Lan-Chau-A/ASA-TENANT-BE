@@ -47,5 +47,14 @@ namespace ASA_TENANT_REPO.Repository
         {
             return await _context.Users.FirstOrDefaultAsync(u => u.Role == 1 && u.ShopId == id);
         }
+
+        public async Task<List<long>> GetUserFeaturesList(long userId)
+        {
+            return await _context.UserFeatures
+                .Where(uf => uf.UserId == userId)
+                .Select(uf => uf.FeatureId)
+                .Distinct()
+                .ToListAsync();
+        }
     }
 }

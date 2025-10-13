@@ -38,12 +38,12 @@ namespace ASA_TENANT_BE.Controllers
             var result = await _userService.CreateStaffAsync(request);
             return Ok(result);
         }
-        [HttpPost("create-admin")]
-        public async Task<ActionResult<UserAdminResponse>> CreateAdmin([FromBody] UserAdminCreateRequest request)
-        {
-            var result = await _userService.CreateAdminAsync(request);
-            return Ok(result);
-        }
+        //[HttpPost("create-admin")]
+        ////public async Task<ActionResult<UserAdminResponse>> CreateAdmin([FromBody] UserAdminCreateRequest request)
+        ////{
+        ////    var result = await _userService.CreateAdminAsync(request);
+        ////    return Ok(result);
+        ////}
         [HttpPut("{id}")]
         public async Task<ActionResult<UserResponse>> Update(long id, [FromForm] UserUpdateRequest request)
         {

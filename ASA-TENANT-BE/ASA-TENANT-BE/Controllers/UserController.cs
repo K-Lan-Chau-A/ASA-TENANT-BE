@@ -33,7 +33,7 @@ namespace ASA_TENANT_BE.Controllers
             }
         }
         [HttpPost("create-staff")]
-        public async Task<ActionResult<UserResponse>> CreateStaff([FromBody] UserCreateRequest request)
+        public async Task<ActionResult<UserResponse>> CreateStaff([FromForm] UserCreateRequest request)
         {
             var result = await _userService.CreateStaffAsync(request);
             return Ok(result);
@@ -45,7 +45,7 @@ namespace ASA_TENANT_BE.Controllers
             return Ok(result);
         }
         [HttpPut("{id}")]
-        public async Task<ActionResult<UserResponse>> Update(long id, [FromBody] UserUpdateRequest request)
+        public async Task<ActionResult<UserResponse>> Update(long id, [FromForm] UserUpdateRequest request)
         {
             var result = await _userService.UpdateAsync(id, request);
             return Ok(result);

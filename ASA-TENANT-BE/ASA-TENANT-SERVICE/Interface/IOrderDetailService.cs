@@ -12,5 +12,6 @@ namespace ASA_TENANT_SERVICE.Interface
         Task<ApiResponse<OrderDetailResponse>> CreateAsync(OrderDetailRequest request, long orderId);
         Task<ApiResponse<OrderDetailResponse>> UpdateAsync(long id, OrderDetailRequest request);
         Task<ApiResponse<bool>> DeleteAsync(long id);
+        Task<ApiResponse<bool>> UpdateTotalPriceAsync(long orderDetailId, decimal newTotalPrice);
     }
 }

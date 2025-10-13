@@ -57,6 +57,7 @@ builder.Services.AddScoped<IVoucherService, VoucherService>();
 builder.Services.AddScoped<IZalopayService, ZalopayService>();
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<IPhotoService, PhotoService>();
+builder.Services.AddScoped<IRealtimeNotifier, RealtimeNotifier>();
 
 // Firebase Configuration
 builder.Services.AddSingleton<FirebaseConfigurationService>();
@@ -134,6 +135,14 @@ builder.Services.AddQuartz(q =>
         .ForJob(orderExpirationJobKey)
         .WithIdentity("OrderExpirationTrigger")
         .WithSimpleSchedule(x => x.WithIntervalInMinutes(1).RepeatForever())); // Chạy mỗi phút
+
+    // Subscription expiry reminder: chạy mỗi phút (TEST)
+    var subExpiryJobKey = new JobKey("SubscriptionExpiryReminderJob");
+    q.AddJob<SubscriptionExpiryReminderJob>(opts => opts.WithIdentity(subExpiryJobKey));
+    q.AddTrigger(opts => opts
+        .ForJob(subExpiryJobKey)
+        .WithIdentity("SubscriptionExpiryReminderTrigger")
+        .WithSimpleSchedule(x => x.WithIntervalInMinutes(1).RepeatForever()));
 });
 
 //// Quartz test 5p và 10p
@@ -171,6 +180,8 @@ builder.Services.AddCors(options =>
             builder.WithOrigins(
                     "http://localhost:5173",
                     "http://localhost:3000",
+                    "http://127.0.0.1:5500",
+                    "http://localhost:5500",
                     "https://asa-web-app-tawny.vercel.app",
                     "https://asa-fe-three.vercel.app",
                     "https://asa-admin-mu.vercel.app"

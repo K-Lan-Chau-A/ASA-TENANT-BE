@@ -37,6 +37,8 @@ public partial class Product
 
     public long? ShopId { get; set; }
 
+    public bool? IsLowStockNotified { get; set; }
+
     public virtual Category Category { get; set; }
 
     public virtual ICollection<InventoryTransaction> InventoryTransactions { get; set; } = new List<InventoryTransaction>();

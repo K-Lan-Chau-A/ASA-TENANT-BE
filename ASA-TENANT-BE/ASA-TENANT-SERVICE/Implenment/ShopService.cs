@@ -137,7 +137,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                     PlatformProductId = request.ProductId,
                     StartDate = now,
                     EndDate = now.AddDays(7),
-                    Status = 0,
+                    Status = 1,
                     CreatedAt = now
                 };
 

@@ -16,7 +16,7 @@ namespace ASA_TENANT_SERVICE.Interface
         Task<ApiResponse<FcmResponse>> UpdateAsync(long id, FcmRequest request);
         Task<ApiResponse<bool>> DeleteAsync(long id);
         Task LogoutDeviceAsync(FcmRequest request);
-        Task<bool> SendNotificationToManyUsersAsync(List<int> userIds, string title, string body);
+        Task<bool> SendNotificationToManyUsersAsync(List<long> userIds, string title, string body);
         Task<bool> RefreshDeviceTokenAsync(FcmRefreshTokenRequest request);
     }
 }

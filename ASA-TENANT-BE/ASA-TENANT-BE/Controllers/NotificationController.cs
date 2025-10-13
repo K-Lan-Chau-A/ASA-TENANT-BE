@@ -1,4 +1,5 @@
 ﻿using ASA_TENANT_REPO.Models;
+using ASA_TENANT_SERVICE.DTOs.Common;
 using ASA_TENANT_SERVICE.DTOs.Request;
 using ASA_TENANT_SERVICE.DTOs.Response;
 using ASA_TENANT_SERVICE.Interface;
@@ -47,6 +48,34 @@ namespace ASA_TENANT_BE.Controllers
         {
             var result = await _notificationService.DeleteAsync(id);
             return Ok(result);
+        }
+
+        [HttpPut("{id}/read")]
+        public async Task<ActionResult<ApiResponse<bool>>> MarkAsRead(long id)
+        {
+            var result = await _notificationService.MarkAsReadAsync(id);
+            return Ok(result);
+        }
+
+        [HttpPut("users/{userId}/read-all")]
+        public async Task<ActionResult<ApiResponse<int>>> MarkAllAsReadByUser(long userId)
+        {
+            var result = await _notificationService.MarkAllAsReadByUserAsync(userId);
+            return Ok(result);
+        }
+
+        [HttpPost("broadcast")]
+        public async Task<ActionResult<ApiResponse<bool>>> BroadcastToAllShops([FromBody] BroadcastNotificationRequest request)
+        {
+            try
+            {
+                var result = await _notificationService.BroadcastToAllShopsAsync(request);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
     }
 }

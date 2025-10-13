@@ -15,12 +15,12 @@ namespace ASA_TENANT_REPO.Repository
         public FcmRepo(ASATENANTDBContext context) : base(context)
         {
         }
-        public async Task<Fcm?> GetFcmByUserIdAndUniqueIdAsync(int userId, string uniqueId)
+        public async Task<Fcm?> GetFcmByUserIdAndUniqueIdAsync(long userId, string uniqueId)
         {
             return await _context.Fcms
                 .FirstOrDefaultAsync(fcm => fcm.UserId == userId && fcm.Uniqueid == uniqueId);
         }
-        public async Task<List<Fcm>> GetActiveTokensByUserIdAsync(int userId)
+        public async Task<List<Fcm>> GetActiveTokensByUserIdAsync(long userId)
         {
             return await _context.Fcms.Where(fcm => fcm.UserId == userId && fcm.Isactive == true)
                 .OrderByDescending(fcm => fcm.Lastlogin)

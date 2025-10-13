@@ -39,7 +39,8 @@ namespace ASA_TENANT_BE.Controllers
                 UserId = localResponse.Data?.UserId,
                 Username = localResponse.Data?.Username,
                 Role = localResponse.Data?.Role,
-                ShopId = localResponse.Data?.ShopId
+                ShopId = localResponse.Data?.ShopId,
+                FeatureIds = localResponse.Data?.FeatureIds
             };
 
 

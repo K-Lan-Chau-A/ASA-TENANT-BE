@@ -89,52 +89,52 @@ namespace ASA_TENANT_SERVICE.Implenment
             }
         }
 
-        public async Task<ApiResponse<UserAdminResponse>> CreateAdminAsync(UserAdminCreateRequest adminRequest)
-        {
-            try
-            {   // Check if admin user already exists
-                var existingAdmin = await _userRepo.GetFirstUserAdmin(adminRequest.ShopId.Value);
-                if (existingAdmin != null)
-                {
-                    return new ApiResponse<UserAdminResponse>
-                    {
-                        Success = false,
-                        Message = "Only 1 admin user can exists in shop",
-                        Data = null
-                    };
-                }
-                var entity = _mapper.Map<User>(adminRequest);
-                entity.CreatedAt = DateTime.UtcNow;
-                entity.Password = HashPassword("123456");
-                entity.Role = 1; // 1 = Admin
-                var affected = await _userRepo.CreateAsync(entity);
-                if (affected > 0)
-                {
-                    var response = _mapper.Map<UserAdminResponse>(entity);
-                    return new ApiResponse<UserAdminResponse>
-                    {
-                        Success = true,
-                        Message = "Create successfully",
-                        Data = response
-                    };
-                }
-                return new ApiResponse<UserAdminResponse>
-                {
-                    Success = false,
-                    Message = "Create failed",
-                    Data = null
-                };
-            }
-            catch (Exception ex)
-            {
-                return new ApiResponse<UserAdminResponse>
-                {
-                    Success = false,
-                    Message = $"Error: {ex.Message}",
-                    Data = null
-                };
-            }
-        }
+        //public async Task<ApiResponse<UserAdminResponse>> CreateAdminAsync(UserAdminCreateRequest adminRequest)
+        //{
+        //    try
+        //    {   // Check if admin user already exists
+        //        var existingAdmin = await _userRepo.GetFirstUserAdmin(adminRequest.ShopId.Value);
+        //        if (existingAdmin != null)
+        //        {
+        //            return new ApiResponse<UserAdminResponse>
+        //            {
+        //                Success = false,
+        //                Message = "Only 1 admin user can exists in shop",
+        //                Data = null
+        //            };
+        //        }
+        //        var entity = _mapper.Map<User>(adminRequest);
+        //        entity.CreatedAt = DateTime.UtcNow;
+        //        entity.Password = HashPassword("123456");
+        //        entity.Role = 1; // 1 = Admin
+        //        var affected = await _userRepo.CreateAsync(entity);
+        //        if (affected > 0)
+        //        {
+        //            var response = _mapper.Map<UserAdminResponse>(entity);
+        //            return new ApiResponse<UserAdminResponse>
+        //            {
+        //                Success = true,
+        //                Message = "Create successfully",
+        //                Data = response
+        //            };
+        //        }
+        //        return new ApiResponse<UserAdminResponse>
+        //        {
+        //            Success = false,
+        //            Message = "Create failed",
+        //            Data = null
+        //        };
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return new ApiResponse<UserAdminResponse>
+        //        {
+        //            Success = false,
+        //            Message = $"Error: {ex.Message}",
+        //            Data = null
+        //        };
+        //    }
+        //}
 
         public async Task<ApiResponse<bool>> DeleteAsync(long id)
         {
@@ -254,5 +254,9 @@ namespace ASA_TENANT_SERVICE.Implenment
             return BCrypt.Net.BCrypt.HashPassword(password);
         }
 
+        public Task<List<long>> GetUserFeaturesList(long userId)
+        {
+            return _userRepo.GetUserFeaturesList(userId);
+        }
     }
 }

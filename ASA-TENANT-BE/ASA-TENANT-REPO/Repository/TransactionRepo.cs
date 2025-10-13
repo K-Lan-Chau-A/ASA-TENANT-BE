@@ -41,5 +41,13 @@ namespace ASA_TENANT_REPO.Repository
 
             return query.OrderBy(t => t.TransactionId);
         }
+
+        public async Task<List<Transaction>> GetByShopIdAsync(long shopId)
+        {
+            return await _context.Transactions
+                .Include(t => t.Order)
+                .Where(t => t.ShopId == shopId)
+                .ToListAsync();
+        }
     }
 }

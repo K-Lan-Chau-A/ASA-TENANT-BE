@@ -45,6 +45,14 @@ namespace ASA_TENANT_REPO.Repository
                 query = query.Where(c => c.ShopId == filter.ShopId);
 
             return query.OrderBy(c => c.CustomerId);
+        }
+
+        public async Task<List<Customer>> GetByShopIdAsync(long shopId)
+        {
+            return await _context.Customers
+                .Include(c => c.Rank)
+                .Where(c => c.ShopId == shopId)
+                .ToListAsync();
         }         
     }
 }

@@ -59,6 +59,7 @@ builder.Services.AddScoped<IZalopayService, ZalopayService>();
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<IPhotoService, PhotoService>();
 builder.Services.AddScoped<IRealtimeNotifier, RealtimeNotifier>();
+builder.Services.AddScoped<IRankService, RankService>();
 
 // Firebase Configuration
 builder.Services.AddSingleton<FirebaseConfigurationService>();
@@ -102,6 +103,7 @@ builder.Services.AddScoped<UserFeatureRepo>();
 builder.Services.AddScoped<VoucherRepo>();
 builder.Services.AddScoped<ZalopayRepo>();
 builder.Services.AddScoped<ShopSubscriptionRepo>();
+builder.Services.AddScoped<RankRepo>();
 
 // Add Chatbot Services
 builder.Services.AddChatbotWithFallback(builder.Configuration);

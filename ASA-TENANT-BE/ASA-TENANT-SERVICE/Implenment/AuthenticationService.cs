@@ -48,6 +48,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                     }
                     var shopId = user.ShopId.Value;
                     var response = _mapper.Map<LoginResponse>(user);
+                    response.FeatureIds = await _userService.GetUserFeaturesList(user.UserId);
                     return new ApiResponse<LoginResponse>
                     {
                         Success = true,

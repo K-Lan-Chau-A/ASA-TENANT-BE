@@ -1,7 +1,9 @@
-﻿using ASA_TENANT_SERVICE.DTOs.Request;
+﻿using ASA_TENANT_BE.CustomAttribute;
+using ASA_TENANT_SERVICE.DTOs.Request;
 using ASA_TENANT_SERVICE.DTOs.Response;
 using ASA_TENANT_SERVICE.Implenment;
 using ASA_TENANT_SERVICE.Interface;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,6 +19,8 @@ namespace ASA_TENANT_BE.Controllers
             _customerService = customerService;
         }
         [HttpGet]
+        //[Authorize(Roles = "1,2")]
+        //[RequireFeature(1, 2, 3, 4)]
         public async Task<ActionResult> GetFiltered([FromQuery] CustomerGetRequest requestDto, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             try

@@ -16,6 +16,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Response
         public string Avatar { get; set; }
         public DateTime? CreatedAt { get; set; }
         public string? AccessToken { get; set; }
+        public List<long>? FeatureIds { get; set; }
     }
 
     public class ValidateShopResponse

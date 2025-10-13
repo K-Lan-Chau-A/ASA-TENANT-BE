@@ -17,5 +17,6 @@ namespace ASA_TENANT_SERVICE.Interface
         Task<ApiResponse<bool>> DeleteAsync(long id);
         Task<ApiResponse<bool>> MarkAsReadAsync(long id);
         Task<ApiResponse<int>> MarkAllAsReadByUserAsync(long userId);
+        Task<ApiResponse<bool>> BroadcastToAllShopsAsync(BroadcastNotificationRequest request);
     }
 }

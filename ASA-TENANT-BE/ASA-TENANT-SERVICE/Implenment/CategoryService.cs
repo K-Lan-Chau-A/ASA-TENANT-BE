@@ -138,6 +138,19 @@ namespace ASA_TENANT_SERVICE.Implenment
                         Data = false
                     };
 
+                // Check if category has any products
+                var hasProducts = await _categoryRepo.HasProductsAsync(id);
+                if (hasProducts)
+                {
+                    var productCount = await _categoryRepo.GetProductCountAsync(id);
+                    return new ApiResponse<bool>
+                    {
+                        Success = false,
+                        Message = $"Cannot delete category: There are {productCount} product(s) using this category. Please remove or reassign all products before deleting the category.",
+                        Data = false
+                    };
+                }
+
                 var affected = await _categoryRepo.RemoveAsync(existing);
                 return new ApiResponse<bool>
                 {

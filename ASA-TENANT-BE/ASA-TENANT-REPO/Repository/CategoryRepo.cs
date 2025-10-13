@@ -40,5 +40,16 @@ namespace ASA_TENANT_REPO.Repository
                 .Where(c => c.ShopId == shopId)
                 .ToListAsync();
         }
+        // Method to check if category has any products
+        public async Task<bool> HasProductsAsync(long categoryId)
+        {
+            return await _context.Products.AnyAsync(p => p.CategoryId == categoryId);
+        }
+
+        // Method to get count of products in category
+        public async Task<int> GetProductCountAsync(long categoryId)
+        {
+            return await _context.Products.CountAsync(p => p.CategoryId == categoryId);
+        }
     }
 }

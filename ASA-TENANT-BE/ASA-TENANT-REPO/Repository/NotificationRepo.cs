@@ -36,7 +36,7 @@ namespace ASA_TENANT_REPO.Repository
             if(filter.CreatedAt.HasValue)
                 query = query.Where(c => c.CreatedAt <= filter.CreatedAt);
 
-            return query.OrderBy(c => c.NotificationId);
+            return query.OrderByDescending(c => c.NotificationId);
         }
     }
 }

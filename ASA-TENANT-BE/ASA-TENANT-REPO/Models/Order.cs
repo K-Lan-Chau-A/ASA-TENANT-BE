@@ -15,6 +15,10 @@ public partial class Order
 
     public decimal? TotalPrice { get; set; }
 
+    public decimal? TotalDiscount { get; set; }
+
+    public decimal? FinalPrice { get; set; }
+
     public string PaymentMethod { get; set; }
 
     public short? Status { get; set; }

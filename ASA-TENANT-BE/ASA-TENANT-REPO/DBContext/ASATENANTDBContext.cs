@@ -328,6 +328,9 @@ public partial class ASATENANTDBContext : DbContext
             entity.Property(e => e.Discount)
                 .HasPrecision(18, 2)
                 .HasColumnName("discount");
+            entity.Property(e => e.FinalPrice)
+                .HasPrecision(18, 2)
+                .HasColumnName("final_price");
             entity.Property(e => e.Note).HasColumnName("note");
             entity.Property(e => e.PaymentMethod)
                 .HasMaxLength(30)
@@ -335,6 +338,9 @@ public partial class ASATENANTDBContext : DbContext
             entity.Property(e => e.ShiftId).HasColumnName("shift_id");
             entity.Property(e => e.ShopId).HasColumnName("shop_id");
             entity.Property(e => e.Status).HasColumnName("status");
+            entity.Property(e => e.TotalDiscount)
+                .HasPrecision(18, 2)
+                .HasColumnName("total_discount");
             entity.Property(e => e.TotalPrice)
                 .HasPrecision(18, 2)
                 .HasColumnName("total_price");

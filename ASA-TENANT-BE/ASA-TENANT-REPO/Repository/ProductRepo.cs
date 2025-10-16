@@ -63,5 +63,13 @@ namespace ASA_TENANT_REPO.Repository
             await _context.SaveChangesAsync();
             return true;
         }
+
+        public async Task<List<Product>> GetByShopIdAsync(long shopId)
+        {
+            return await _context.Products
+                .Include(p => p.Category)
+                .Where(p => p.ShopId == shopId)
+                .ToListAsync();
+        }
     }
 }

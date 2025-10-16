@@ -12,7 +12,7 @@ namespace ASA_TENANT_SERVICE.Interface
     public interface IChatMessageService
     {
         Task<PagedResponse<ChatMessageResponse>> GetFilteredChatMessageAsync(ChatMessageGetRequest requestDto, int page, int pageSize);
-        Task<ApiResponse<ChatMessageResponse>> CreateAsync(ChatMessageRequest request);
+        Task<ApiResponse<ChatMessageWithAiResponse>> CreateAsync(ChatMessageRequest request);
         Task<ApiResponse<ChatMessageResponse>> UpdateAsync(long id,ChatMessageRequest request);
         Task<ApiResponse<bool>> DeleteAsync(long id);
     }

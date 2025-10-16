@@ -7,6 +7,7 @@ using ASA_TENANT_SERVICE.Implement;
 using ASA_TENANT_SERVICE.Implenment;
 using ASA_TENANT_SERVICE.Interface;
 using ASA_TENANT_SERVICE.Mapping;
+using ASA_TENANT_SERVICE.Extensions;
 using CloudinaryDotNet;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -88,6 +89,7 @@ builder.Services.AddScoped<ProductRepo>();
 builder.Services.AddScoped<ProductUnitRepo>();
 builder.Services.AddScoped<PromotionRepo>();
 builder.Services.AddScoped<PromotionProductRepo>();
+builder.Services.AddScoped<RankRepo>();
 builder.Services.AddScoped<PromptRepo>();
 builder.Services.AddScoped<ReportDetailRepo>();
 builder.Services.AddScoped<ReportRepo>();
@@ -103,6 +105,8 @@ builder.Services.AddScoped<ZalopayRepo>();
 builder.Services.AddScoped<ShopSubscriptionRepo>();
 builder.Services.AddScoped<RankRepo>();
 
+// Add Chatbot Services
+builder.Services.AddChatbotWithFallback(builder.Configuration);
 
 // Add HttpClient for BePlatform
 builder.Services.AddHttpClient("BePlatform", client =>
@@ -229,7 +233,8 @@ builder.Services.AddSwaggerGen(options =>
 
 // JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtConfig");
-var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]);
+var jwtKey = jwtSettings["Key"] ?? throw new InvalidOperationException("JWT Key is not configured");
+var key = Encoding.UTF8.GetBytes(jwtKey);
 
 builder.Services.AddAuthentication(options =>
 {

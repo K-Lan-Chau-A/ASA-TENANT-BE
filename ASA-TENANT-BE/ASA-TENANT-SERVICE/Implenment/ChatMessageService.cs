@@ -7,6 +7,7 @@ using ASA_TENANT_SERVICE.DTOs.Response;
 using ASA_TENANT_SERVICE.Interface;
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,14 +21,24 @@ namespace ASA_TENANT_SERVICE.Implenment
         private readonly ChatMessageRepo _chatMessageRepo;
         private readonly IMapper _mapper;
         private readonly IUserService _userService;
-        public ChatMessageService(ChatMessageRepo chatMessageRepo, IMapper mapper, IUserService userService)
+        private readonly IChatbotService _chatbotService;
+        private readonly ILogger<ChatMessageService> _logger;
+        
+        public ChatMessageService(
+            ChatMessageRepo chatMessageRepo, 
+            IMapper mapper, 
+            IUserService userService,
+            IChatbotService chatbotService,
+            ILogger<ChatMessageService> logger)
         {
             _chatMessageRepo = chatMessageRepo;
             _mapper = mapper;
             _userService = userService;
+            _chatbotService = chatbotService;
+            _logger = logger;
         }
 
-        public async Task<ApiResponse<ChatMessageResponse>> CreateAsync(ChatMessageRequest request)
+        public async Task<ApiResponse<ChatMessageWithAiResponse>> CreateAsync(ChatMessageRequest request)
         {
             try
             {
@@ -37,20 +48,92 @@ namespace ASA_TENANT_SERVICE.Implenment
                 {
                     entity.ShopId = user.ShopId;
                 }
+
+                // Set timestamp if not provided
+                if (entity.CreatedAt == null)
+                {
+                    entity.CreatedAt = DateTime.UtcNow;
+                }
+
                 var affected = await _chatMessageRepo.CreateAsync(entity);
 
                 if (affected > 0)
                 {
-                    var response = _mapper.Map<ChatMessageResponse>(entity);
-                    return new ApiResponse<ChatMessageResponse>
+                    var userMessageResponse = _mapper.Map<ChatMessageResponse>(entity);
+                    var result = new ChatMessageWithAiResponse
+                    {
+                        UserMessage = userMessageResponse,
+                        AiMessage = null,
+                        HasAiResponse = false,
+                        Status = "success"
+                    };
+
+                    // If sender is a user (not AI), automatically generate AI response
+                    if (!string.IsNullOrEmpty(entity.Sender) && 
+                        entity.Sender.ToLower() != "ai" && 
+                        entity.Sender.ToLower() != "system" &&
+                        !string.IsNullOrEmpty(entity.Content) &&
+                        user?.ShopId.HasValue == true)
+                    {
+                        try
+                        {
+                            // Generate AI response using ChatbotService
+                            var aiResponse = await _chatbotService.ProcessQuestionAsync(user.ShopId.Value, entity.Content);
+                            
+                            // Create AI response message
+                            var aiMessage = new ChatMessage
+                            {
+                                ShopId = user.ShopId,
+                                UserId = null, // AI message doesn't have userId
+                                Content = aiResponse.Answer,
+                                Sender = "AI",
+                                CreatedAt = DateTime.UtcNow
+                            };
+
+                            // Save AI response to database
+                            await _chatMessageRepo.CreateAsync(aiMessage);
+                            
+                            // Map AI message to response
+                            result.AiMessage = _mapper.Map<ChatMessageResponse>(aiMessage);
+                            result.HasAiResponse = true;
+                            result.Status = "success_with_ai";
+                            
+                            _logger.LogInformation("AI response generated and saved for shop {ShopId}, question: {Question}", 
+                                user.ShopId, entity.Content);
+                        }
+                        catch (Exception aiEx)
+                        {
+                            _logger.LogError(aiEx, "Failed to generate AI response for shop {ShopId}, question: {Question}", 
+                                user.ShopId, entity.Content);
+                            
+                            // Create fallback AI response
+                            var fallbackMessage = new ChatMessage
+                            {
+                                ShopId = user.ShopId,
+                                UserId = null,
+                                Content = "Xin lỗi, tôi đang gặp sự cố kỹ thuật. Vui lòng thử lại sau.",
+                                Sender = "AI",
+                                CreatedAt = DateTime.UtcNow
+                            };
+
+                            await _chatMessageRepo.CreateAsync(fallbackMessage);
+                            
+                            // Map fallback AI message to response
+                            result.AiMessage = _mapper.Map<ChatMessageResponse>(fallbackMessage);
+                            result.HasAiResponse = true;
+                            result.Status = "success_with_fallback_ai";
+                        }
+                    }
+
+                    return new ApiResponse<ChatMessageWithAiResponse>
                     {
                         Success = true,
                         Message = "Create successfully",
-                        Data = response
+                        Data = result
                     };
                 }
 
-                return new ApiResponse<ChatMessageResponse>
+                return new ApiResponse<ChatMessageWithAiResponse>
                 {
                     Success = false,
                     Message = "Create failed",
@@ -59,7 +142,8 @@ namespace ASA_TENANT_SERVICE.Implenment
             }
             catch (Exception ex)
             {
-                return new ApiResponse<ChatMessageResponse>
+                _logger.LogError(ex, "Error creating chat message for user {UserId}", request.UserId);
+                return new ApiResponse<ChatMessageWithAiResponse>
                 {
                     Success = false,
                     Message = $"Error: {ex.Message}",

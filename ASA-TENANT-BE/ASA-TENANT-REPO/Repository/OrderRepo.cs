@@ -56,5 +56,14 @@ namespace ASA_TENANT_REPO.Repository
                 .Where(o => o.ShiftId == shiftId && o.Status == 2) // 2 = Order Completed
                 .SumAsync(o => (decimal?)o.TotalPrice);
         }
+
+        public async Task<List<Order>> GetByShopIdAsync(long shopId)
+        {
+            return await _context.Orders
+                .Include(o => o.Customer)
+                .Include(o => o.OrderDetails)
+                .Where(o => o.ShopId == shopId)
+                .ToListAsync();
+        }
     }
 }

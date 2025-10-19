@@ -200,6 +200,29 @@ namespace ASA_TENANT_SERVICE.Implenment
                     };
                 }
 
+                // Kiểm tra: Admin không được update feature của chính mình
+                // Chỉ được update feature của Staff (role = 2)
+                if (user.Role == 1) // Admin role = 1
+                {
+                    return new ApiResponse<List<UserFeatureResponse>>
+                    {
+                        Success = false,
+                        Message = "Admin không được phép cập nhật feature của chính mình",
+                        Data = null
+                    };
+                }
+
+                // Chỉ cho phép update feature của Staff (role = 2)
+                if (user.Role != 2) // Staff role = 2
+                {
+                    return new ApiResponse<List<UserFeatureResponse>>
+                    {
+                        Success = false,
+                        Message = "Chỉ được phép cập nhật feature cho nhân viên (Staff)",
+                        Data = null
+                    };
+                }
+
                 // 2. Lấy danh sách feature hiện có trong DB
                 var existingFeatures = await _userFeatureRepo.GetByUserIdAsync(request.UserId);
 

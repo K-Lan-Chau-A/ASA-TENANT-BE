@@ -14,5 +14,6 @@ namespace ASA_TENANT_SERVICE.Interface
         Task GenerateWeeklyReportAsync();
         Task GenerateMonthlyReportAsync();
         Task<PagedResponse<ReportResponse>> GetFilteredReportAsync(ReportGetRequest Filter, int page, int pageSize);
+        Task<byte[]> GenerateProfessionalRevenueReportAsync(ExcelReportRequest request);
     }
 }

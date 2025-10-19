@@ -435,28 +435,28 @@ INSERT INTO user_feature (user_id, feature_id, feature_name, is_enabled) VALUES
 (3, 4, 'Bán hàng', TRUE);
 
 -- 10. Products
-INSERT INTO product (category_id, product_name, quantity, is_low, cost, price, barcode, discount, status, unit_id_fk, shop_id) VALUES
+INSERT INTO product (category_id, product_name, quantity, is_low, cost, price, barcode,image_url, discount, status, unit_id_fk, shop_id) VALUES
 -- Nước giải khát
-(1, 'Pepsi Cola 330ml', 120, 10, 8000, 12000, '8934673001234', 0, 1, 1, 1),
-(1, 'Coca Cola 330ml', 150, 10, 8500, 12000, '8934673001235', 0, 1, 1, 1),
-(1, '7Up 330ml', 80, 10, 7500, 11000, '8934673001236', 0, 1, 1, 1),
-(1, 'Pepsi Cola Lon 330ml', 200, 10, 9000, 13000, '8934673001237', 0, 1, 2, 1),
-(1, 'Coca Cola Lon 330ml', 180, 10, 9500, 13000, '8934673001238', 0, 1, 2, 1),
-(1, '7Up Lon 330ml', 100, 10, 8500, 12000, '8934673001239', 0, 1, 2, 1),
+(1, 'Pepsi Cola 330ml', 120, 10, 8000, 12000, '8934673001234','https://www.lottemart.vn/media/catalog/product/cache/0x0/8/9/8934588013027-1-1.jpg.webp', 0, 1, 1, 1),
+(1, 'Coca Cola 330ml', 150, 10, 8500, 12000, '8934673001235','https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQowvqmp0hU5U9tiRxyAmAsW2ukDVgrpkBQkw&s', 0, 1, 1, 1),
+(1, '7Up 330ml', 80, 10, 7500, 11000, '8934673001236','https://cdn.tgdd.vn/Products/Images/2443/319488/bhx/nuoc-ngot-7-up-vi-chanh-chai-330ml-202312301036328194.jpg', 0, 1, 1, 1),
+(1, 'Pepsi Cola Lon 330ml', 200, 10, 9000, 13000, '8934673001237','https://cdn.tgdd.vn/Products/Images/2443/88121/bhx/thung-24-lon-nuoc-ngot-pepsi-cola-320ml-202405140910328596.jpg', 0, 1, 2, 1),
+(1, 'Coca Cola Lon 330ml', 180, 10, 9500, 13000, '8934673001238','https://cdnv2.tgdd.vn/webmwg/comment/ef/4a/ef4a44fb0c806a130d74efca2ee6ce87.jpg', 0, 1, 2, 1),
+(1, '7Up Lon 330ml', 100, 10, 8500, 12000, '8934673001239','https://cdn.tgdd.vn/Products/Images/2443/76446/bhx/nuoc-ngot-7-up-lon-330ml-202312252102017018.jpg', 0, 1, 2, 1),
 -- Bánh khoai tây
-(2, 'Poca Vị Tự Nhiên 54g', 200, 10, 6000, 9000, '8934673002234', 0, 1, 3, 1),
-(2, 'Poca Vị Cay 54g', 150, 10, 6000, 9000, '8934673002235', 0, 1, 3, 1),
-(2, 'Lays Vị Tự Nhiên 56g', 180, 10, 7000, 10000, '8934673002236', 0, 1, 3, 1),
-(2, 'Lays Vị Cà Chua 56g', 120, 10, 7000, 10000, '8934673002237', 0, 1, 3, 1),
-(2, 'Oishi Vị Tôm Chua Ngọt 60g', 100, 10, 8000, 12000, '8934673002238', 0, 1, 3, 1),
-(2, 'Oishi Vị Bò Nướng 60g', 80, 10, 8000, 12000, '8934673002239', 0, 1, 3, 1),
+(2, 'Poca Vị Tự Nhiên 54g', 200, 10, 6000, 9000, '8934673002234','https://cdnv2.tgdd.vn/bhx-static/bhx/Products/Images/3364/193606/bhx/snack-poca-khoai-tay-tu-nhien-goi-52g_202510150941133229.jpg', 0, 1, 3, 1),
+(2, 'Poca Vị Cay 54g', 150, 10, 6000, 9000, '8934673002235','https://product.hstatic.net/200000495609/product/snack-poca-vi-muc-cay-dac-biet-banh-keo-an-vat-imnuts-n1_b75b1cfcb05641e982f8cc55912cee8b_master.jpg', 0, 1, 3, 1),
+(2, 'Lays Vị Tự Nhiên 56g', 180, 10, 7000, 10000, '8934673002236','https://product.hstatic.net/200000352097/product/a138b002816dfdb5c290cdb4631d16ec_4385524afb404d6a847d3d42c0f52b1e_1024x1024.png', 0, 1, 3, 1),
+(2, 'Lays Vị Cà Chua 56g', 120, 10, 7000, 10000, '8934673002237','https://img08.weeecdn.net/product/image/502/574/301032507DC379D4.png!c750x0_q80_t1.auto', 0, 1, 3, 1),
+(2, 'Oishi Vị Tôm Chua Ngọt 60g', 100, 10, 8000, 12000, '8934673002238','https://product.hstatic.net/200000495609/product/snack-tom-cay-oishi-du-vi-goi-lon-68g-banh-keo-an-vat-imnuts-03_ac70449375bc4b3998c72422e9c3d7f5.jpg', 0, 1, 3, 1),
+(2, 'Oishi Snack Bí Đỏ 60g', 80, 10, 8000, 12000, '8934673002239','https://www.lottemart.vn/media/catalog/product/cache/0x0/8/9/8934803012880.jpg.webp', 0, 1, 3, 1),
 -- Kẹo
-(3, 'Kẹo Dẻo Haribo 100g', 150, 10, 15000, 22000, '8934673003234', 0, 1, 3, 1),
-(3, 'Kẹo Dẻo Ricola 80g', 120, 10, 12000, 18000, '8934673003235', 0, 1, 3, 1),
-(3, 'Kẹo Mút Chupa Chups', 200, 10, 2000, 3000, '8934673003236', 0, 1, 4, 1),
-(3, 'Kẹo Mút Alpenliebe', 180, 10, 1500, 2500, '8934673003237', 0, 1, 4, 1),
-(3, 'Kẹo Ngậm Halls Chanh', 100, 10, 8000, 12000, '8934673003238', 0, 1, 5, 1),
-(3, 'Kẹo Ngậm Ricola Bạc Hà', 80, 10, 10000, 15000, '8934673003239', 0, 1, 5, 1);
+(3, 'Kẹo Dẻo Haribo 100g', 150, 10, 15000, 22000, '8934673003234','https://bizweb.dktcdn.net/thumb/1024x1024/100/436/921/products/8691216090439-1-209bf20bb99c4b3298dd9ed3d64704e5-bd04cb8ed15345718d45810f9e771c9c-master.jpg?v=1631854528787', 0, 1, 3, 1),
+(3, 'Kẹo Dẻo Ricola 80g', 120, 10, 12000, 18000, '8934673003235','https://cdn.upharma.vn/unsafe/3840x0/filters:quality(90)/san-pham/20714.png', 0, 1, 3, 1),
+(3, 'Kẹo Mút Chupa Chups', 200, 10, 2000, 3000, '8934673003236','https://bizweb.dktcdn.net/thumb/grande/100/514/431/products/3b43ab3e8f836e2bb1e286a63d2f355b.jpg?v=1716027827830', 0, 1, 4, 1),
+(3, 'Kẹo Mút Alpenliebe', 180, 10, 1500, 2500, '8934673003237','https://minhcaumart.vn//media/com_eshop/products/resized/8935001708452-500x500.webp', 0, 1, 4, 1),
+(3, 'Kẹo Ngậm Halls Chanh', 100, 10, 8000, 12000, '8934673003238','https://www.guardian.com.vn/media/catalog/product/cache/30b2b44eba57cd45fd3ef9287600968e/9/e/9e0e24742624fdcaee948073623b6a043622271ae835d2516144fd86525a1710.jpeg', 0, 1, 5, 1),
+(3, 'Kẹo Ngậm Ricola Bạc Hà', 80, 10, 10000, 15000, '8934673003239','https://www.lottemart.vn/media/catalog/product/cache/0x0/7/6/7610700948460-1.jpg.webp', 0, 1, 5, 1);
 
 -- 11. Product Units
 INSERT INTO product_unit (product_id, unit_id, conversion_factor, price, shop_id) VALUES

@@ -1,0 +1,29 @@
+### Professional Revenue Report API
+POST https://localhost:7001/api/reports/professional-revenue
+Content-Type: application/json
+
+{
+  "startDate": "2024-01-01T00:00:00",
+  "endDate": "2024-12-31T23:59:59",
+  "shopId": 1
+}
+
+### Test with different date range
+POST https://localhost:7001/api/reports/professional-revenue
+Content-Type: application/json
+
+{
+  "startDate": "2024-06-01T00:00:00",
+  "endDate": "2024-06-30T23:59:59",
+  "shopId": 1
+}
+
+### Test with current month
+POST https://localhost:7001/api/reports/professional-revenue
+Content-Type: application/json
+
+{
+  "startDate": "2024-12-01T00:00:00",
+  "endDate": "2024-12-31T23:59:59",
+  "shopId": 1
+}

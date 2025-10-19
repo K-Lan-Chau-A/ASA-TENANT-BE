@@ -5,11 +5,15 @@ using ASA_TENANT_SERVICE.Implenment;
 using ASA_TENANT_SERVICE.Interface;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using ASA_TENANT_BE.CustomAttribute;
 
 namespace ASA_TENANT_BE.Controllers
 {
     [Route("api/promotions")]
     [ApiController]
+    [Authorize]
+    [RequireFeature(7)] // Quản lí promotion
     public class PromotionController : ControllerBase
     {
         private readonly IPromotionService _promotionService;
@@ -44,6 +48,7 @@ namespace ASA_TENANT_BE.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "1")] // Admin only
         public async Task<ActionResult<bool>> Delete(long id)
         {
             var result = await _promotionService.DeleteAsync(id);

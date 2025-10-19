@@ -2,11 +2,15 @@ using ASA_TENANT_SERVICE.DTOs.Request;
 using ASA_TENANT_SERVICE.DTOs.Response;
 using ASA_TENANT_SERVICE.Interface;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using ASA_TENANT_BE.CustomAttribute;
 
 namespace ASA_TENANT_BE.Controllers
 {
     [Route("api/vouchers")]
     [ApiController]
+    [Authorize]
+    [RequireFeature(6)] // Quản lí voucher
     public class VoucherController : ControllerBase
     {
         private readonly IVoucherService _voucherService;
@@ -44,6 +48,7 @@ namespace ASA_TENANT_BE.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "1")] // Admin only
         public async Task<ActionResult<bool>> Delete(long id)
         {
             var result = await _voucherService.DeleteAsync(id);

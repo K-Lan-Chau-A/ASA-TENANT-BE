@@ -1,11 +1,15 @@
 using ASA_TENANT_SERVICE.DTOs;
 using ASA_TENANT_SERVICE.Interface;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using ASA_TENANT_BE.CustomAttribute;
 
 namespace ASA_TENANT_BE.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
+    [RequireFeature(2)] // Tư vấn AI
     public class ChatbotController : ControllerBase
     {
         private readonly IChatbotService _chatbotService;

@@ -148,7 +148,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                 var adminUser = new User
                 {
                     Username = request.Username,
-                    Password = BCrypt.Net.BCrypt.HashPassword(plainPassword),
+                    Password = "asa123456",
                     Status = 1,
                     ShopId = entity.ShopId,
                     Role = 1,
@@ -180,7 +180,7 @@ namespace ASA_TENANT_SERVICE.Implenment
 
                 var response = _mapper.Map<ShopResponse>(entity);
                 response.CreatedAdminUsername = request.Username;
-                response.CreatedAdminPassword = plainPassword;
+                response.CreatedAdminPassword = "asa123456";
                 return new ApiResponse<ShopResponse>
                 {
                     Success = true,

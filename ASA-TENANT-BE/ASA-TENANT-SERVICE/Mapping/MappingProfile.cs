@@ -83,7 +83,7 @@ namespace ASA_TENANT_SERVICE.Mapping
             CreateMap<Promotion, PromotionResponse>()
                 .ForMember(dest => dest.Type, opt => opt.MapFrom(src => (short?)src.Type))
                  .ForMember(dest => dest.Products,
-        opt => opt.MapFrom(src =>
+            opt => opt.MapFrom(src =>
             src.PromotionProducts != null
                 ? src.PromotionProducts.Select(pp => pp.ProductId.Value).ToHashSet()
                 : new HashSet<long>()))
@@ -232,6 +232,11 @@ namespace ASA_TENANT_SERVICE.Mapping
                 .ForMember(dest => dest.StartDate, opt => opt.MapFrom(src => src.startDate ?? default(DateTime)))
                 .ForMember(dest => dest.EndDate, opt => opt.MapFrom(src => src.endDate ?? default(DateTime)))
                 .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.status));
+
+            // Rank Mappings
+            CreateMap<Rank, RankResponse>().ReverseMap();
+            CreateMap<RankRequest, Rank>().ReverseMap();
+            CreateMap<RankGetRequest, Rank>().ReverseMap();
         }
     }
 }

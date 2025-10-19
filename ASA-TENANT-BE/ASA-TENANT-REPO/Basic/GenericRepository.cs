@@ -74,7 +74,17 @@ namespace EDUConnect_Repositories.Basic
             return _context.Set<T>().Find(id);
         }
 
+        public T GetById(int id)
+        {
+            return _context.Set<T>().Find(id);
+        }
+
         public async Task<T> GetByIdAsync(long? id)
+        {
+            return await _context.Set<T>().FindAsync(id);
+        }
+
+        public async Task<T> GetByIdAsync(int id)
         {
             return await _context.Set<T>().FindAsync(id);
         }

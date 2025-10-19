@@ -468,6 +468,15 @@ namespace ASA_TENANT_SERVICE.Implenment
                     }
                 }
 
+                 // Áp dụng discount (0..100%) nếu có
+                var additionalDiscountRate = request.Discount ?? 0m;
+                if (additionalDiscountRate < 0m) additionalDiscountRate = 0m;
+                if (additionalDiscountRate > 100m) additionalDiscountRate = 100m;
+                if (entity.TotalPrice.HasValue)
+                {
+                    entity.TotalPrice = entity.TotalPrice.Value * (1m - additionalDiscountRate / 100m);
+                }
+
                 // Lưu cập nhật TotalPrice cuối cùng
                 await _orderRepo.UpdateAsync(entity);
 

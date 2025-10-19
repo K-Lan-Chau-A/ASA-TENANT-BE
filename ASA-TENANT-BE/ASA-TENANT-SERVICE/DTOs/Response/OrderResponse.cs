@@ -12,6 +12,8 @@ namespace ASA_TENANT_SERVICE.DTOs.Response
         public DateTime? Datetime { get; set; }
         public long? CustomerId { get; set; }
         public decimal? TotalPrice { get; set; }
+        public decimal? TotalDiscount { get; set; }
+        public decimal? FinalPrice { get; set; }
         public string PaymentMethod { get; set; }
         public short? Status { get; set; }
         public long? ShiftId { get; set; }

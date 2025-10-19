@@ -1,6 +1,7 @@
 ﻿using ASA_TENANT_REPO.Models;
 using ASA_TENANT_REPO.Repository;
 using ASA_TENANT_REPO.Models;
+using ASA_TENANT_REPO.DBContext;
 using ASA_TENANT_SERVICE.DTOs.Common;
 using ASA_TENANT_SERVICE.DTOs.Request;
 using ASA_TENANT_SERVICE.DTOs.Response;
@@ -33,7 +34,10 @@ namespace ASA_TENANT_SERVICE.Implenment
         private readonly UserRepo _userRepo;
         private readonly ICustomerService _customerService;
         private readonly CustomerRepo _customerRepo;
-        public OrderService(OrderRepo orderRepo, IOrderDetailService orderDetailService, IInventoryTransactionService inventoryTransactionService, ProductUnitRepo productUnitRepo, IMapper mapper, VoucherRepo voucherRepo, ProductRepo productRepo, INotificationService notificationService, IFcmService fcmService, IRealtimeNotifier realtimeNotifier, UserRepo userRepo, UnitRepo unitRepo, ICustomerService customerService, CustomerRepo customerRepo)
+        private readonly ShopRepo _shopRepo;
+        private readonly ASATENANTDBContext _context;
+        private readonly IEmailService _emailService;
+        public OrderService(OrderRepo orderRepo, IOrderDetailService orderDetailService, IInventoryTransactionService inventoryTransactionService, ProductUnitRepo productUnitRepo, IMapper mapper, VoucherRepo voucherRepo, ProductRepo productRepo, INotificationService notificationService, IFcmService fcmService, IRealtimeNotifier realtimeNotifier, UserRepo userRepo, UnitRepo unitRepo, ICustomerService customerService, CustomerRepo customerRepo, ShopRepo shopRepo, ASATENANTDBContext context, IEmailService emailService)
         {
             _orderRepo = orderRepo;
             _orderDetailService = orderDetailService;
@@ -49,6 +53,9 @@ namespace ASA_TENANT_SERVICE.Implenment
             _unitRepo = unitRepo;
             _customerService = customerService;
             _customerRepo = customerRepo;
+            _shopRepo = shopRepo;
+            _context = context;
+            _emailService = emailService;
         }
 
         public async Task<ApiResponse<OrderResponse>> GetByIdAsync(long id)
@@ -149,11 +156,10 @@ namespace ASA_TENANT_SERVICE.Implenment
                 {
                     entity.CustomerId = null;
                 }
-                // Nếu có OrderDetails, bỏ qua TotalPrice từ request vì sẽ tính tự động
-                if (request.OrderDetails != null && request.OrderDetails.Any())
-                {
-                    entity.TotalPrice = 0; // Sẽ được cập nhật sau khi tạo OrderDetails
-                }
+                // Khởi tạo các trường pricing
+                entity.TotalPrice = 0m; // Tổng tiền sản phẩm (chưa giảm giá)
+                entity.TotalDiscount = 0m; // Tổng tiền giảm giá
+                entity.FinalPrice = 0m; // Tiền cuối cùng phải trả
                 
                 var affected = await _orderRepo.CreateAsync(entity);
                 if (affected <= 0)
@@ -166,36 +172,20 @@ namespace ASA_TENANT_SERVICE.Implenment
                     };
                 }
 
-                // Tính tổng discount trước khi tạo OrderDetails
-                var discountRate = request.Discount ?? 0m;
-                var rankBenefitRate = 0m;
-                var rankBenefitNote = "";
+                // Tính toán các loại discount
+                var discountAmount = 0m;
+                var voucherAmount = 0m;
+                var rankBenefitAmount = 0m;
+                var discountNotes = new List<string>();
                 
-                // Lấy benefit từ customer rank nếu có customerId
-                if (request.CustomerId.HasValue)
-                {
-                    var customer = await _customerRepo.GetByIdAsync(request.CustomerId.Value);
-                    
-                    if (customer?.Rank?.Benefit.HasValue == true)
-                    {
-                        rankBenefitRate = (decimal)customer.Rank.Benefit.Value * 100; // Convert từ 0.02 thành 2%
-                        rankBenefitNote = $"Giảm {rankBenefitRate:F2}% cho khách hàng rank {customer.Rank.RankName}";
-                        
-                        Console.WriteLine($"Customer {customer.CustomerId} rank {customer.Rank.RankName} có benefit {rankBenefitRate:F2}%");
-                    }
-                }
+                // Không cần tính rank benefit ở đây, sẽ tính ở phần sau
                 
-                // Cộng discount từ request và benefit từ rank
-                var totalDiscountRate = discountRate + rankBenefitRate;
-                if (totalDiscountRate < 0m) totalDiscountRate = 0m;
-                if (totalDiscountRate > 100m) totalDiscountRate = 100m;
-                
-                // Lưu tổng discount vào entity
-                entity.Discount = totalDiscountRate;
+                // Lưu discount rate từ request (phần trăm)
+                entity.Discount = request.Discount ?? 0m;
 
                 // Tạo OrderDetails nếu có và tính tổng TotalPrice
                 var createdOrderDetails = new List<OrderDetailResponse>();
-                decimal totalOrderPrice = 0;
+                decimal totalProductPrice = 0m; // Tổng tiền sản phẩm (chưa giảm giá)
                 
                 if (request.OrderDetails != null && request.OrderDetails.Any())
                 {
@@ -260,27 +250,14 @@ namespace ASA_TENANT_SERVICE.Implenment
                         var orderDetailResult = await _orderDetailService.CreateAsync(orderDetailWithOrderId, entity.OrderId);
                         if (orderDetailResult.Success && orderDetailResult.Data != null)
                         {
-                            // Áp dụng discount cho từng OrderDetail
-                            if (orderDetailResult.Data.TotalPrice.HasValue && totalDiscountRate > 0m)
+                            // KHÔNG áp dụng discount cho OrderDetail, giữ nguyên giá gốc
+                            if (orderDetailResult.Data.TotalPrice.HasValue)
                             {
-                                var originalPrice = orderDetailResult.Data.TotalPrice.Value;
-                                var discountedPrice = originalPrice * (1m - totalDiscountRate / 100m);
-                                
-                                // Cập nhật TotalPrice của OrderDetail với giá đã giảm
-                                orderDetailResult.Data.TotalPrice = discountedPrice;
-                                
-                                // Cập nhật OrderDetail trong database với giá đã giảm
-                                await _orderDetailService.UpdateTotalPriceAsync(orderDetailResult.Data.OrderDetailId, discountedPrice);
-                                
-                                Console.WriteLine($"OrderDetail {orderDetailResult.Data.OrderDetailId}: Giá gốc {originalPrice:C0} → Giá sau giảm {discountedPrice:C0} (giảm {totalDiscountRate:F2}%)");
+                                totalProductPrice += orderDetailResult.Data.TotalPrice.Value;
+                                Console.WriteLine($"OrderDetail {orderDetailResult.Data.OrderDetailId}: Giá sản phẩm {orderDetailResult.Data.TotalPrice.Value:N0} đ");
                             }
                             
                             createdOrderDetails.Add(orderDetailResult.Data);
-                            // Cộng dồn TotalPrice của OrderDetail vào tổng Order (đã giảm giá)
-                            if (orderDetailResult.Data.TotalPrice.HasValue)
-                            {
-                                totalOrderPrice += orderDetailResult.Data.TotalPrice.Value;
-                            }
 
                             // Tạo InventoryTransaction cho OrderDetail này
                             await CreateInventoryTransactionForOrderDetail(orderDetailWithOrderId, entity);
@@ -296,7 +273,107 @@ namespace ASA_TENANT_SERVICE.Implenment
                         }
                     }
                     
-                    // BƯỚC 3: TRỪ TỒN KHO SAU KHI TẤT CẢ ĐÃ THÀNH CÔNG
+                    // Cập nhật TotalPrice = tổng tiền sản phẩm
+                    entity.TotalPrice = totalProductPrice;
+                    
+                    // BƯỚC 3: TÍNH TOÁN DISCOUNT VÀ FINAL PRICE
+                    // Tính discount từ request (phần trăm)
+                    if (entity.Discount.HasValue && entity.Discount.Value > 0)
+                    {
+                        discountAmount = totalProductPrice * (entity.Discount.Value / 100m);
+                        discountNotes.Add($"Giảm {entity.Discount.Value:F2}% từ chiết khấu: {discountAmount:N0} đ");
+                    }
+                    
+                    // Tính voucher discount nếu có voucher
+                    if (request.VoucherId.HasValue && request.VoucherId.Value > 0)
+                    {
+                        var voucher = await _voucherRepo.GetByIdAsync(request.VoucherId.Value);
+                        if (voucher == null)
+                        {
+                            return new ApiResponse<OrderResponse>
+                            {
+                                Success = false,
+                                Message = "Voucher not found",
+                                Data = null
+                            };
+                        }
+
+                        // Kiểm tra hết hạn
+                        if (voucher.Expired.HasValue && voucher.Expired.Value < DateTime.UtcNow)
+                        {
+                            return new ApiResponse<OrderResponse>
+                            {
+                                Success = false,
+                                Message = "Voucher expired",
+                                Data = null
+                            };
+                        }
+
+                        // Kiểm tra khớp Shop
+                        if (voucher.ShopId.HasValue && voucher.ShopId.Value != request.ShopId)
+                        {
+                            return new ApiResponse<OrderResponse>
+                            {
+                                Success = false,
+                                Message = "Voucher is not valid for this shop",
+                                Data = null
+                            };
+                        }
+
+                        // Tính discount từ voucher
+                        if (voucher.Type == 1 && voucher.Value.HasValue)
+                        {
+                            // Trừ số tiền cố định
+                            voucherAmount = voucher.Value.Value;
+                            discountNotes.Add($"Voucher {voucher.Code}: Giảm cố định {voucherAmount:N0} đ");
+                        }
+                        else if (voucher.Type == 2 && voucher.Value.HasValue)
+                        {
+                            // Trừ theo phần trăm (0..100%)
+                            var rate = voucher.Value.Value;
+                            if (rate < 0m) rate = 0m;
+                            if (rate > 100m) rate = 100m;
+                            voucherAmount = totalProductPrice * (rate / 100m);
+                            discountNotes.Add($"Voucher {voucher.Code}: Giảm {rate:F2}% = {voucherAmount:N0} đ");
+                        }
+                    }
+                    
+                    // Tính rank benefit discount
+                    if (request.CustomerId.HasValue)
+                    {
+                        var customer = await _customerRepo.GetByIdAsync(request.CustomerId.Value);
+                        if (customer?.Rank?.Benefit.HasValue == true)
+                        {
+                            var rankBenefitRate = (decimal)customer.Rank.Benefit.Value;
+                            rankBenefitAmount = totalProductPrice * rankBenefitRate;
+                            discountNotes.Add($"Rank benefit {customer.Rank.RankName}: Giảm {rankBenefitRate * 100:F2}% = {rankBenefitAmount:N0} đ");
+                            
+                            Console.WriteLine($"Customer {customer.CustomerId} rank {customer.Rank.RankName} có benefit {rankBenefitRate * 100:F2}%");
+                        }
+                    }
+                    
+                    // Tính tổng discount
+                    entity.TotalDiscount = discountAmount + voucherAmount + rankBenefitAmount;
+                    
+                    // Tính final price
+                    entity.FinalPrice = entity.TotalPrice - entity.TotalDiscount;
+                    if (entity.FinalPrice < 0) entity.FinalPrice = 0;
+                    
+                    // Tạo note với thông tin discount
+                    if (discountNotes.Any())
+                    {
+                        entity.Note = string.Join("; ", discountNotes);
+                    }
+                    
+                    Console.WriteLine($"Order {entity.OrderId} Pricing:");
+                    Console.WriteLine($"  TotalPrice (sản phẩm): {entity.TotalPrice:N0} đ");
+                    Console.WriteLine($"  Discount amount: {discountAmount:N0} đ");
+                    Console.WriteLine($"  Voucher amount: {voucherAmount:N0} đ");
+                    Console.WriteLine($"  Rank benefit amount: {rankBenefitAmount:N0} đ");
+                    Console.WriteLine($"  TotalDiscount: {entity.TotalDiscount:N0} đ");
+                    Console.WriteLine($"  FinalPrice: {entity.FinalPrice:N0} đ");
+                    
+                    // BƯỚC 4: TRỪ TỒN KHO SAU KHI TẤT CẢ ĐÃ THÀNH CÔNG
                     foreach (var (product, quantityToDeduct) in stockValidationResults)
                     {
                         product.Quantity = Math.Max(0, (product.Quantity.Value - quantityToDeduct));
@@ -391,99 +468,19 @@ namespace ASA_TENANT_SERVICE.Implenment
                     }
                 }
 
-                // Cập nhật TotalPrice của Order nếu có OrderDetails
-                if (createdOrderDetails.Any())
-                {
-                    entity.TotalPrice = totalOrderPrice;
-                }
-
-                // Thêm thông tin giảm giá vào note nếu có rank benefit
-                if (!string.IsNullOrEmpty(rankBenefitNote))
-                {
-                    if (string.IsNullOrEmpty(entity.Note) || entity.Note == "null")
-                    {
-                        entity.Note = rankBenefitNote;
-                    }
-                    else
-                    {
-                        entity.Note = $"{entity.Note} | {rankBenefitNote}";
-                    }
-                }
-
-                // Áp dụng voucher nếu có (kiểm tra hạn và đúng Shop)
-                if (request.VoucherId.HasValue)
-                {
-                    var voucher = await _voucherRepo.GetByIdAsync(request.VoucherId.Value);
-                    if (voucher == null)
-                    {
-                        return new ApiResponse<OrderResponse>
-                        {
-                            Success = false,
-                            Message = "Voucher not found",
-                            Data = null
-                        };
-                    }
-
-                    // Kiểm tra hết hạn
-                    if (voucher.Expired.HasValue && voucher.Expired.Value < DateTime.UtcNow)
-                    {
-                        return new ApiResponse<OrderResponse>
-                        {
-                            Success = false,
-                            Message = "Voucher expired",
-                            Data = null
-                        };
-                    }
-
-                    // Kiểm tra khớp Shop
-                    if (voucher.ShopId.HasValue && voucher.ShopId.Value != request.ShopId)
-                    {
-                        return new ApiResponse<OrderResponse>
-                        {
-                            Success = false,
-                            Message = "Voucher is not valid for this shop",
-                            Data = null
-                        };
-                    }
-
-                    if (voucher.Value.HasValue)
-                    {
-                        var currentTotal = entity.TotalPrice ?? 0m;
-                        decimal finalTotal = currentTotal;
-                        if (voucher.Type == 1)
-                        {
-                            // Trừ số tiền cố định
-                            finalTotal = currentTotal - voucher.Value.Value;
-                        }
-                        else if (voucher.Type == 2)
-                        {
-                            // Trừ theo phần trăm (0..100%)
-                            var rate = voucher.Value.Value;
-                            if (rate < 0m) rate = 0m;
-                            if (rate > 100m) rate = 100m;
-                            finalTotal = currentTotal * (1m - rate / 100m);
-                        }
-                        if (finalTotal < 0m) finalTotal = 0m;
-                        entity.TotalPrice = finalTotal;
-                    }
-                }
-
-                 // Áp dụng discount (0..100%) nếu có
-                var additionalDiscountRate = request.Discount ?? 0m;
-                if (additionalDiscountRate < 0m) additionalDiscountRate = 0m;
-                if (additionalDiscountRate > 100m) additionalDiscountRate = 100m;
-                if (entity.TotalPrice.HasValue)
-                {
-                    entity.TotalPrice = entity.TotalPrice.Value * (1m - additionalDiscountRate / 100m);
-                }
-
-                // Lưu cập nhật TotalPrice cuối cùng
+                // Cập nhật Order với pricing information
                 await _orderRepo.UpdateAsync(entity);
 
                 // Nếu payment method là Cash và có customerId, cập nhật spent và rank của customer
-                if (isCash && entity.CustomerId.HasValue && entity.TotalPrice.HasValue)
+                if (isCash && entity.CustomerId.HasValue && entity.FinalPrice.HasValue)
                 {
-                    await _customerService.UpdateCustomerSpentAndRankAsync(entity.CustomerId.Value, entity.TotalPrice.Value);
+                    await _customerService.UpdateCustomerSpentAndRankAsync(entity.CustomerId.Value, entity.FinalPrice.Value);
+                }
+
+                // Gửi email thông tin đơn hàng cho khách hàng nếu có email
+                if (isCash && entity.CustomerId.HasValue)
+                {
+                    await SendOrderConfirmationEmailAsync(entity, createdOrderDetails);
                 }
 
                 var response = _mapper.Map<OrderResponse>(entity);
@@ -659,7 +656,14 @@ namespace ASA_TENANT_SERVICE.Implenment
         {
             try
             {
-                var existing = await _orderRepo.GetByIdAsync(id);
+                // Load Order với OrderDetails để có thể hoàn lại tồn kho
+                var existing = await _orderRepo.GetFiltered(new Order { OrderId = id })
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Product)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.ProductUnit)
+                    .FirstOrDefaultAsync();
+                    
                 if (existing == null)
                 {
                     return new ApiResponse<OrderResponse>
@@ -679,6 +683,41 @@ namespace ASA_TENANT_SERVICE.Implenment
                         Message = $"Cannot cancel order with status {existing.Status}. Only pending orders can be cancelled.",
                         Data = null
                     };
+                }
+
+                // Xóa các InventoryTransaction đã tạo khi tạo đơn hàng
+                await DeleteInventoryTransactionsForOrder(existing.OrderId);
+                
+                // Hoàn lại số lượng sản phẩm đã trừ tồn kho
+                if (existing.OrderDetails != null && existing.OrderDetails.Any())
+                {
+                    foreach (var orderDetail in existing.OrderDetails)
+                    {
+                        if (orderDetail.ProductId.HasValue)
+                        {
+                            var product = await _productRepo.GetByIdAsync(orderDetail.ProductId.Value);
+                            if (product != null && product.Quantity.HasValue)
+                            {
+                                // Tính số lượng cần hoàn lại (có tính conversion factor)
+                                int quantityToRestore = orderDetail.Quantity ?? 0;
+                                
+                                if (orderDetail.ProductUnitId.HasValue && orderDetail.ProductUnitId.Value > 0)
+                                {
+                                    var productUnit = await _productUnitRepo.GetByIdAsync(orderDetail.ProductUnitId.Value);
+                                    if (productUnit != null && productUnit.ConversionFactor.HasValue && productUnit.ConversionFactor.Value > 0)
+                                    {
+                                        quantityToRestore = (int)(quantityToRestore * productUnit.ConversionFactor.Value);
+                                    }
+                                }
+                                
+                                // Cộng lại số lượng vào tồn kho
+                                product.Quantity = product.Quantity.Value + quantityToRestore;
+                                await _productRepo.UpdateAsync(product);
+                                
+                                Console.WriteLine($"Hoàn lại {quantityToRestore} {product.ProductName} vào tồn kho. Tồn kho hiện tại: {product.Quantity.Value}");
+                            }
+                        }
+                    }
                 }
 
                 // Cập nhật status thành 2 (Đã hủy) và note với lý do hủy
@@ -738,7 +777,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                         // Tạo InventoryTransaction với type = 1 (Sale)
                         var inventoryTransactionRequest = new InventoryTransactionRequest
                         {
-                            Type = 1, // Sale
+                            Type = (int)InventoryTransactionType.Sale, // Sale
                             ProductId = productUnit.ProductId.Value,
                             OrderId = order.OrderId,
                             UnitId = productUnit.UnitId ?? 0,
@@ -757,6 +796,122 @@ namespace ASA_TENANT_SERVICE.Implenment
                 // Trong thực tế, bạn có thể sử dụng ILogger để log lỗi
                 Console.WriteLine($"Error creating inventory transaction: {ex.Message}");
             }
+        }
+
+        private async Task DeleteInventoryTransactionsForOrder(long orderId)
+        {
+            try
+            {
+                // Sử dụng context trực tiếp để tìm và xóa InventoryTransaction
+                var inventoryTransactions = await _context.InventoryTransactions
+                    .Where(it => it.OrderId == orderId)
+                    .ToListAsync();
+                
+                if (inventoryTransactions.Any())
+                {
+                    _context.InventoryTransactions.RemoveRange(inventoryTransactions);
+                    await _context.SaveChangesAsync();
+                    
+                    Console.WriteLine($"Đã xóa {inventoryTransactions.Count} InventoryTransaction của đơn hàng #{orderId}");
+                }
+                else
+                {
+                    Console.WriteLine($"Không tìm thấy InventoryTransaction nào cho đơn hàng #{orderId}");
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log lỗi nhưng không throw để không ảnh hưởng đến việc hủy Order
+                Console.WriteLine($"Error deleting inventory transactions for order #{orderId}: {ex.Message}");
+            }
+        }
+
+        private async Task SendOrderConfirmationEmailAsync(Order order, List<OrderDetailResponse> orderDetails)
+        {
+            try
+            {
+                // Lấy thông tin khách hàng
+                var customer = await _customerRepo.GetByIdAsync(order.CustomerId.Value);
+                if (customer == null || string.IsNullOrEmpty(customer.Email))
+                {
+                    Console.WriteLine($"Không thể gửi email cho Order #{order.OrderId}: Khách hàng không có email");
+                    return;
+                }
+
+                // Lấy thông tin shop
+                var shop = await _shopRepo.GetByIdAsync(order.ShopId.Value);
+                if (shop == null)
+                {
+                    Console.WriteLine($"Không thể gửi email cho Order #{order.OrderId}: Không tìm thấy thông tin shop");
+                    return;
+                }
+
+                // Tạo HTML table cho chi tiết sản phẩm
+                var orderDetailsHtml = await GenerateOrderDetailsHtmlTableAsync(orderDetails);
+
+                // Gửi email xác nhận đơn hàng
+                var emailSent = await _emailService.SendOrderConfirmationEmailAsync(
+                    customer.Email,
+                    customer.FullName,
+                    order.OrderId,
+                    shop.ShopName,
+                    orderDetailsHtml,
+                    order.TotalPrice ?? 0,
+                    order.TotalDiscount,
+                    order.FinalPrice ?? 0,
+                    order.Datetime ?? DateTime.UtcNow,
+                    order.Note
+                );
+                
+                if (emailSent)
+                {
+                    Console.WriteLine($"✅ Đã gửi email xác nhận đơn hàng #{order.OrderId} đến {customer.Email}");
+                }
+                else
+                {
+                    Console.WriteLine($"❌ Không thể gửi email xác nhận đơn hàng #{order.OrderId} đến {customer.Email}");
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log lỗi nhưng không throw để không ảnh hưởng đến việc tạo Order
+                Console.WriteLine($"Error sending order confirmation email for Order #{order.OrderId}: {ex.Message}");
+            }
+        }
+
+        private async Task<string> GenerateOrderDetailsHtmlTableAsync(List<OrderDetailResponse> orderDetails)
+        {
+            var content = new StringBuilder();
+            
+            content.AppendLine($"<table style='width:100%;border-collapse:collapse;border:1px solid #e2e8f0;'>");
+            content.AppendLine($"<thead>");
+            content.AppendLine($"<tr style='background:#f8fafc;'>");
+            content.AppendLine($"<th style='padding:12px;text-align:left;border:1px solid #e2e8f0;font-size:14px;color:#334155;'>Sản phẩm</th>");
+            content.AppendLine($"<th style='padding:12px;text-align:center;border:1px solid #e2e8f0;font-size:14px;color:#334155;'>Số lượng</th>");
+            content.AppendLine($"<th style='padding:12px;text-align:right;border:1px solid #e2e8f0;font-size:14px;color:#334155;'>Đơn giá</th>");
+            content.AppendLine($"<th style='padding:12px;text-align:right;border:1px solid #e2e8f0;font-size:14px;color:#334155;'>Thành tiền</th>");
+            content.AppendLine($"</tr>");
+            content.AppendLine($"</thead>");
+            content.AppendLine($"<tbody>");
+
+            foreach (var detail in orderDetails)
+            {
+                // Lấy thông tin sản phẩm
+                var product = await _productRepo.GetByIdAsync(detail.ProductId.Value);
+                var productName = product?.ProductName ?? $"Sản phẩm ID: {detail.ProductId}";
+                
+                content.AppendLine($"<tr>");
+                content.AppendLine($"<td style='padding:12px;border:1px solid #e2e8f0;font-size:14px;color:#0f172a;'>{productName}</td>");
+                content.AppendLine($"<td style='padding:12px;text-align:center;border:1px solid #e2e8f0;font-size:14px;color:#0f172a;'>{detail.Quantity}</td>");
+                content.AppendLine($"<td style='padding:12px;text-align:right;border:1px solid #e2e8f0;font-size:14px;color:#0f172a;'>{((detail.TotalPrice / detail.Quantity) ?? 0):N0} đ</td>");
+                content.AppendLine($"<td style='padding:12px;text-align:right;border:1px solid #e2e8f0;font-size:14px;color:#0f172a;font-weight:600;'>{(detail.TotalPrice ?? 0):N0} đ</td>");
+                content.AppendLine($"</tr>");
+            }
+
+            content.AppendLine($"</tbody>");
+            content.AppendLine($"</table>");
+
+            return content.ToString();
         }
     }
 }

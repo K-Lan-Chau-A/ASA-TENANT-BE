@@ -30,5 +30,25 @@ namespace ASA_TENANT_BE.Controllers
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
+
+
+        [HttpPost("professional-revenue")]
+        public async Task<IActionResult> GenerateProfessionalRevenueReport([FromBody] ExcelReportRequest request)
+        {
+            try
+            {
+                var excelBytes = await _reportService.GenerateProfessionalRevenueReportAsync(request);
+                
+                var fileName = $"Professional_Revenue_Report_{request.StartDate:yyyyMMdd}_{request.EndDate:yyyyMMdd}.xlsx";
+                
+                return File(excelBytes, 
+                           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+                           fileName);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
     }
 }

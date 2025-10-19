@@ -27,7 +27,12 @@ namespace ASA_TENANT_SERVICE.CronJobs
                 var expirationTime = DateTime.UtcNow.AddMinutes(-5);
 
                 // Tìm các đơn hàng có status = 0 (chờ thanh toán) và được tạo trước 5 phút
+                // Include OrderDetails để có thể hoàn lại tồn kho
                 var expiredOrders = await _context.Orders
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.Product)
+                    .Include(o => o.OrderDetails)
+                        .ThenInclude(od => od.ProductUnit)
                     .Where(o => o.Status == 0 && // Chờ thanh toán
                                o.CreatedAt.HasValue && 
                                o.CreatedAt.Value <= expirationTime)

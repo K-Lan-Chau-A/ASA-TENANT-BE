@@ -60,6 +60,7 @@ builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<IPhotoService, PhotoService>();
 builder.Services.AddScoped<IRealtimeNotifier, RealtimeNotifier>();
 builder.Services.AddScoped<IRankService, RankService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 // Firebase Configuration
 builder.Services.AddSingleton<FirebaseConfigurationService>();

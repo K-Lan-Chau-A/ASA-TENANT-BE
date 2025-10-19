@@ -5,11 +5,15 @@ using ASA_TENANT_SERVICE.Implenment;
 using ASA_TENANT_SERVICE.Interface;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using ASA_TENANT_BE.CustomAttribute;
 
 namespace ASA_TENANT_BE.Controllers
 {
     [Route("api/users")]
     [ApiController]
+    [Authorize]
+    [RequireFeature(3)] // Quản lí người dùng
     public class UserController : ControllerBase
     {
         private readonly IUserService _userService;

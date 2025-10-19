@@ -11,6 +11,8 @@ namespace ASA_TENANT_BE.Controllers
 {
     [Route("api/customers")]
     [ApiController]
+    [Authorize]
+    [RequireFeature(9)] // Quản lí khách hàng
     public class CustomerController : ControllerBase
     {
         private readonly ICustomerService _customerService;
@@ -49,6 +51,7 @@ namespace ASA_TENANT_BE.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "1")] // Admin only
         public async Task<ActionResult<bool>> Delete(long id)
         {
             var result = await _customerService.DeleteAsync(id);

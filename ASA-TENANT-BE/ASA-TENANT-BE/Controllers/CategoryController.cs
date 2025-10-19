@@ -5,12 +5,16 @@ using ASA_TENANT_SERVICE.Interface;
 using AutoMapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using ASA_TENANT_BE.CustomAttribute;
 using System.Diagnostics;
 
 namespace ASA_TENANT_BE.Controllers
 {
     [Route("api/categories")]
     [ApiController]
+    [Authorize]
+    [RequireFeature(8)] // Quản lí category
     public class CategoryController : ControllerBase
     {
         private readonly ICategoryService _categoryService;
@@ -45,6 +49,7 @@ namespace ASA_TENANT_BE.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "1")] // Admin only
         public async Task<ActionResult<bool>> Delete(long id)
         {
             var result = await _categoryService.DeleteAsync(id);

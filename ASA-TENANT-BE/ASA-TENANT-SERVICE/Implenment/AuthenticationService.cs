@@ -2,6 +2,7 @@
 using ASA_TENANT_SERVICE.DTOs.Request;
 using ASA_TENANT_SERVICE.DTOs.Response;
 using ASA_TENANT_SERVICE.Interface;
+using ASA_TENANT_SERVICE.Enums;
 using AutoMapper;
 using System;
 using System.Collections.Generic;
@@ -46,6 +47,18 @@ namespace ASA_TENANT_SERVICE.Implenment
                             Data = null
                         };
                     }
+                    
+                    // Kiểm tra UserStatus - không cho phép login nếu status = 0 (Inactive)
+                    if (user.Status == (short)UserStatus.Inactive)
+                    {
+                        return new ApiResponse<LoginResponse>
+                        {
+                            Success = false,
+                            Message = "Tài khoản đã bị ngưng hoạt động",
+                            Data = null
+                        };
+                    }
+                    
                     var shopId = user.ShopId.Value;
                     var response = _mapper.Map<LoginResponse>(user);
                     response.FeatureIds = await _userService.GetUserFeaturesList(user.UserId);

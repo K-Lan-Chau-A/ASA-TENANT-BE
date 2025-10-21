@@ -25,6 +25,9 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
         //[EnumDataType(typeof(UserRole))]
         //public UserRole Role { get; set; }
         public IFormFile? AvatarFile { get; set; }
+        
+        // List of feature IDs to enable for the new staff
+        public List<long>? FeatureIds { get; set; } = new List<long>();
     }
     public class UserAdminCreateRequest
     {

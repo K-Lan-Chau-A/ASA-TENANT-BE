@@ -1,10 +1,10 @@
 ﻿using ASA_TENANT_REPO.DBContext;
 using ASA_TENANT_REPO.Models;
 using EDUConnect_Repositories.Basic;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace ASA_TENANT_REPO.Repository
@@ -37,6 +37,15 @@ namespace ASA_TENANT_REPO.Repository
                 query = query.Where(it => it.ShopId == filter.ShopId);
 
             return query.OrderByDescending(it => it.InventoryTransactionId);
+        }
+
+        public async Task<List<InventoryTransaction>> GetSellingTransactionsAsync(long shopId)
+        {
+            return await _context.InventoryTransactions
+                .Include(it => it.Product)
+                    .ThenInclude(p => p.Category)
+                .Where(it => it.ShopId == shopId && it.Type == 1) // Type = 1 là bán hàng
+                .ToListAsync();
         }
     }
 }

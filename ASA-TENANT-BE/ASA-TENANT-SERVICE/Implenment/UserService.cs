@@ -18,11 +18,13 @@ namespace ASA_TENANT_SERVICE.Implenment
     public class UserService : IUserService
     {
         private readonly UserRepo _userRepo;
+        private readonly UserFeatureRepo _userFeatureRepo;
         private readonly IMapper _mapper;
         private readonly IPhotoService _photoService;
-        public UserService(UserRepo userRepo, IMapper mapper, IPhotoService photoService)
+        public UserService(UserRepo userRepo, UserFeatureRepo userFeatureRepo, IMapper mapper, IPhotoService photoService)
         {
             _userRepo = userRepo;
+            _userFeatureRepo = userFeatureRepo;
             _mapper = mapper;
             _photoService = photoService;
         }
@@ -31,17 +33,6 @@ namespace ASA_TENANT_SERVICE.Implenment
         {
             try
             {        
-                    //var existingAdmin = await _userRepo.GetFirstUserAdmin(request.ShopId.Value);
-                    //if (existingAdmin != null)
-                    //{
-                    //    return new ApiResponse<UserResponse>
-                    //    {
-                    //        Success = false,
-                    //        Message = "Only 1 admin user can exists in shop, try another role",
-                    //        Data = null
-                    //    };
-                    //}
-
                 var entity = _mapper.Map<User>(request);
 
                 entity.CreatedAt = DateTime.UtcNow;
@@ -62,6 +53,9 @@ namespace ASA_TENANT_SERVICE.Implenment
 
                 if (affected > 0)
                 {
+                    // Tạo user features cho staff mới
+                    await CreateUserFeaturesForStaff(entity.UserId, request.ShopId, request.FeatureIds);
+                    
                     var response = _mapper.Map<UserResponse>(entity);
                     return new ApiResponse<UserResponse>
                     {
@@ -257,6 +251,62 @@ namespace ASA_TENANT_SERVICE.Implenment
         public Task<List<long>> GetUserFeaturesList(long userId)
         {
             return _userRepo.GetUserFeaturesList(userId);
+        }
+
+        private async Task CreateUserFeaturesForStaff(long staffUserId, long shopId, List<long>? enabledFeatureIds)
+        {
+            try
+            {
+                // 1. Lấy admin của shop để copy features
+                var admin = await _userRepo.GetFirstUserAdmin(shopId);
+                if (admin == null)
+                {
+                    // Nếu không có admin, không tạo features
+                    return;
+                }
+
+                // 2. Lấy tất cả features của admin
+                var adminFeatures = await _userFeatureRepo.GetByUserIdAsync(admin.UserId);
+                if (!adminFeatures.Any())
+                {
+                    // Nếu admin không có features, không tạo gì
+                    return;
+                }
+
+                // 3. Tạo user features cho staff (tất cả đều is_enabled = false)
+                var staffFeatures = new List<UserFeature>();
+                var enabledIds = enabledFeatureIds ?? new List<long>();
+
+                foreach (var adminFeature in adminFeatures)
+                {
+                    var isEnabled = enabledIds.Contains(adminFeature.FeatureId);
+                    
+                    var staffFeature = new UserFeature
+                    {
+                        UserId = staffUserId,
+                        FeatureId = adminFeature.FeatureId,
+                        FeatureName = adminFeature.FeatureName,
+                        IsEnabled = isEnabled,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    
+                    staffFeatures.Add(staffFeature);
+                }
+
+                // 4. Lưu vào database
+                if (staffFeatures.Any())
+                {
+                    await _userFeatureRepo.AddRangeAsync(staffFeatures);
+                    await _userFeatureRepo.SaveChangesAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log error nhưng không throw để không ảnh hưởng đến việc tạo user
+                // Có thể log vào file hoặc database
+                Console.WriteLine($"Error creating user features for staff {staffUserId}: {ex.Message}");
+            }
         }
     }
 }

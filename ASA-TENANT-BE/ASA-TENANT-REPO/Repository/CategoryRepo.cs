@@ -5,7 +5,6 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace ASA_TENANT_REPO.Repository
@@ -50,6 +49,15 @@ namespace ASA_TENANT_REPO.Repository
         public async Task<int> GetProductCountAsync(long categoryId)
         {
             return await _context.Products.CountAsync(p => p.CategoryId == categoryId);
+        }
+
+        public async Task<List<Category>> GetCategoriesWithOrdersAsync(long shopId)
+        {
+            return await _context.Categories
+                .Include(c => c.Products)
+                    .ThenInclude(p => p.OrderDetails)
+                .Where(c => c.ShopId == shopId)
+                .ToListAsync();
         }
     }
 }

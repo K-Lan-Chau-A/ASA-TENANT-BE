@@ -5,11 +5,15 @@ using ASA_TENANT_SERVICE.Implenment;
 using ASA_TENANT_SERVICE.Interface;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using ASA_TENANT_BE.CustomAttribute;
 
 namespace ASA_TENANT_BE.Controllers
 {
     [Route("api/users")]
     [ApiController]
+    [Authorize]
+    [RequireFeature(3)] // Quản lí người dùng
     public class UserController : ControllerBase
     {
         private readonly IUserService _userService;
@@ -35,6 +39,28 @@ namespace ASA_TENANT_BE.Controllers
         [HttpPost("create-staff")]
         public async Task<ActionResult<UserResponse>> CreateStaff([FromForm] UserCreateRequest request)
         {
+            // Handle FeatureIds from form data
+            if (Request.HasFormContentType && Request.Form.TryGetValue("FeatureIds", out var featureIdsValues))
+            {
+                var featureIds = new List<long>();
+                foreach (var value in featureIdsValues)
+                {
+                    if (!string.IsNullOrWhiteSpace(value))
+                    {
+                        // Split by comma and parse each ID
+                        var ids = value.Split(',', StringSplitOptions.RemoveEmptyEntries);
+                        foreach (var id in ids)
+                        {
+                            if (long.TryParse(id.Trim(), out var featureId))
+                            {
+                                featureIds.Add(featureId);
+                            }
+                        }
+                    }
+                }
+                request.FeatureIds = featureIds;
+            }
+
             var result = await _userService.CreateStaffAsync(request);
             return Ok(result);
         }

@@ -10,7 +10,6 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using ClosedXML.Excel;
 using System.IO;
@@ -20,12 +19,23 @@ namespace ASA_TENANT_SERVICE.Implenment
     public class ReportService : IReportService
     {
         private readonly ReportRepo _reportRepo;
+        private readonly InventoryTransactionRepo _inventoryTransactionRepo;
+        private readonly OrderRepo _orderRepo;
+        private readonly CategoryRepo _categoryRepo;
         private readonly IMapper _mapper;
         private readonly ASATENANTDBContext _context;
         
-        public ReportService(ReportRepo reportRepo, IMapper mapper, ASATENANTDBContext context)
+        public ReportService(ReportRepo reportRepo, 
+                           InventoryTransactionRepo inventoryTransactionRepo,
+                           OrderRepo orderRepo,
+                           CategoryRepo categoryRepo,
+                           IMapper mapper, 
+                           ASATENANTDBContext context)
         {
             _reportRepo = reportRepo;
+            _inventoryTransactionRepo = inventoryTransactionRepo;
+            _orderRepo = orderRepo;
+            _categoryRepo = categoryRepo;
             _mapper = mapper;
             _context = context;
         }
@@ -439,6 +449,166 @@ namespace ASA_TENANT_SERVICE.Implenment
                 }
             }
             return -1; // Không tìm thấy
+        }
+
+        public async Task<StatisticsOverviewResponse> GetStatisticsOverviewAsync(long shopId)
+        {
+            try
+            {
+                // Lấy top 10 sản phẩm bán chạy từ inventory transactions
+                var sellingTransactions = await _inventoryTransactionRepo.GetSellingTransactionsAsync(shopId);
+                
+                // Kiểm tra null
+                if (sellingTransactions == null)
+                {
+                    sellingTransactions = new List<InventoryTransaction>();
+                }
+                
+                
+                var topProducts = sellingTransactions
+                    .Where(it => it != null && it.ProductId.HasValue && it.Product != null)
+                    .GroupBy(it => it.ProductId)
+                    .Select(g => new TopProductResponse
+                    {
+                        ProductId = (long)g.Key,
+                        ProductName = g.First()?.Product?.ProductName ?? "Unknown",
+                        Barcode = g.First()?.Product?.Barcode ?? "",
+                        CategoryName = g.First()?.Product?.Category?.CategoryName ?? "Unknown",
+                        TotalQuantitySold = g.Sum(it => it?.Quantity ?? 0),
+                        TotalRevenue = g.Sum(it => (it?.Price ?? 0) * (it?.Quantity ?? 0)),
+                        AveragePrice = g.Average(it => it?.Price ?? 0),
+                        ImageUrl = g.First()?.Product?.ImageUrl ?? ""
+                    })
+                    .Where(p => p.TotalQuantitySold > 0)
+                    .OrderByDescending(x => x.TotalQuantitySold)
+                    .Take(10)
+                    .ToList();
+
+                // Lấy thống kê doanh thu 7 ngày trước
+                var endDate = DateTime.UtcNow.Date;
+                var startDate = endDate.AddDays(-6);
+                
+                // Lấy orders đã thanh toán trong 7 ngày (status = 1) với OrderDetails
+                var allOrdersLast7Days = await _orderRepo.GetFiltered(new Order
+                {
+                    ShopId = shopId,
+                    Status = 1 // Đã thanh toán
+                })
+                .Include(o => o.OrderDetails)
+                .Where(o => o.CreatedAt.HasValue && 
+                           o.CreatedAt.Value.Date >= startDate && 
+                           o.CreatedAt.Value.Date <= endDate)
+                .ToListAsync();
+
+                // Kiểm tra null
+                if (allOrdersLast7Days == null)
+                {
+                    allOrdersLast7Days = new List<Order>();
+                }
+
+                // Tính thống kê từ orders đã thanh toán
+                var totalRevenue = allOrdersLast7Days.Sum(o => o?.TotalPrice ?? 0);
+                var totalOrders = allOrdersLast7Days.Count;
+                
+                // Debug: Kiểm tra OrderDetails
+                var orderDetailsList = allOrdersLast7Days
+                    .Where(o => o?.OrderDetails != null)
+                    .SelectMany(o => o.OrderDetails)
+                    .ToList();
+                
+                var totalProductsSold = orderDetailsList.Sum(od => od?.Quantity ?? 0);
+                var averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+                var dailyRevenues = allOrdersLast7Days
+                    .Where(o => o != null)
+                    .GroupBy(o => o.CreatedAt?.Date)
+                    .Select(g => new DailyRevenueResponse
+                    {
+                        Date = DateTime.SpecifyKind(g.Key ?? DateTime.MinValue, DateTimeKind.Utc),
+                        Revenue = g.Sum(o => o?.TotalPrice ?? 0),
+                        OrderCount = g.Count(),
+                        ProductCount = g
+                            .Where(o => o?.OrderDetails != null)
+                            .SelectMany(o => o.OrderDetails)
+                            .Sum(od => od?.Quantity ?? 0)
+                    })
+                    .OrderBy(x => x.Date)
+                    .ToList();
+
+                var revenueStats = new RevenueStatsResponse
+                {
+                    StartDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc),
+                    EndDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc),
+                    TotalRevenue = totalRevenue,
+                    TotalOrders = totalOrders,
+                    TotalProductsSold = totalProductsSold,
+                    AverageOrderValue = averageOrderValue,
+                    DailyRevenues = dailyRevenues
+                };
+
+                // Lấy top categories bán chạy từ orders trong 7 ngày
+                var categoriesWithOrders = await _categoryRepo.GetCategoriesWithOrdersAsync(shopId);
+                
+                // Kiểm tra null
+                if (categoriesWithOrders == null)
+                {
+                    categoriesWithOrders = new List<Category>();
+                }
+                
+                var topCategories = categoriesWithOrders
+                    .Where(c => c != null && c.Products != null)
+                    .Select(c => new
+                    {
+                        CategoryId = c.CategoryId,
+                        CategoryName = c.CategoryName ?? "Unknown",
+                        ProductCount = c.Products?.Count() ?? 0,
+                        TotalQuantitySold = c.Products?
+                            .Where(p => p?.OrderDetails != null)
+                            .SelectMany(p => p.OrderDetails)
+                            .Where(od => od?.Order != null && 
+                                        od.Order.Status == 1 && // Đã thanh toán
+                                        od.Order.CreatedAt.HasValue && 
+                                        od.Order.CreatedAt.Value.Date >= startDate && 
+                                        od.Order.CreatedAt.Value.Date <= endDate)
+                            .Sum(od => od?.Quantity ?? 0) ?? 0,
+                        TotalRevenue = c.Products?
+                            .Where(p => p?.OrderDetails != null)
+                            .SelectMany(p => p.OrderDetails)
+                            .Where(od => od?.Order != null && 
+                                        od.Order.Status == 1 && // Đã thanh toán
+                                        od.Order.CreatedAt.HasValue && 
+                                        od.Order.CreatedAt.Value.Date >= startDate && 
+                                        od.Order.CreatedAt.Value.Date <= endDate)
+                            .Sum(od => od?.TotalPrice ?? 0) ?? 0
+                    })
+                    .Where(c => c.TotalQuantitySold > 0)
+                    .OrderByDescending(c => c.TotalRevenue)
+                    .Take(10)
+                    .ToList();
+
+                var totalCategoryRevenue = topCategories.Sum(c => c.TotalRevenue);
+                
+                var topCategoriesResponse = topCategories.Select(c => new TopCategoryResponse
+                {
+                    CategoryId = c.CategoryId,
+                    CategoryName = c.CategoryName,
+                    ProductCount = c.ProductCount,
+                    TotalQuantitySold = c.TotalQuantitySold,
+                    TotalRevenue = c.TotalRevenue,
+                    PercentageOfTotal = totalCategoryRevenue > 0 ? c.TotalRevenue / totalCategoryRevenue * 100 : 0
+                }).ToList();
+
+                return new StatisticsOverviewResponse
+                {
+                    TopProducts = topProducts,
+                    RevenueStats = revenueStats,
+                    TopCategories = topCategoriesResponse
+                };
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error getting statistics overview: {ex.Message}", ex);
+            }
         }
     }
 }

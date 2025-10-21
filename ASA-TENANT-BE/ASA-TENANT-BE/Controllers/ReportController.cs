@@ -1,5 +1,6 @@
 ﻿using ASA_TENANT_REPO.Models;
 using ASA_TENANT_SERVICE.DTOs.Request;
+using ASA_TENANT_SERVICE.DTOs.Response;
 using ASA_TENANT_SERVICE.Implenment;
 using ASA_TENANT_SERVICE.Interface;
 using Microsoft.AspNetCore.Http;
@@ -42,11 +43,11 @@ namespace ASA_TENANT_BE.Controllers
             try
             {
                 var excelBytes = await _reportService.GenerateProfessionalRevenueReportAsync(request);
-                
+
                 var fileName = $"Professional_Revenue_Report_{request.StartDate:yyyyMMdd}_{request.EndDate:yyyyMMdd}.xlsx";
-                
-                return File(excelBytes, 
-                           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+
+                return File(excelBytes,
+                           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                            fileName);
             }
             catch (Exception ex)
@@ -54,5 +55,25 @@ namespace ASA_TENANT_BE.Controllers
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
+
+        [HttpGet("statistics-overview")]
+        public async Task<ActionResult<StatisticsOverviewResponse>> GetStatisticsOverview([FromQuery] long shopId)
+        {
+            try
+            {
+                if (shopId <= 0)
+                {
+                    return BadRequest("ShopId must be greater than 0");
+                }
+
+                var result = await _reportService.GetStatisticsOverviewAsync(shopId);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
     }
+        
 }

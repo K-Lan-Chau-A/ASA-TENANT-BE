@@ -316,6 +316,20 @@ namespace ASA_TENANT_SERVICE.Implenment
             {
                 Console.WriteLine($"=== SendCustomerRankUpNotificationAsync: Customer {customer.CustomerId} ({customer.FullName}) từ rank {oldRank?.RankName ?? "Chưa có"} lên {newRank.RankName}");
                 
+                // Kiểm tra xem đã gửi notification cho customer này trong 10 phút gần đây chưa
+                var recentNotification = await _context.Notifications
+                    .Where(n => n.ShopId == customer.ShopId 
+                        && n.Title.Contains("Khách hàng lên hạng thành viên")
+                        && n.Content.Contains(customer.FullName)
+                        && n.CreatedAt >= DateTime.UtcNow.AddMinutes(-10))
+                    .FirstOrDefaultAsync();
+
+                if (recentNotification != null)
+                {
+                    Console.WriteLine($"⚠️ Đã gửi notification rank up cho customer {customer.CustomerId} trong 10 phút gần đây, bỏ qua để tránh spam");
+                    return;
+                }
+                
                 var title = "Khách hàng lên hạng thành viên!";
                 var body = $"Khách hàng {customer.FullName} đã lên từ hạng {oldRank?.RankName ?? "Chưa có"} lên hạng {newRank.RankName}!";
 

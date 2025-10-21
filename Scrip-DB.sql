@@ -403,7 +403,7 @@ INSERT INTO rank (rank_name, benefit, threshold, shop_id) VALUES
 
 -- 7. Customers
 INSERT INTO customer (shop_id, full_name, phone, email, birthday, gender, status, spent, rank_id, created_at) VALUES
-(1, 'Nguyễn Văn An', '0901234567', 'vana@example.com', '1990-05-15', 1, 1, 2500000, 2, '2025-10-01 08:30:00'::TIMESTAMPTZ),
+(1, 'Nguyễn Văn An', '0901234567', 'ngochau1310@gmail.com', '1990-05-15', 1, 1, 2500000, 2, '2025-10-01 08:30:00'::TIMESTAMPTZ),
 (1, 'Trần Thị Bình', '0912345678', 'thib@example.com', '1985-10-20', 0, 1, 1800000, 2, '2025-10-02 09:15:00'::TIMESTAMPTZ),
 (1, 'Lê Minh Cường', '0923456789', 'cuong@example.com', '1992-03-08', 1, 1, 950000, 1, '2025-10-03 10:00:00'::TIMESTAMPTZ),
 (1, 'Phạm Thị Dung', '0934567890', 'dung@example.com', '1988-12-25', 0, 1, 450000, 1, '2025-10-05 11:20:00'::TIMESTAMPTZ);

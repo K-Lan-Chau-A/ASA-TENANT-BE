@@ -377,11 +377,19 @@ namespace ASA_TENANT_SERVICE.Implenment
                     foreach (var (product, quantityToDeduct) in stockValidationResults)
                     {
                         product.Quantity = Math.Max(0, (product.Quantity.Value - quantityToDeduct));
+                        
+                        // Reset IsLowStockNotified nếu quantity > threshold
+                        var threshold = product.IsLow ?? 0;
+                        var currentQty = product.Quantity ?? 0;
+                        if (currentQty > threshold && (product.IsLowStockNotified ?? false))
+                        {
+                            product.IsLowStockNotified = false;
+                            Console.WriteLine($"Reset IsLowStockNotified = false for product {product.ProductName} (quantity: {currentQty} > threshold: {threshold})");
+                        }
+                        
                         await _productRepo.UpdateAsync(product);
 
                         // Low stock check and notify
-                        var threshold = product.IsLow ?? 0;
-                        var currentQty = product.Quantity ?? 0;
                         if (currentQty <= threshold)
                         {
                             if (!(product.IsLowStockNotified ?? false))
@@ -398,6 +406,8 @@ namespace ASA_TENANT_SERVICE.Implenment
                                 // Đặt cờ trước để tránh spam kể cả khi dispatch lỗi
                                 product.IsLowStockNotified = true;
                                 await _productRepo.UpdateAsync(product);
+                                
+                                Console.WriteLine($"Set IsLowStockNotified = true for product {product.ProductName} (ID: {product.ProductId})");
 
                                 try
                                 {
@@ -474,6 +484,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                 // Nếu payment method là Cash và có customerId, cập nhật spent và rank của customer
                 if (isCash && entity.CustomerId.HasValue && entity.FinalPrice.HasValue)
                 {
+                    Console.WriteLine($"Updating customer {entity.CustomerId.Value} spent with order total: {entity.FinalPrice.Value} (Cash payment)");
                     await _customerService.UpdateCustomerSpentAndRankAsync(entity.CustomerId.Value, entity.FinalPrice.Value);
                 }
 
@@ -522,10 +533,23 @@ namespace ASA_TENANT_SERVICE.Implenment
                 var wasPending = existing.Status == (short)OrderStatus.Pending;
                 var isNowPaid = status == (short)OrderStatus.Paid;
                 
+                // Chỉ cập nhật customer spent/rank nếu:
+                // 1. Đơn hàng chuyển từ Pending → Paid
+                // 2. Có customerId
+                // 3. Payment method KHÔNG phải Cash (vì Cash đã cập nhật rồi khi tạo đơn)
                 if (wasPending && isNowPaid && existing.CustomerId.HasValue && existing.TotalPrice.HasValue)
                 {
-                    // Cập nhật spent và rank của customer
-                    await _customerService.UpdateCustomerSpentAndRankAsync(existing.CustomerId.Value, existing.TotalPrice.Value);
+                    // Kiểm tra payment method để tránh cập nhật 2 lần
+                    var isCashPayment = existing.PaymentMethod == PaymentMethodEnum.Cash.ToString();
+                    if (!isCashPayment)
+                    {
+                        Console.WriteLine($"Updating customer {existing.CustomerId.Value} spent with order total: {existing.TotalPrice.Value} (Non-Cash payment)");
+                        await _customerService.UpdateCustomerSpentAndRankAsync(existing.CustomerId.Value, existing.TotalPrice.Value);
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Skipping customer spent update for Cash payment order (already updated during order creation)");
+                    }
                 }
 
                 existing.Status = status;

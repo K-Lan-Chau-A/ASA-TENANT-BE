@@ -485,8 +485,9 @@ namespace ASA_TENANT_SERVICE.Implenment
                     .ToList();
 
                 // Lấy thống kê doanh thu 7 ngày trước
-                var endDate = DateTime.UtcNow.Date;
-                var startDate = endDate.AddDays(-6);
+                // Từ 00:00:00 của ngày 7 trước đến 23:59:59 của ngày hôm nay
+                var endDate = DateTime.UtcNow.Date.AddDays(1).AddSeconds(-1); // 23:59:59 của ngày hôm nay
+                var startDate = DateTime.UtcNow.Date.AddDays(-6); // 00:00:00 của ngày 7 trước
                 
                 // Lấy orders đã thanh toán trong 7 ngày (status = 1) với OrderDetails
                 var allOrdersLast7Days = await _orderRepo.GetFiltered(new Order
@@ -496,8 +497,8 @@ namespace ASA_TENANT_SERVICE.Implenment
                 })
                 .Include(o => o.OrderDetails)
                 .Where(o => o.CreatedAt.HasValue && 
-                           o.CreatedAt.Value.Date >= startDate && 
-                           o.CreatedAt.Value.Date <= endDate)
+                           o.CreatedAt.Value >= startDate && 
+                           o.CreatedAt.Value <= endDate)
                 .ToListAsync();
 
                 // Kiểm tra null
@@ -519,21 +520,37 @@ namespace ASA_TENANT_SERVICE.Implenment
                 var totalProductsSold = orderDetailsList.Sum(od => od?.Quantity ?? 0);
                 var averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
-                var dailyRevenues = allOrdersLast7Days
+                // Tạo danh sách 7 ngày đầy đủ từ 7 ngày trước đến hôm nay
+                var allDays = new List<DateTime>();
+                for (int i = 6; i >= 0; i--)
+                {
+                    allDays.Add(DateTime.UtcNow.Date.AddDays(-i));
+                }
+
+                // Nhóm orders theo ngày
+                var ordersByDate = allOrdersLast7Days
                     .Where(o => o != null)
                     .GroupBy(o => o.CreatedAt?.Date)
-                    .Select(g => new DailyRevenueResponse
+                    .ToDictionary(g => g.Key ?? DateTime.MinValue, g => g.ToList());
+
+                // Tạo dailyRevenues với đủ 7 ngày
+                var dailyRevenues = allDays.Select(date => 
+                {
+                    var ordersForDate = ordersByDate.ContainsKey(date) ? ordersByDate[date] : new List<Order>();
+                    
+                    return new DailyRevenueResponse
                     {
-                        Date = DateTime.SpecifyKind(g.Key ?? DateTime.MinValue, DateTimeKind.Utc),
-                        Revenue = g.Sum(o => o?.TotalPrice ?? 0),
-                        OrderCount = g.Count(),
-                        ProductCount = g
+                        Date = DateTime.SpecifyKind(date, DateTimeKind.Utc),
+                        Revenue = ordersForDate.Sum(o => o?.TotalPrice ?? 0),
+                        OrderCount = ordersForDate.Count,
+                        ProductCount = ordersForDate
                             .Where(o => o?.OrderDetails != null)
                             .SelectMany(o => o.OrderDetails)
                             .Sum(od => od?.Quantity ?? 0)
-                    })
-                    .OrderBy(x => x.Date)
-                    .ToList();
+                    };
+                })
+                .OrderBy(x => x.Date)
+                .ToList();
 
                 var revenueStats = new RevenueStatsResponse
                 {

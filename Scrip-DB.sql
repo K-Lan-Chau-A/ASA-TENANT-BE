@@ -651,7 +651,7 @@ INSERT INTO nfc (status, balance, customer_id, nfc_code, last_used_date) VALUES
 -- 18. Notifications
 INSERT INTO notification (shop_id, user_id, title, content, type, is_read) VALUES
 (1, 1, 'Sản phẩm sắp hết hàng', 'Oishi Snack Bí Đỏ chỉ còn 78 sản phẩm', 1, FALSE),
-(1, 2, 'Ca làm việc mới', 'Bạn đã được phân công ca làm việc hôm nay', 2, TRUE),
+(1, 2, 'Ưu đãi cuối năm', 'Kì lân châu Á thông báo ưu đãi giảm 30% khi mua 6 tháng liên tiếp cho gói basic', 2, TRUE),
 (1, 1, 'Doanh thu ngày hôm qua', 'Tổng doanh thu: 1,250,000 VNĐ', 3, FALSE),
 (1, 1, 'Báo cáo tuần', 'Doanh thu tuần này tăng 15% so với tuần trước', 3, FALSE);
 

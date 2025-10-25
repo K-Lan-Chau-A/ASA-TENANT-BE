@@ -364,8 +364,8 @@ CREATE TABLE transaction (
 );
 
 -- 1. Tạo cửa hàng
-INSERT INTO shop (shop_name, address, status, qrcode_url) VALUES
-('Tạp Hóa Minh Hạnh', '123 Đường Nguyễn Văn Cừ, Quận 5, TP.HCM', 1, 'https://qr.example.com/shop001');
+INSERT INTO shop (shop_name, address,bank_name,bank_code, bank_num, status, qrcode_url,sepay_api_key,current_request,current_account) VALUES
+('Tạp Hóa Minh Hạnh', '123 Đường Nguyễn Văn Cừ, Quận 5, TP.HCM','Vietinbank','970415','103872620454', 1, 'https://qr.example.com/shop001','MZ6BVRISGLGLEDMG4NPAB7JE1XQXFFI2YJ4TR8EV5BLJQTOD0H5YSYNAO7UOCNNI',0,0);
 
 -- 2. Shop Subscription
 INSERT INTO shop_subscription (shop_id, platform_product_id, start_date, end_date, status) VALUES

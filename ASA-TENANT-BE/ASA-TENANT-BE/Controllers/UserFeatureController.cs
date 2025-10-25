@@ -1,9 +1,7 @@
 ﻿using ASA_TENANT_REPO.Models;
 using ASA_TENANT_SERVICE.DTOs.Request;
 using ASA_TENANT_SERVICE.DTOs.Response;
-using ASA_TENANT_SERVICE.Implenment;
 using ASA_TENANT_SERVICE.Interface;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ASA_TENANT_BE.Controllers
@@ -40,7 +38,7 @@ namespace ASA_TENANT_BE.Controllers
         [HttpPut()]
         public async Task<ActionResult<List<UserFeatureResponse>>> Update( [FromBody] UserFeatureUpdateRequest request)
         {
-            var result = await _userFeatureService.UpdateAsync( request);
+            var result = await _userFeatureService.UpdateAsync(request);
             return Ok(result);
         }
 

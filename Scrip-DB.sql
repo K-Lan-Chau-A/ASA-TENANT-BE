@@ -274,11 +274,14 @@ CREATE TABLE "order" (
 -- 20. Order Detail
 CREATE TABLE order_detail (
     order_detail_id BIGSERIAL PRIMARY KEY,
-    quantity INT,
-    product_unit_id BIGINT REFERENCES product_unit(product_unit_id),
-    product_id BIGINT REFERENCES product(product_id),
-    total_price NUMERIC(18,2),
-    order_id BIGINT REFERENCES "order"(order_id)
+    order_id BIGINT NOT NULL REFERENCES "order"(order_id),
+    product_id BIGINT NOT NULL REFERENCES product(product_id),
+    product_unit_id BIGINT NOT NULL REFERENCES product_unit(product_unit_id),
+    quantity INT NOT NULL CHECK (quantity > 0),
+    base_price  NUMERIC(18,2) NOT NULL DEFAULT 0,
+    discount_amount NUMERIC(18,2) NOT NULL DEFAULT 0,
+    final_price     NUMERIC(18,2) NOT NULL DEFAULT 0,
+    profit          NUMERIC(18,2) NOT NULL DEFAULT 0
 );
 
 -- 21. Inventory Transaction
@@ -482,64 +485,159 @@ INSERT INTO voucher (value, type, expired, shop_id, code) VALUES
 (15, 2, '2025-12-31 23:59:59'::TIMESTAMPTZ, 1, 'GIAM15P');
 
 -- 14. Orders
-INSERT INTO "order" (datetime, customer_id, total_price, payment_method, status, shift_id, shop_id, voucher_id, discount, note) VALUES
-('2025-10-15 10:30:00'::TIMESTAMPTZ, 1, 75000, 1, 1, 1, 1, NULL, 0, 'Khách hàng VIP'),
-('2025-10-15 14:15:00'::TIMESTAMPTZ, 2, 45000, 2, 1, 1, 1, 1, 10000, 'Sử dụng voucher giảm 10k'),
-('2025-10-15 16:45:00'::TIMESTAMPTZ, 3, 28000, 1, 1, 1, 1, NULL, 0, NULL),
-('2025-10-16 09:20:00'::TIMESTAMPTZ, 4, 65000, 3, 1, 2, 1, NULL, 0, 'Thanh toán NFC'),
-('2025-10-16 11:30:00'::TIMESTAMPTZ, 1, 52000, 1, 1, 2, 1, NULL, 0, NULL),
-('2025-10-17 08:45:00'::TIMESTAMPTZ, 2, 89000, 2, 1, 3, 1, NULL, 0, 'Chuyển khoản ngân hàng'),
-('2025-10-17 13:20:00'::TIMESTAMPTZ, 3, 45000, 1, 1, 3, 1, 2, 5000, 'Voucher 5k'),
-('2025-10-18 10:15:00'::TIMESTAMPTZ, 4, 72000, 3, 1, 4, 1, NULL, 0, 'NFC Card'),
-('2025-10-19 09:00:00'::TIMESTAMPTZ, 1, 96000, 1, 1, 5, 1, NULL, 0, 'Mua sỉ nước ngọt'),
-('2025-10-19 09:45:00'::TIMESTAMPTZ, 2, 64000, 2, 1, 5, 1, NULL, 0, 'Chuyển khoản MB Bank'),
-('2025-10-19 10:30:00'::TIMESTAMPTZ, 3, 55000, 1, 1, 5, 1, 2, 5000, 'Dùng voucher'),
-('2025-10-19 11:15:00'::TIMESTAMPTZ, 4, 83000, 3, 1, 5, 1, NULL, 0, 'Thanh toán NFC'),
-('2025-10-19 12:00:00'::TIMESTAMPTZ, 1, 108000, 1, 1, 5, 1, NULL, 0, 'Khách quen'),
-('2025-10-19 13:30:00'::TIMESTAMPTZ, 2, 41000, 4, 1, 5, 1, NULL, 0, 'Thanh toán ATM'),
-('2025-10-19 14:15:00'::TIMESTAMPTZ, 3, 76000, 1, 1, 5, 1, 3, 13500, 'Áp dụng voucher 15%'),
-('2025-10-19 15:00:00'::TIMESTAMPTZ, 4, 92000, 2, 1, 5, 1, NULL, 0, 'Banking'),
-('2025-10-19 15:45:00'::TIMESTAMPTZ, 1, 58000, 1, 0, 5, 1, NULL, 0, 'Đang chờ thanh toán'),
-('2025-10-19 16:20:00'::TIMESTAMPTZ, 2, 0, 1, 2, 5, 1, NULL, 0, 'Đơn hàng bị hủy');
+INSERT INTO "order" (datetime, customer_id, total_price, total_discount, final_price, payment_method, status, shift_id, shop_id, voucher_id, discount, note) VALUES
+-- Order 1: customer_id=1 (Bạc 2%), total_price=91000, discount=1820, final_price=89180
+('2025-10-15 10:30:00'::TIMESTAMPTZ, 1, 91000, 1820, 89180, 1, 1, 1, 1, NULL, 0, 'Giảm 2% cho khách hàng rank Bạc'),
+
+-- Order 2: customer_id=2 (Bạc 2%), voucher 10000, total_price=70000, discount=1400+10000=11400, final_price=58600
+('2025-10-15 14:15:00'::TIMESTAMPTZ, 2, 70000, 11400, 58600, 2, 1, 1, 1, 1, 10000, 'Giảm 2% cho khách hàng rank Bạc, sử dụng voucher giảm 10k'),
+
+-- Order 3: customer_id=3 (Đồng 1%), total_price=28500, discount=285, final_price=28215
+('2025-10-15 16:45:00'::TIMESTAMPTZ, 3, 28500, 285, 28215, 1, 1, 1, 1, NULL, 0, 'Giảm 1% cho khách hàng rank Đồng'),
+
+-- Order 4: customer_id=4 (Đồng 1%), total_price=72000, discount=720, final_price=71280
+('2025-10-16 09:20:00'::TIMESTAMPTZ, 4, 72000, 720, 71280, 3, 1, 2, 1, NULL, 0, 'Giảm 1% cho khách hàng rank Đồng, thanh toán NFC'),
+
+-- Order 5: customer_id=1 (Bạc 2%), total_price=47000, discount=940, final_price=46060
+('2025-10-16 11:30:00'::TIMESTAMPTZ, 1, 47000, 940, 46060, 1, 1, 2, 1, NULL, 0, 'Giảm 2% cho khách hàng rank Bạc'),
+
+-- Order 6: customer_id=2 (Bạc 2%), total_price=119000, discount=2380, final_price=116620
+('2025-10-17 08:45:00'::TIMESTAMPTZ, 2, 119000, 2380, 116620, 2, 1, 3, 1, NULL, 0, 'Giảm 2% cho khách hàng rank Bạc, chuyển khoản ngân hàng'),
+
+-- Order 7: customer_id=3 (Đồng 1%), voucher 5000, total_price=49000, discount=490+5000=5490, final_price=43510
+('2025-10-17 13:20:00'::TIMESTAMPTZ, 3, 49000, 5490, 43510, 1, 1, 3, 1, 2, 5000, 'Giảm 1% cho khách hàng rank Đồng, sử dụng voucher giảm 5k'),
+
+-- Order 8: customer_id=4 (Đồng 1%), total_price=81000, discount=810, final_price=80190
+('2025-10-18 10:15:00'::TIMESTAMPTZ, 4, 81000, 810, 80190, 3, 1, 4, 1, NULL, 0, 'Giảm 1% cho khách hàng rank Đồng, thanh toán NFC'),
+
+-- Order 9: customer_id=1 (Bạc 2%), total_price=92500, discount=1850, final_price=90650
+('2025-10-19 09:00:00'::TIMESTAMPTZ, 1, 92500, 1850, 90650, 1, 1, 5, 1, NULL, 0, 'Giảm 2% cho khách hàng rank Bạc'),
+
+-- Order 10: customer_id=2 (Bạc 2%), total_price=59000, discount=1180, final_price=57820
+('2025-10-19 09:45:00'::TIMESTAMPTZ, 2, 59000, 1180, 57820, 2, 1, 5, 1, NULL, 0, 'Giảm 2% cho khách hàng rank Bạc, chuyển khoản MB Bank'),
+
+-- Order 11: customer_id=3 (Đồng 1%), voucher 5000, total_price=65000, discount=650+5000=5650, final_price=59350
+('2025-10-19 10:30:00'::TIMESTAMPTZ, 3, 65000, 5650, 59350, 1, 1, 5, 1, 2, 5000, 'Giảm 1% cho khách hàng rank Đồng, sử dụng voucher giảm 5k'),
+
+-- Order 12: customer_id=4 (Đồng 1%), total_price=108000, discount=1080, final_price=106920
+('2025-10-19 11:15:00'::TIMESTAMPTZ, 4, 108000, 1080, 106920, 3, 1, 5, 1, NULL, 0, 'Giảm 1% cho khách hàng rank Đồng, thanh toán NFC'),
+
+-- Order 13: customer_id=1 (Bạc 2%), total_price=134000, discount=2680, final_price=131320
+('2025-10-19 12:00:00'::TIMESTAMPTZ, 1, 134000, 2680, 131320, 1, 1, 5, 1, NULL, 0, 'Giảm 2% cho khách hàng rank Bạc'),
+
+-- Order 14: customer_id=2 (Bạc 2%), total_price=51500, discount=1030, final_price=50470
+('2025-10-19 13:30:00'::TIMESTAMPTZ, 2, 51500, 1030, 50470, 4, 1, 5, 1, NULL, 0, 'Giảm 2% cho khách hàng rank Bạc, thanh toán ATM'),
+
+-- Order 15: customer_id=3 (Đồng 1%), voucher 15%=13500, total_price=90000, discount=900+13500=14400, final_price=75600
+('2025-10-19 14:15:00'::TIMESTAMPTZ, 3, 90000, 14400, 75600, 1, 1, 5, 1, 3, 13500, 'Giảm 1% cho khách hàng rank Đồng, áp dụng voucher giảm 15%'),
+
+-- Order 16: customer_id=4 (Đồng 1%), total_price=115000, discount=1150, final_price=113850
+('2025-10-19 15:00:00'::TIMESTAMPTZ, 4, 115000, 1150, 113850, 2, 1, 5, 1, NULL, 0, 'Giảm 1% cho khách hàng rank Đồng, chuyển khoản ngân hàng'),
+
+-- Order 17: customer_id=1 (Bạc 2%), Đang chờ thanh toán - chưa có discount
+('2025-10-19 15:45:00'::TIMESTAMPTZ, 1, 69000, 0, 69000, 1, 0, 5, 1, NULL, 0, 'Đang chờ thanh toán'),
+
+-- Order 18: customer_id=2 (Bạc 2%), Đơn hàng bị hủy
+('2025-10-19 16:20:00'::TIMESTAMPTZ, 2, 42000, 0, 0, 1, 2, 5, 1, NULL, 0, 'Đơn hàng bị hủy');
 
 -- 15. Order Details
-INSERT INTO order_detail (quantity, product_unit_id, product_id, total_price, order_id) VALUES
--- Order 1
-(3, 1, 1, 36000, 1), (2, 7, 7, 18000, 1), (1, 15, 15, 3000, 1), (1, 17, 17, 12000, 1), (1, 13, 13, 22000, 1),
--- Order 2
-(2, 2, 2, 24000, 2), (1, 9, 9, 10000, 2), (2, 15, 15, 6000, 2), (1, 11, 11, 12000, 2), (1, 14, 14, 18000, 2),
--- Order 3
-(2, 4, 4, 26000, 3), (1, 16, 16, 2500, 3),
--- Order 4
-(3, 5, 5, 39000, 4), (2, 8, 8, 18000, 4), (1, 18, 18, 15000, 4),
--- Order 5
-(2, 1, 1, 24000, 5), (2, 9, 9, 20000, 5), (1, 15, 15, 3000, 5),
--- Order 6
-(4, 2, 2, 48000, 6), (3, 7, 7, 27000, 6), (2, 13, 13, 44000, 6),
--- Order 7
-(2, 3, 3, 22000, 7), (1, 10, 10, 10000, 7), (2, 16, 16, 5000, 7), (1, 17, 17, 12000, 7),
--- Order 8
-(3, 4, 4, 39000, 8), (2, 11, 11, 24000, 8), (1, 14, 14, 18000, 8),
--- Order 9
-(4, 1, 1, 48000, 9), (3, 2, 2, 36000, 9), (2, 15, 15, 6000, 9), (1, 16, 16, 2500, 9),
--- Order 10
-(2, 4, 4, 26000, 10), (3, 7, 7, 27000, 10), (2, 15, 15, 6000, 10),
--- Order 11
-(3, 3, 3, 33000, 11), (2, 9, 9, 20000, 11), (1, 17, 17, 12000, 11),
--- Order 12
-(2, 5, 5, 26000, 12), (4, 8, 8, 36000, 12), (2, 11, 11, 24000, 12), (1, 13, 13, 22000, 12),
--- Order 13
-(5, 1, 1, 60000, 13), (3, 9, 9, 30000, 13), (2, 13, 13, 44000, 13),
--- Order 14
-(2, 2, 2, 24000, 14), (1, 10, 10, 10000, 14), (1, 16, 16, 2500, 14), (1, 18, 18, 15000, 14),
--- Order 15
-(3, 4, 4, 39000, 15), (2, 7, 7, 18000, 15), (2, 12, 12, 24000, 15), (3, 15, 15, 9000, 15),
--- Order 16
-(4, 5, 5, 52000, 16), (3, 8, 8, 27000, 16), (2, 14, 14, 36000, 16),
--- Order 17 (Đang chờ thanh toán - không trừ kho)
-(3, 3, 3, 33000, 17), (2, 6, 6, 24000, 17), (1, 17, 17, 12000, 17),
--- Order 18 (Đơn bị hủy)
-(2, 1, 1, 24000, 18), (2, 7, 7, 18000, 18);
+INSERT INTO order_detail (order_id, product_id, product_unit_id, quantity, base_price, discount_amount, final_price, profit) VALUES
+-- Order 1: customer 1 (Bạc 2%), total=91000, discount=1820
+(1, 1, 1, 3, 36000, 720, 35280, 11280),   -- cost: 8000*3=24000
+(1, 7, 1, 2, 18000, 360, 17640, 5640),    -- cost: 6000*2=12000
+(1, 15, 1, 1, 3000, 60, 2940, 940),       -- cost: 2000*1=2000
+(1, 17, 1, 1, 12000, 240, 11760, 3760),   -- cost: 8000*1=8000
+(1, 13, 1, 1, 22000, 440, 21560, 6560),   -- cost: 15000*1=15000
+
+-- Order 2: customer 2 (Bạc 2% + voucher 10000), total=70000, discount=11400
+(2, 2, 2, 2, 24000, 3908, 20092, 3092),   -- cost: 8500*2=17000
+(2, 9, 9, 1, 10000, 1629, 8371, 1371),    -- cost: 7000*1=7000
+(2, 15, 15, 2, 6000, 977, 5023, 1023),    -- cost: 2000*2=4000
+(2, 11, 11, 1, 12000, 1954, 10046, 2046), -- cost: 8000*1=8000
+(2, 14, 14, 1, 18000, 2932, 15068, 3068), -- cost: 12000*1=12000
+
+-- Order 3: customer 3 (Đồng 1%), total=28500, discount=285
+(3, 4, 4, 2, 26000, 260, 25740, 7740),    -- cost: 9000*2=18000
+(3, 16, 16, 1, 2500, 25, 2475, 975),      -- cost: 1500*1=1500
+
+-- Order 4: customer 4 (Đồng 1%), total=72000, discount=720
+(4, 5, 5, 3, 39000, 390, 38610, 10110),   -- cost: 9500*3=28500
+(4, 8, 8, 2, 18000, 180, 17820, 5820),    -- cost: 6000*2=12000
+(4, 18, 18, 1, 15000, 150, 14850, 4850),  -- cost: 10000*1=10000
+
+-- Order 5: customer 1 (Bạc 2%), total=47000, discount=940
+(5, 1, 1, 2, 24000, 480, 23520, 7520),    -- cost: 8000*2=16000
+(5, 9, 9, 2, 20000, 400, 19600, 5600),    -- cost: 7000*2=14000
+(5, 15, 15, 1, 3000, 60, 2940, 940),      -- cost: 2000*1=2000
+
+-- Order 6: customer 2 (Bạc 2%), total=119000, discount=2380
+(6, 2, 2, 4, 48000, 960, 47040, 13040),   -- cost: 8500*4=34000
+(6, 7, 7, 3, 27000, 540, 26460, 8460),    -- cost: 6000*3=18000
+(6, 13, 13, 2, 44000, 880, 43120, 13120), -- cost: 15000*2=30000
+
+-- Order 7: customer 3 (Đồng 1% + voucher 5000), total=49000, discount=5490
+(7, 3, 3, 2, 22000, 2467, 19533, 4533),   -- cost: 7500*2=15000
+(7, 10, 10, 1, 10000, 1120, 8880, 1880),  -- cost: 7000*1=7000
+(7, 16, 16, 2, 5000, 561, 4439, 1439),    -- cost: 1500*2=3000
+(7, 17, 17, 1, 12000, 1342, 10658, 2658), -- cost: 8000*1=8000
+
+-- Order 8: customer 4 (Đồng 1%), total=81000, discount=810
+(8, 4, 4, 3, 39000, 390, 38610, 11610),   -- cost: 9000*3=27000
+(8, 11, 11, 2, 24000, 240, 23760, 7760),  -- cost: 8000*2=16000
+(8, 14, 14, 1, 18000, 180, 17820, 5820),  -- cost: 12000*1=12000
+
+-- Order 9: customer 1 (Bạc 2%), total=92500, discount=1850
+(9, 1, 1, 4, 48000, 960, 47040, 15040),   -- cost: 8000*4=32000
+(9, 2, 2, 3, 36000, 720, 35280, 9780),    -- cost: 8500*3=25500
+(9, 15, 15, 2, 6000, 120, 5880, 1880),    -- cost: 2000*2=4000
+(9, 16, 16, 1, 2500, 50, 2450, 950),      -- cost: 1500*1=1500
+
+-- Order 10: customer 2 (Bạc 2%), total=59000, discount=1180
+(10, 4, 4, 2, 26000, 520, 25480, 7480),   -- cost: 9000*2=18000
+(10, 7, 7, 3, 27000, 540, 26460, 8460),   -- cost: 6000*3=18000
+(10, 15, 15, 2, 6000, 120, 5880, 1880),   -- cost: 2000*2=4000
+
+-- Order 11: customer 3 (Đồng 1% + voucher 5000), total=65000, discount=5650
+(11, 3, 3, 3, 33000, 2868, 30132, 7632),  -- cost: 7500*3=22500
+(11, 9, 9, 2, 20000, 1738, 18262, 4262),  -- cost: 7000*2=14000
+(11, 17, 17, 1, 12000, 1044, 10956, 2956), -- cost: 8000*1=8000
+
+-- Order 12: customer 4 (Đồng 1%), total=108000, discount=1080
+(12, 5, 5, 2, 26000, 260, 25740, 6740),   -- cost: 9500*2=19000
+(12, 8, 8, 4, 36000, 360, 35640, 11640),  -- cost: 6000*4=24000
+(12, 11, 11, 2, 24000, 240, 23760, 7760), -- cost: 8000*2=16000
+(12, 13, 13, 1, 22000, 220, 21780, 6780), -- cost: 15000*1=15000
+
+-- Order 13: customer 1 (Bạc 2%), total=134000, discount=2680
+(13, 1, 1, 5, 60000, 1200, 58800, 18800), -- cost: 8000*5=40000
+(13, 9, 9, 3, 30000, 600, 29400, 8400),   -- cost: 7000*3=21000
+(13, 13, 13, 2, 44000, 880, 43120, 13120), -- cost: 15000*2=30000
+
+-- Order 14: customer 2 (Bạc 2%), total=51500, discount=1030
+(14, 2, 2, 2, 24000, 480, 23520, 6520),   -- cost: 8500*2=17000
+(14, 10, 10, 1, 10000, 200, 9800, 2800),  -- cost: 7000*1=7000
+(14, 16, 16, 1, 2500, 50, 2450, 950),     -- cost: 1500*1=1500
+(14, 18, 18, 1, 15000, 300, 14700, 4700), -- cost: 10000*1=10000
+
+-- Order 15: customer 3 (Đồng 1% + voucher 15%=13500), total=90000, discount=14400
+(15, 4, 4, 3, 39000, 6240, 32760, 5760),  -- cost: 9000*3=27000
+(15, 7, 7, 2, 18000, 2880, 15120, 3120),  -- cost: 6000*2=12000
+(15, 12, 12, 2, 24000, 3840, 20160, 4160), -- cost: 8000*2=16000
+(15, 15, 15, 3, 9000, 1440, 7560, 1560),  -- cost: 2000*3=6000
+
+-- Order 16: customer 4 (Đồng 1%), total=115000, discount=1150
+(16, 5, 5, 4, 52000, 520, 51480, 13480),  -- cost: 9500*4=38000
+(16, 8, 8, 3, 27000, 270, 26730, 8730),   -- cost: 6000*3=18000
+(16, 14, 14, 2, 36000, 360, 35640, 11640), -- cost: 12000*2=24000
+
+-- Order 17: customer 1 (Bạc 2%), Đang chờ thanh toán - chưa có discount
+(17, 3, 3, 3, 33000, 0, 33000, 10500),    -- cost: 7500*3=22500
+(17, 6, 6, 2, 24000, 0, 24000, 7000),     -- cost: 8500*2=17000
+(17, 17, 17, 1, 12000, 0, 12000, 4000),   -- cost: 8000*1=8000
+
+-- Order 18: customer 2 (Bạc 2%), Đơn bị hủy - không tính discount
+(18, 1, 1, 2, 24000, 0, 24000, 8000),     -- cost: 8000*2=16000
+(18, 7, 7, 2, 18000, 0, 18000, 6000);     -- cost: 6000*2=12000
 
 -- 16. Inventory Transactions
 -- BƯỚC 1: NHẬP KHO BAN ĐẦU (type = 2)
@@ -566,82 +664,97 @@ INSERT INTO inventory_transaction (type, product_id, order_id, unit_id, quantity
 (2, 17, NULL, 5, 100, 8000, 1, '2025-10-01 08:00:00'::TIMESTAMPTZ),
 (2, 18, NULL, 5, 80, 10000, 1, '2025-10-01 08:00:00'::TIMESTAMPTZ);
 
--- BƯỚC 2: BÁN HÀNG (type = 1) - Các đơn đã thanh toán (status = 1)
--- Order 1 (đã thanh toán)
+-- BƯỚC 2: BÁN HÀNG (type = 1) - price là profit của lần bán hàng
 INSERT INTO inventory_transaction (type, product_id, order_id, unit_id, quantity, price, shop_id, created_at) VALUES
-(1, 1, 1, 1, 3, 12000, 1, '2025-10-15 10:30:00'::TIMESTAMPTZ),
-(1, 7, 1, 3, 2, 9000, 1, '2025-10-15 10:30:00'::TIMESTAMPTZ),
-(1, 15, 1, 4, 1, 3000, 1, '2025-10-15 10:30:00'::TIMESTAMPTZ),
-(1, 17, 1, 5, 1, 12000, 1, '2025-10-15 10:30:00'::TIMESTAMPTZ),
-(1, 13, 1, 3, 1, 22000, 1, '2025-10-15 10:30:00'::TIMESTAMPTZ),
+-- Order 1
+(1, 1, 1, 1, 3, 11280, 1, '2025-10-15 10:30:00'::TIMESTAMPTZ),
+(1, 7, 1, 3, 2, 5640, 1, '2025-10-15 10:30:00'::TIMESTAMPTZ),
+(1, 15, 1, 4, 1, 940, 1, '2025-10-15 10:30:00'::TIMESTAMPTZ),
+(1, 17, 1, 5, 1, 3760, 1, '2025-10-15 10:30:00'::TIMESTAMPTZ),
+(1, 13, 1, 3, 1, 6560, 1, '2025-10-15 10:30:00'::TIMESTAMPTZ),
+
 -- Order 2
-(1, 2, 2, 1, 2, 12000, 1, '2025-10-15 14:15:00'::TIMESTAMPTZ),
-(1, 9, 2, 3, 1, 10000, 1, '2025-10-15 14:15:00'::TIMESTAMPTZ),
-(1, 15, 2, 4, 2, 3000, 1, '2025-10-15 14:15:00'::TIMESTAMPTZ),
-(1, 11, 2, 3, 1, 12000, 1, '2025-10-15 14:15:00'::TIMESTAMPTZ),
-(1, 14, 2, 3, 1, 18000, 1, '2025-10-15 14:15:00'::TIMESTAMPTZ),
+(1, 2, 2, 1, 2, 3092, 1, '2025-10-15 14:15:00'::TIMESTAMPTZ),
+(1, 9, 2, 3, 1, 1371, 1, '2025-10-15 14:15:00'::TIMESTAMPTZ),
+(1, 15, 2, 4, 2, 1023, 1, '2025-10-15 14:15:00'::TIMESTAMPTZ),
+(1, 11, 2, 3, 1, 2046, 1, '2025-10-15 14:15:00'::TIMESTAMPTZ),
+(1, 14, 2, 3, 1, 3068, 1, '2025-10-15 14:15:00'::TIMESTAMPTZ),
+
 -- Order 3
-(1, 4, 3, 2, 2, 13000, 1, '2025-10-15 16:45:00'::TIMESTAMPTZ),
-(1, 16, 3, 4, 1, 2500, 1, '2025-10-15 16:45:00'::TIMESTAMPTZ),
+(1, 4, 3, 2, 2, 7740, 1, '2025-10-15 16:45:00'::TIMESTAMPTZ),
+(1, 16, 3, 4, 1, 975, 1, '2025-10-15 16:45:00'::TIMESTAMPTZ),
+
 -- Order 4
-(1, 5, 4, 2, 3, 13000, 1, '2025-10-16 09:20:00'::TIMESTAMPTZ),
-(1, 8, 4, 3, 2, 9000, 1, '2025-10-16 09:20:00'::TIMESTAMPTZ),
-(1, 18, 4, 5, 1, 15000, 1, '2025-10-16 09:20:00'::TIMESTAMPTZ),
+(1, 5, 4, 2, 3, 10110, 1, '2025-10-16 09:20:00'::TIMESTAMPTZ),
+(1, 8, 4, 3, 2, 5820, 1, '2025-10-16 09:20:00'::TIMESTAMPTZ),
+(1, 18, 4, 5, 1, 4850, 1, '2025-10-16 09:20:00'::TIMESTAMPTZ),
+
 -- Order 5
-(1, 1, 5, 1, 2, 12000, 1, '2025-10-16 11:30:00'::TIMESTAMPTZ),
-(1, 9, 5, 3, 2, 10000, 1, '2025-10-16 11:30:00'::TIMESTAMPTZ),
-(1, 15, 5, 4, 1, 3000, 1, '2025-10-16 11:30:00'::TIMESTAMPTZ),
+(1, 1, 5, 1, 2, 7520, 1, '2025-10-16 11:30:00'::TIMESTAMPTZ),
+(1, 9, 5, 3, 2, 5600, 1, '2025-10-16 11:30:00'::TIMESTAMPTZ),
+(1, 15, 5, 4, 1, 940, 1, '2025-10-16 11:30:00'::TIMESTAMPTZ),
+
 -- Order 6
-(1, 2, 6, 1, 4, 12000, 1, '2025-10-17 08:45:00'::TIMESTAMPTZ),
-(1, 7, 6, 3, 3, 9000, 1, '2025-10-17 08:45:00'::TIMESTAMPTZ),
-(1, 13, 6, 3, 2, 22000, 1, '2025-10-17 08:45:00'::TIMESTAMPTZ),
+(1, 2, 6, 1, 4, 13040, 1, '2025-10-17 08:45:00'::TIMESTAMPTZ),
+(1, 7, 6, 3, 3, 8460, 1, '2025-10-17 08:45:00'::TIMESTAMPTZ),
+(1, 13, 6, 3, 2, 13120, 1, '2025-10-17 08:45:00'::TIMESTAMPTZ),
+
 -- Order 7
-(1, 3, 7, 1, 2, 11000, 1, '2025-10-17 13:20:00'::TIMESTAMPTZ),
-(1, 10, 7, 3, 1, 10000, 1, '2025-10-17 13:20:00'::TIMESTAMPTZ),
-(1, 16, 7, 4, 2, 2500, 1, '2025-10-17 13:20:00'::TIMESTAMPTZ),
-(1, 17, 7, 5, 1, 12000, 1, '2025-10-17 13:20:00'::TIMESTAMPTZ),
+(1, 3, 7, 1, 2, 4533, 1, '2025-10-17 13:20:00'::TIMESTAMPTZ),
+(1, 10, 7, 3, 1, 1880, 1, '2025-10-17 13:20:00'::TIMESTAMPTZ),
+(1, 16, 7, 4, 2, 1439, 1, '2025-10-17 13:20:00'::TIMESTAMPTZ),
+(1, 17, 7, 5, 1, 2658, 1, '2025-10-17 13:20:00'::TIMESTAMPTZ),
+
 -- Order 8
-(1, 4, 8, 2, 3, 13000, 1, '2025-10-18 10:15:00'::TIMESTAMPTZ),
-(1, 11, 8, 3, 2, 12000, 1, '2025-10-18 10:15:00'::TIMESTAMPTZ),
-(1, 14, 8, 3, 1, 18000, 1, '2025-10-18 10:15:00'::TIMESTAMPTZ),
+(1, 4, 8, 2, 3, 11610, 1, '2025-10-18 10:15:00'::TIMESTAMPTZ),
+(1, 11, 8, 3, 2, 7760, 1, '2025-10-18 10:15:00'::TIMESTAMPTZ),
+(1, 14, 8, 3, 1, 5820, 1, '2025-10-18 10:15:00'::TIMESTAMPTZ),
+
 -- Order 9
-(1, 1, 9, 1, 4, 12000, 1, '2025-10-19 09:00:00'::TIMESTAMPTZ),
-(1, 2, 9, 1, 3, 12000, 1, '2025-10-19 09:00:00'::TIMESTAMPTZ),
-(1, 15, 9, 4, 2, 3000, 1, '2025-10-19 09:00:00'::TIMESTAMPTZ),
-(1, 16, 9, 4, 1, 2500, 1, '2025-10-19 09:00:00'::TIMESTAMPTZ),
+(1, 1, 9, 1, 4, 15040, 1, '2025-10-19 09:00:00'::TIMESTAMPTZ),
+(1, 2, 9, 1, 3, 9780, 1, '2025-10-19 09:00:00'::TIMESTAMPTZ),
+(1, 15, 9, 4, 2, 1880, 1, '2025-10-19 09:00:00'::TIMESTAMPTZ),
+(1, 16, 9, 4, 1, 950, 1, '2025-10-19 09:00:00'::TIMESTAMPTZ),
+
 -- Order 10
-(1, 4, 10, 2, 2, 13000, 1, '2025-10-19 09:45:00'::TIMESTAMPTZ),
-(1, 7, 10, 3, 3, 9000, 1, '2025-10-19 09:45:00'::TIMESTAMPTZ),
-(1, 15, 10, 4, 2, 3000, 1, '2025-10-19 09:45:00'::TIMESTAMPTZ),
+(1, 4, 10, 2, 2, 7480, 1, '2025-10-19 09:45:00'::TIMESTAMPTZ),
+(1, 7, 10, 3, 3, 8460, 1, '2025-10-19 09:45:00'::TIMESTAMPTZ),
+(1, 15, 10, 4, 2, 1880, 1, '2025-10-19 09:45:00'::TIMESTAMPTZ),
+
 -- Order 11
-(1, 3, 11, 1, 3, 11000, 1, '2025-10-19 10:30:00'::TIMESTAMPTZ),
-(1, 9, 11, 3, 2, 10000, 1, '2025-10-19 10:30:00'::TIMESTAMPTZ),
-(1, 17, 11, 5, 1, 12000, 1, '2025-10-19 10:30:00'::TIMESTAMPTZ),
+(1, 3, 11, 1, 3, 7632, 1, '2025-10-19 10:30:00'::TIMESTAMPTZ),
+(1, 9, 11, 3, 2, 4262, 1, '2025-10-19 10:30:00'::TIMESTAMPTZ),
+(1, 17, 11, 5, 1, 2956, 1, '2025-10-19 10:30:00'::TIMESTAMPTZ),
+
 -- Order 12
-(1, 5, 12, 2, 2, 13000, 1, '2025-10-19 11:15:00'::TIMESTAMPTZ),
-(1, 8, 12, 3, 4, 9000, 1, '2025-10-19 11:15:00'::TIMESTAMPTZ),
-(1, 11, 12, 3, 2, 12000, 1, '2025-10-19 11:15:00'::TIMESTAMPTZ),
-(1, 13, 12, 3, 1, 22000, 1, '2025-10-19 11:15:00'::TIMESTAMPTZ),
+(1, 5, 12, 2, 2, 6740, 1, '2025-10-19 11:15:00'::TIMESTAMPTZ),
+(1, 8, 12, 3, 4, 11640, 1, '2025-10-19 11:15:00'::TIMESTAMPTZ),
+(1, 11, 12, 3, 2, 7760, 1, '2025-10-19 11:15:00'::TIMESTAMPTZ),
+(1, 13, 12, 3, 1, 6780, 1, '2025-10-19 11:15:00'::TIMESTAMPTZ),
+
 -- Order 13
-(1, 1, 13, 1, 5, 12000, 1, '2025-10-19 12:00:00'::TIMESTAMPTZ),
-(1, 9, 13, 3, 3, 10000, 1, '2025-10-19 12:00:00'::TIMESTAMPTZ),
-(1, 13, 13, 3, 2, 22000, 1, '2025-10-19 12:00:00'::TIMESTAMPTZ),
+(1, 1, 13, 1, 5, 18800, 1, '2025-10-19 12:00:00'::TIMESTAMPTZ),
+(1, 9, 13, 3, 3, 8400, 1, '2025-10-19 12:00:00'::TIMESTAMPTZ),
+(1, 13, 13, 3, 2, 13120, 1, '2025-10-19 12:00:00'::TIMESTAMPTZ),
+
 -- Order 14
-(1, 2, 14, 1, 2, 12000, 1, '2025-10-19 13:30:00'::TIMESTAMPTZ),
-(1, 10, 14, 3, 1, 10000, 1, '2025-10-19 13:30:00'::TIMESTAMPTZ),
-(1, 16, 14, 4, 1, 2500, 1, '2025-10-19 13:30:00'::TIMESTAMPTZ),
-(1, 18, 14, 5, 1, 15000, 1, '2025-10-19 13:30:00'::TIMESTAMPTZ),
+(1, 2, 14, 1, 2, 6520, 1, '2025-10-19 13:30:00'::TIMESTAMPTZ),
+(1, 10, 14, 3, 1, 2800, 1, '2025-10-19 13:30:00'::TIMESTAMPTZ),
+(1, 16, 14, 4, 1, 950, 1, '2025-10-19 13:30:00'::TIMESTAMPTZ),
+(1, 18, 14, 5, 1, 4700, 1, '2025-10-19 13:30:00'::TIMESTAMPTZ),
+
 -- Order 15
-(1, 4, 15, 2, 3, 13000, 1, '2025-10-19 14:15:00'::TIMESTAMPTZ),
-(1, 7, 15, 3, 2, 9000, 1, '2025-10-19 14:15:00'::TIMESTAMPTZ),
-(1, 12, 15, 3, 2, 12000, 1, '2025-10-19 14:15:00'::TIMESTAMPTZ),
-(1, 15, 15, 4, 3, 3000, 1, '2025-10-19 14:15:00'::TIMESTAMPTZ),
+(1, 4, 15, 2, 3, 5760, 1, '2025-10-19 14:15:00'::TIMESTAMPTZ),
+(1, 7, 15, 3, 2, 3120, 1, '2025-10-19 14:15:00'::TIMESTAMPTZ),
+(1, 12, 15, 3, 2, 4160, 1, '2025-10-19 14:15:00'::TIMESTAMPTZ),
+(1, 15, 15, 4, 3, 1560, 1, '2025-10-19 14:15:00'::TIMESTAMPTZ),
+
 -- Order 16
-(1, 5, 16, 2, 4, 13000, 1, '2025-10-19 15:00:00'::TIMESTAMPTZ),
-(1, 8, 16, 3, 3, 9000, 1, '2025-10-19 15:00:00'::TIMESTAMPTZ),
-(1, 14, 16, 3, 2, 18000, 1, '2025-10-19 15:00:00'::TIMESTAMPTZ);
--- Order 17 (status = 0, đang chờ thanh toán - KHÔNG trừ kho)
--- Order 18 (status = 2, đã hủy - KHÔNG trừ kho)
+(1, 5, 16, 2, 4, 13480, 1, '2025-10-19 15:00:00'::TIMESTAMPTZ),
+(1, 8, 16, 3, 3, 8730, 1, '2025-10-19 15:00:00'::TIMESTAMPTZ),
+(1, 14, 16, 3, 2, 11640, 1, '2025-10-19 15:00:00'::TIMESTAMPTZ);
+
+-- Order 17 và 18 không có inventory_transaction vì chưa thanh toán/bị hủy
 
 -- 17. NFC Cards
 INSERT INTO nfc (status, balance, customer_id, nfc_code, last_used_date) VALUES

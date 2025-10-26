@@ -4,6 +4,7 @@
    "ContextNamespace": null,
    "FilterSchemas": false,
    "IncludeConnectionString": false,
+   "MinimumProductVersion": "2.6.1091",
    "ModelNamespace": null,
    "OutputContextPath": null,
    "OutputPath": "Models",

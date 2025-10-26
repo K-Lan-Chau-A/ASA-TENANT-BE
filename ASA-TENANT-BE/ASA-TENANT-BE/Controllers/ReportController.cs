@@ -74,6 +74,7 @@ namespace ASA_TENANT_BE.Controllers
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
+
     }
         
 }

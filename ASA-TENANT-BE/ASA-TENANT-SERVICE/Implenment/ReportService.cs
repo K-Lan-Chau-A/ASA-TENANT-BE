@@ -13,6 +13,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using ClosedXML.Excel;
 using System.IO;
+using System.Text;
 
 namespace ASA_TENANT_SERVICE.Implenment
 {
@@ -82,6 +83,7 @@ namespace ASA_TENANT_SERVICE.Implenment
             };
         }
 
+
         public async Task<byte[]> GenerateProfessionalRevenueReportAsync(ExcelReportRequest request)
         {
             try
@@ -105,7 +107,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                     .ToListAsync();
 
                 // Đường dẫn đến file template
-                var templatePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Templates", "Revenue_Report_Template.xlsx");
+                var templatePath = Path.Combine(Directory.GetCurrentDirectory(), "Templates", "Revenue_Report_Template.xlsx");
                 
                 if (!File.Exists(templatePath))
                 {
@@ -115,6 +117,13 @@ namespace ASA_TENANT_SERVICE.Implenment
                 // Đọc file template
                 using (var workbook = new XLWorkbook(templatePath))
                 {
+                    // Debug: Log các sheet names có sẵn trong template
+                    Console.WriteLine($"Template loaded successfully. Available sheets:");
+                    foreach (var worksheet in workbook.Worksheets)
+                    {
+                        Console.WriteLine($"- Sheet: {worksheet.Name}");
+                    }
+                    
                     // Fill data vào các sheet có sẵn trong template
                     FillDataToTemplate(workbook, orders, request);
 
@@ -137,6 +146,7 @@ namespace ASA_TENANT_SERVICE.Implenment
         {
             // Fill data vào sheet TỔNG QUAN (nếu có)
             var overviewSheet = workbook.Worksheets.FirstOrDefault(ws => ws.Name.Contains("TỔNG QUAN") || ws.Name.Contains("OVERVIEW"));
+            Console.WriteLine($"Looking for overview sheet. Found: {(overviewSheet != null ? overviewSheet.Name : "None")}");
             if (overviewSheet != null)
             {
                 FillOverviewData(overviewSheet, orders, request);
@@ -144,6 +154,7 @@ namespace ASA_TENANT_SERVICE.Implenment
 
             // Fill data vào sheet DOANH THU THEO NGÀY (nếu có)
             var dailySheet = workbook.Worksheets.FirstOrDefault(ws => ws.Name.Contains("DOANH THU THEO NGÀY") || ws.Name.Contains("DAILY"));
+            Console.WriteLine($"Looking for daily sheet. Found: {(dailySheet != null ? dailySheet.Name : "None")}");
             if (dailySheet != null)
             {
                 FillDailyRevenueData(dailySheet, orders);
@@ -151,6 +162,7 @@ namespace ASA_TENANT_SERVICE.Implenment
 
             // Fill data vào sheet DOANH THU THEO SẢN PHẨM (nếu có)
             var productSheet = workbook.Worksheets.FirstOrDefault(ws => ws.Name.Contains("DOANH THU THEO SẢN PHẨM") || ws.Name.Contains("PRODUCT"));
+            Console.WriteLine($"Looking for product sheet. Found: {(productSheet != null ? productSheet.Name : "None")}");
             if (productSheet != null)
             {
                 FillProductRevenueData(productSheet, orders);
@@ -158,6 +170,7 @@ namespace ASA_TENANT_SERVICE.Implenment
 
             // Fill data vào sheet DOANH THU THEO DANH MỤC (nếu có)
             var categorySheet = workbook.Worksheets.FirstOrDefault(ws => ws.Name.Contains("DOANH THU THEO DANH MỤC") || ws.Name.Contains("CATEGORY"));
+            Console.WriteLine($"Looking for category sheet. Found: {(categorySheet != null ? categorySheet.Name : "None")}");
             if (categorySheet != null)
             {
                 FillCategoryRevenueData(categorySheet, orders);
@@ -165,6 +178,7 @@ namespace ASA_TENANT_SERVICE.Implenment
 
             // Fill data vào sheet PHÂN TÍCH KHÁCH HÀNG (nếu có)
             var customerSheet = workbook.Worksheets.FirstOrDefault(ws => ws.Name.Contains("PHÂN TÍCH KHÁCH HÀNG") || ws.Name.Contains("CUSTOMER"));
+            Console.WriteLine($"Looking for customer sheet. Found: {(customerSheet != null ? customerSheet.Name : "None")}");
             if (customerSheet != null)
             {
                 FillCustomerAnalysisData(customerSheet, orders);
@@ -174,9 +188,9 @@ namespace ASA_TENANT_SERVICE.Implenment
         private void FillOverviewData(IXLWorksheet sheet, List<Order> orders, ExcelReportRequest request)
         {
             // Tính toán tổng quan
-            var totalRevenue = orders.Sum(o => o.TotalPrice ?? 0);
+            var totalRevenue = orders.Sum(o => o.FinalPrice);
             var totalOrders = orders.Count;
-            var totalProducts = orders.SelectMany(o => o.OrderDetails).Sum(od => od.Quantity ?? 0);
+            var totalProducts = orders.SelectMany(o => o.OrderDetails).Sum(od => od.Quantity);
             var averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
             // Fill thông tin cửa hàng và thời gian
@@ -200,7 +214,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                 .GroupBy(o => GetPaymentMethodText(o.PaymentMethod))
                 .Select(g => new { 
                     Method = g.Key, 
-                    Revenue = g.Sum(o => o.TotalPrice ?? 0)
+                    Revenue = g.Sum(o => o.FinalPrice)
                 })
                 .OrderByDescending(x => x.Revenue)
                 .ToList();
@@ -236,9 +250,9 @@ namespace ASA_TENANT_SERVICE.Implenment
                 {
                     Date = g.Key,
                     OrderCount = g.Count(),
-                    Revenue = g.Sum(o => o.TotalPrice ?? 0),
-                    ProductCount = g.SelectMany(o => o.OrderDetails).Sum(od => od.Quantity ?? 0),
-                    AveragePerOrder = g.Count() > 0 ? g.Sum(o => o.TotalPrice ?? 0) / g.Count() : 0
+                    Revenue = g.Sum(o => o.FinalPrice),
+                    ProductCount = g.SelectMany(o => o.OrderDetails).Sum(od => od.Quantity),
+                    AveragePerOrder = g.Count() > 0 ? g.Sum(o => o.FinalPrice) / g.Count() : 0
                 })
                 .OrderBy(x => x.Date)
                 .ToList();
@@ -295,9 +309,9 @@ namespace ASA_TENANT_SERVICE.Implenment
                 .Select(g => new
                 {
                     Product = g.First().Product,
-                    Quantity = g.Sum(od => od.Quantity ?? 0),
-                    Revenue = g.Sum(od => od.TotalPrice ?? 0),
-                    AveragePrice = g.Sum(od => od.Quantity ?? 0) > 0 ? g.Sum(od => od.TotalPrice ?? 0) / g.Sum(od => od.Quantity ?? 0) : 0
+                    Quantity = g.Sum(od => od.Quantity),
+                    Revenue = g.Sum(od => od.FinalPrice),
+                    AveragePrice = g.Sum(od => od.Quantity) > 0 ? g.Sum(od => od.FinalPrice) / g.Sum(od => od.Quantity) : 0
                 })
                 .OrderByDescending(x => x.Revenue)
                 .ToList();
@@ -339,8 +353,8 @@ namespace ASA_TENANT_SERVICE.Implenment
                 {
                     Category = g.First().Product.Category,
                     ProductCount = g.Select(od => od.Product.ProductId).Distinct().Count(),
-                    Quantity = g.Sum(od => od.Quantity ?? 0),
-                    Revenue = g.Sum(od => od.TotalPrice ?? 0)
+                    Quantity = g.Sum(od => od.Quantity),
+                    Revenue = g.Sum(od => od.FinalPrice)
                 })
                 .OrderByDescending(x => x.Revenue)
                 .ToList();
@@ -405,7 +419,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                     CustomerId = g.Key,
                     Customer = g.First().Customer,
                     OrderCount = g.Count(),
-                    TotalRevenue = g.Sum(o => o.TotalPrice ?? 0)
+                    TotalRevenue = g.Sum(o => o.FinalPrice)
                 })
                 .OrderByDescending(x => x.TotalRevenue)
                 .Take(10)
@@ -455,35 +469,6 @@ namespace ASA_TENANT_SERVICE.Implenment
         {
             try
             {
-                // Lấy top 10 sản phẩm bán chạy từ inventory transactions
-                var sellingTransactions = await _inventoryTransactionRepo.GetSellingTransactionsAsync(shopId);
-                
-                // Kiểm tra null
-                if (sellingTransactions == null)
-                {
-                    sellingTransactions = new List<InventoryTransaction>();
-                }
-                
-                
-                var topProducts = sellingTransactions
-                    .Where(it => it != null && it.ProductId.HasValue && it.Product != null)
-                    .GroupBy(it => it.ProductId)
-                    .Select(g => new TopProductResponse
-                    {
-                        ProductId = (long)g.Key,
-                        ProductName = g.First()?.Product?.ProductName ?? "Unknown",
-                        Barcode = g.First()?.Product?.Barcode ?? "",
-                        CategoryName = g.First()?.Product?.Category?.CategoryName ?? "Unknown",
-                        TotalQuantitySold = g.Sum(it => it?.Quantity ?? 0),
-                        TotalRevenue = g.Sum(it => (it?.Price ?? 0) * (it?.Quantity ?? 0)),
-                        AveragePrice = g.Average(it => it?.Price ?? 0),
-                        ImageUrl = g.First()?.Product?.ImageUrl ?? ""
-                    })
-                    .Where(p => p.TotalQuantitySold > 0)
-                    .OrderByDescending(x => x.TotalQuantitySold)
-                    .Take(10)
-                    .ToList();
-
                 // Lấy thống kê doanh thu 7 ngày trước
                 // Từ 00:00:00 của ngày 7 trước đến 23:59:59 của ngày hôm nay
                 var endDate = DateTime.UtcNow.Date.AddDays(1).AddSeconds(-1); // 23:59:59 của ngày hôm nay
@@ -496,6 +481,8 @@ namespace ASA_TENANT_SERVICE.Implenment
                     Status = 1 // Đã thanh toán
                 })
                 .Include(o => o.OrderDetails)
+                    .ThenInclude(od => od.Product)
+                        .ThenInclude(p => p.Category)
                 .Where(o => o.CreatedAt.HasValue && 
                            o.CreatedAt.Value >= startDate && 
                            o.CreatedAt.Value <= endDate)
@@ -507,17 +494,39 @@ namespace ASA_TENANT_SERVICE.Implenment
                     allOrdersLast7Days = new List<Order>();
                 }
 
-                // Tính thống kê từ orders đã thanh toán
-                var totalRevenue = allOrdersLast7Days.Sum(o => o?.TotalPrice ?? 0);
-                var totalOrders = allOrdersLast7Days.Count;
-                
                 // Debug: Kiểm tra OrderDetails
                 var orderDetailsList = allOrdersLast7Days
                     .Where(o => o?.OrderDetails != null)
                     .SelectMany(o => o.OrderDetails)
                     .ToList();
+
+                // Lấy top 10 sản phẩm bán chạy từ OrderDetails trong 7 ngày
+                var topProducts = orderDetailsList
+                    .Where(od => od?.Product != null)
+                    .GroupBy(od => od.ProductId)
+                    .Select(g => new TopProductResponse
+                    {
+                        ProductId = g.Key,
+                        ProductName = g.First()?.Product?.ProductName ?? "Unknown",
+                        Barcode = g.First()?.Product?.Barcode ?? "",
+                        CategoryName = g.First()?.Product?.Category?.CategoryName ?? "Unknown",
+                        TotalQuantitySold = g.Sum(od => od.Quantity),
+                        TotalRevenue = g.Sum(od => od.FinalPrice), // Revenue từ OrderDetail.FinalPrice
+                        TotalProfit = g.Sum(od => od.Profit), // Profit từ OrderDetail.Profit
+                        AveragePrice = g.Average(od => od.FinalPrice / od.Quantity),
+                        ImageUrl = g.First()?.Product?.ImageUrl ?? ""
+                    })
+                    .Where(p => p.TotalQuantitySold > 0)
+                    .OrderByDescending(x => x.TotalRevenue) // Sắp xếp theo revenue thay vì quantity
+                    .Take(10)
+                    .ToList();
+
+                // Tính thống kê từ orders đã thanh toán
+                var totalRevenue = allOrdersLast7Days.Sum(o => o.FinalPrice ?? 0);
+                var totalOrders = allOrdersLast7Days.Count;
                 
-                var totalProductsSold = orderDetailsList.Sum(od => od?.Quantity ?? 0);
+                var totalProductsSold = orderDetailsList.Sum(od => od.Quantity);
+                var totalProfit = orderDetailsList.Sum(od => od.Profit); // Lấy profit từ OrderDetail
                 var averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
                 // Tạo danh sách 7 ngày đầy đủ từ 7 ngày trước đến hôm nay
@@ -541,12 +550,16 @@ namespace ASA_TENANT_SERVICE.Implenment
                     return new DailyRevenueResponse
                     {
                         Date = DateTime.SpecifyKind(date, DateTimeKind.Utc),
-                        Revenue = ordersForDate.Sum(o => o?.TotalPrice ?? 0),
+                        Revenue = ordersForDate.Sum(o => o.FinalPrice ?? 0),
+                        Profit = ordersForDate
+                            .Where(o => o?.OrderDetails != null)
+                            .SelectMany(o => o.OrderDetails)
+                            .Sum(od => od.Profit),
                         OrderCount = ordersForDate.Count,
                         ProductCount = ordersForDate
                             .Where(o => o?.OrderDetails != null)
                             .SelectMany(o => o.OrderDetails)
-                            .Sum(od => od?.Quantity ?? 0)
+                            .Sum(od => od.Quantity)
                     };
                 })
                 .OrderBy(x => x.Date)
@@ -557,6 +570,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                     StartDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc),
                     EndDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc),
                     TotalRevenue = totalRevenue,
+                    TotalProfit = totalProfit,
                     TotalOrders = totalOrders,
                     TotalProductsSold = totalProductsSold,
                     AverageOrderValue = averageOrderValue,
@@ -587,7 +601,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                                         od.Order.CreatedAt.HasValue && 
                                         od.Order.CreatedAt.Value.Date >= startDate && 
                                         od.Order.CreatedAt.Value.Date <= endDate)
-                            .Sum(od => od?.Quantity ?? 0) ?? 0,
+                            .Sum(od => od.Quantity) ?? 0,
                         TotalRevenue = c.Products?
                             .Where(p => p?.OrderDetails != null)
                             .SelectMany(p => p.OrderDetails)
@@ -596,7 +610,16 @@ namespace ASA_TENANT_SERVICE.Implenment
                                         od.Order.CreatedAt.HasValue && 
                                         od.Order.CreatedAt.Value.Date >= startDate && 
                                         od.Order.CreatedAt.Value.Date <= endDate)
-                            .Sum(od => od?.TotalPrice ?? 0) ?? 0
+                            .Sum(od => od.FinalPrice) ?? 0,
+                        TotalProfit = c.Products?
+                            .Where(p => p?.OrderDetails != null)
+                            .SelectMany(p => p.OrderDetails)
+                            .Where(od => od?.Order != null && 
+                                        od.Order.Status == 1 && // Đã thanh toán
+                                        od.Order.CreatedAt.HasValue && 
+                                        od.Order.CreatedAt.Value.Date >= startDate && 
+                                        od.Order.CreatedAt.Value.Date <= endDate)
+                            .Sum(od => od.Profit) ?? 0
                     })
                     .Where(c => c.TotalQuantitySold > 0)
                     .OrderByDescending(c => c.TotalRevenue)
@@ -612,6 +635,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                     ProductCount = c.ProductCount,
                     TotalQuantitySold = c.TotalQuantitySold,
                     TotalRevenue = c.TotalRevenue,
+                    TotalProfit = c.TotalProfit,
                     PercentageOfTotal = totalCategoryRevenue > 0 ? c.TotalRevenue / totalCategoryRevenue * 100 : 0
                 }).ToList();
 

@@ -11,6 +11,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Response
         public string CategoryName { get; set; }
         public int TotalQuantitySold { get; set; }
         public decimal TotalRevenue { get; set; }
+        public decimal TotalProfit { get; set; }
         public decimal AveragePrice { get; set; }
         public string ImageUrl { get; set; }
     }
@@ -20,6 +21,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Response
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
         public decimal TotalRevenue { get; set; }
+        public decimal TotalProfit { get; set; }
         public int TotalOrders { get; set; }
         public int TotalProductsSold { get; set; }
         public decimal AverageOrderValue { get; set; }
@@ -30,6 +32,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Response
     {
         public DateTime Date { get; set; }
         public decimal Revenue { get; set; }
+        public decimal Profit { get; set; }
         public int OrderCount { get; set; }
         public int ProductCount { get; set; }
     }
@@ -41,6 +44,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Response
         public int ProductCount { get; set; }
         public int TotalQuantitySold { get; set; }
         public decimal TotalRevenue { get; set; }
+        public decimal TotalProfit { get; set; }
         public decimal PercentageOfTotal { get; set; }
     }
 

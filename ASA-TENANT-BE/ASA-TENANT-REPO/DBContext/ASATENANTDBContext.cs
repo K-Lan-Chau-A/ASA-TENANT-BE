@@ -370,24 +370,36 @@ public partial class ASATENANTDBContext : DbContext
             entity.ToTable("order_detail");
 
             entity.Property(e => e.OrderDetailId).HasColumnName("order_detail_id");
+            entity.Property(e => e.BasePrice)
+                .HasPrecision(18, 2)
+                .HasColumnName("base_price");
+            entity.Property(e => e.DiscountAmount)
+                .HasPrecision(18, 2)
+                .HasColumnName("discount_amount");
+            entity.Property(e => e.FinalPrice)
+                .HasPrecision(18, 2)
+                .HasColumnName("final_price");
             entity.Property(e => e.OrderId).HasColumnName("order_id");
             entity.Property(e => e.ProductId).HasColumnName("product_id");
             entity.Property(e => e.ProductUnitId).HasColumnName("product_unit_id");
-            entity.Property(e => e.Quantity).HasColumnName("quantity");
-            entity.Property(e => e.TotalPrice)
+            entity.Property(e => e.Profit)
                 .HasPrecision(18, 2)
-                .HasColumnName("total_price");
+                .HasColumnName("profit");
+            entity.Property(e => e.Quantity).HasColumnName("quantity");
 
             entity.HasOne(d => d.Order).WithMany(p => p.OrderDetails)
                 .HasForeignKey(d => d.OrderId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("order_detail_order_id_fkey");
 
             entity.HasOne(d => d.Product).WithMany(p => p.OrderDetails)
                 .HasForeignKey(d => d.ProductId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("order_detail_product_id_fkey");
 
             entity.HasOne(d => d.ProductUnit).WithMany(p => p.OrderDetails)
                 .HasForeignKey(d => d.ProductUnitId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("order_detail_product_unit_id_fkey");
         });
 

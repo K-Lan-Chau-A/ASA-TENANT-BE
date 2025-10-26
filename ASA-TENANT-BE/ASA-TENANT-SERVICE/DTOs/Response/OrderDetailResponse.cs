@@ -9,11 +9,14 @@ namespace ASA_TENANT_SERVICE.DTOs.Response
     public class OrderDetailResponse
     {
         public long OrderDetailId { get; set; }
-        public int? Quantity { get; set; }
-        public long? ProductUnitId { get; set; }
-        public long? ProductId { get; set; }
-        public decimal? TotalPrice { get; set; }
-        public long? OrderId { get; set; }
+        public int Quantity { get; set; }
+        public long ProductUnitId { get; set; }
+        public long ProductId { get; set; }
+        public decimal BasePrice { get; set; }
+        public decimal DiscountAmount { get; set; }
+        public decimal FinalPrice { get; set; }
+        public decimal Profit { get; set; }
+        public long OrderId { get; set; }
     }
 }
 

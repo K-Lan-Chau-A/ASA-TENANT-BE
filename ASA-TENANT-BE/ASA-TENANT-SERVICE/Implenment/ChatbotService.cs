@@ -201,8 +201,13 @@ namespace ASA_TENANT_SERVICE.Implenment
             var orders = await _orderRepo.GetByShopIdAsync(shopId);
             var customers = await _customerRepo.GetByShopIdAsync(shopId);
             var products = await _productRepo.GetByShopIdAsync(shopId);
+            var orderDetails = await _orderDetailRepo.GetByShopIdAsync(shopId);
 
-            var totalRevenue = orders.Where(o => o.Status == 1).Sum(o => o.FinalPrice ?? 0);
+            var completedOrders = orders.Where(o => o.Status == 1).ToList();
+            var totalRevenue = completedOrders.Sum(o => o.FinalPrice ?? 0);
+            var totalProfit = orderDetails
+                .Where(od => completedOrders.Any(o => o.OrderId == od.OrderId))
+                .Sum(od => od.Profit);
             var totalOrders = orders.Count();
             var averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
@@ -215,6 +220,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                 TotalCustomers = customers.Count,
                 TotalOrders = totalOrders,
                 TotalRevenue = totalRevenue,
+                TotalProfit = totalProfit,
                 AverageOrderValue = averageOrderValue,
                 Status = shop.Status == 1 ? "Active" : "Inactive"
             };
@@ -442,6 +448,23 @@ namespace ASA_TENANT_SERVICE.Implenment
 
             var revenueGrowth = lastMonthRevenue > 0 ? ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue * 100) : 0;
 
+            // Calculate profits
+            var totalProfit = orderDetails
+                .Where(od => completedOrders.Any(o => o.OrderId == od.OrderId))
+                .Sum(od => od.Profit);
+            var todayProfit = orderDetails
+                .Where(od => completedOrders.Any(o => o.OrderId == od.OrderId && o.Datetime?.Date == today))
+                .Sum(od => od.Profit);
+            var thisWeekProfit = orderDetails
+                .Where(od => completedOrders.Any(o => o.OrderId == od.OrderId && o.Datetime >= thisWeekStart))
+                .Sum(od => od.Profit);
+            var thisMonthProfit = orderDetails
+                .Where(od => completedOrders.Any(o => o.OrderId == od.OrderId && o.Datetime >= thisMonthStart))
+                .Sum(od => od.Profit);
+            var lastMonthProfit = orderDetails
+                .Where(od => completedOrders.Any(o => o.OrderId == od.OrderId && o.Datetime >= lastMonthStart && o.Datetime <= lastMonthEnd))
+                .Sum(od => od.Profit);
+
             var totalOrders = completedOrders.Count();
             var averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
@@ -488,10 +511,15 @@ namespace ASA_TENANT_SERVICE.Implenment
             {
                 ShopId = shopId,
                 TotalRevenue = totalRevenue,
+                TotalProfit = totalProfit,
                 TodayRevenue = todayRevenue,
+                TodayProfit = todayProfit,
                 ThisWeekRevenue = thisWeekRevenue,
+                ThisWeekProfit = thisWeekProfit,
                 ThisMonthRevenue = thisMonthRevenue,
+                ThisMonthProfit = thisMonthProfit,
                 LastMonthRevenue = lastMonthRevenue,
+                LastMonthProfit = lastMonthProfit,
                 RevenueGrowth = revenueGrowth,
                 AverageOrderValue = averageOrderValue,
                 TotalOrders = totalOrders,
@@ -517,12 +545,23 @@ namespace ASA_TENANT_SERVICE.Implenment
 
             var completedOrders = orders.Where(o => o.Status == 1).ToList();
             var totalRevenue = completedOrders.Sum(o => o.FinalPrice ?? 0);
+            var totalProfit = orderDetails
+                .Where(od => completedOrders.Any(o => o.OrderId == od.OrderId))
+                .Sum(od => od.Profit);
             var totalOrders = completedOrders.Count();
             var averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
             var today = DateTime.Today;
-            var thisMonthRevenue = completedOrders.Where(o => o.Datetime >= new DateTime(today.Year, today.Month, 1)).Sum(o => o.FinalPrice ?? 0);
-            var lastMonthRevenue = completedOrders.Where(o => o.Datetime >= new DateTime(today.Year, today.Month, 1).AddMonths(-1) && o.Datetime < new DateTime(today.Year, today.Month, 1)).Sum(o => o.FinalPrice ?? 0);
+            var thisMonthStart = new DateTime(today.Year, today.Month, 1);
+            var thisMonthRevenue = completedOrders.Where(o => o.Datetime >= thisMonthStart).Sum(o => o.FinalPrice ?? 0);
+            var thisMonthProfit = orderDetails
+                .Where(od => completedOrders.Any(o => o.OrderId == od.OrderId && o.Datetime >= thisMonthStart))
+                .Sum(od => od.Profit);
+            var lastMonthStart = thisMonthStart.AddMonths(-1);
+            var lastMonthRevenue = completedOrders.Where(o => o.Datetime >= lastMonthStart && o.Datetime < thisMonthStart).Sum(o => o.FinalPrice ?? 0);
+            var lastMonthProfit = orderDetails
+                .Where(od => completedOrders.Any(o => o.OrderId == od.OrderId && o.Datetime >= lastMonthStart && o.Datetime < thisMonthStart))
+                .Sum(od => od.Profit);
             
             var revenueGrowth = lastMonthRevenue > 0 ? ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue * 100) : 0;
 
@@ -556,8 +595,11 @@ namespace ASA_TENANT_SERVICE.Implenment
                 ShopId = shopId,
                 ShopName = shop.ShopName ?? "Unknown",
                 TotalRevenue = totalRevenue,
+                TotalProfit = totalProfit,
                 ThisMonthRevenue = thisMonthRevenue,
+                ThisMonthProfit = thisMonthProfit,
                 LastMonthRevenue = lastMonthRevenue,
+                LastMonthProfit = lastMonthProfit,
                 RevenueGrowth = revenueGrowth,
                 AverageOrderValue = averageOrderValue,
                 TotalOrders = totalOrders,
@@ -802,27 +844,56 @@ namespace ASA_TENANT_SERVICE.Implenment
         {
             var questionLower = question.ToLower();
             
+            if (ContainsKeywords(questionLower, new[] { "lợi nhuận", "profit", "lãi" }))
+            {
+                if (ContainsKeywords(questionLower, new[] { "hôm nay", "today" }))
+                {
+                    return $"Lợi nhuận hôm nay của cửa hàng là {data.TodayProfit:N0} VNĐ từ doanh thu {data.TodayRevenue:N0} VNĐ. " +
+                           $"Tỷ lệ lợi nhuận: {(data.TodayRevenue > 0 ? (data.TodayProfit / data.TodayRevenue * 100).ToString("F1") : "0")}%.";
+                }
+                
+                if (ContainsKeywords(questionLower, new[] { "tuần này", "this week", "tuần" }))
+                {
+                    return $"Lợi nhuận tuần này của cửa hàng là {data.ThisWeekProfit:N0} VNĐ từ doanh thu {data.ThisWeekRevenue:N0} VNĐ. " +
+                           $"Tỷ lệ lợi nhuận: {(data.ThisWeekRevenue > 0 ? (data.ThisWeekProfit / data.ThisWeekRevenue * 100).ToString("F1") : "0")}%.";
+                }
+                
+                if (ContainsKeywords(questionLower, new[] { "tháng này", "this month", "tháng" }))
+                {
+                    var profitGrowth = data.LastMonthProfit > 0 ? ((data.ThisMonthProfit - data.LastMonthProfit) / data.LastMonthProfit * 100) : 0;
+                    var growthText = profitGrowth > 0 ? $"tăng {profitGrowth:F1}%" : 
+                                    profitGrowth < 0 ? $"giảm {Math.Abs(profitGrowth):F1}%" : "không thay đổi";
+                    return $"Lợi nhuận tháng này của cửa hàng là {data.ThisMonthProfit:N0} VNĐ từ doanh thu {data.ThisMonthRevenue:N0} VNĐ. " +
+                           $"So với tháng trước, lợi nhuận {growthText}. " +
+                           $"Tỷ lệ lợi nhuận: {(data.ThisMonthRevenue > 0 ? (data.ThisMonthProfit / data.ThisMonthRevenue * 100).ToString("F1") : "0")}%.";
+                }
+                
+                return $"Tổng lợi nhuận của cửa hàng là {data.TotalProfit:N0} VNĐ từ doanh thu {data.TotalRevenue:N0} VNĐ. " +
+                       $"Tỷ lệ lợi nhuận: {(data.TotalRevenue > 0 ? (data.TotalProfit / data.TotalRevenue * 100).ToString("F1") : "0")}%.";
+            }
+            
             if (ContainsKeywords(questionLower, new[] { "hôm nay", "today" }))
             {
-                return $"Doanh thu hôm nay của cửa hàng là {data.TodayRevenue:N0} VNĐ từ {data.TodayOrders} đơn hàng. " +
+                return $"Doanh thu hôm nay của cửa hàng là {data.TodayRevenue:N0} VNĐ với lợi nhuận {data.TodayProfit:N0} VNĐ từ {data.TodayOrders} đơn hàng. " +
                        $"Trung bình mỗi đơn hàng có giá trị {data.AverageOrderValue:N0} VNĐ.";
             }
             
             if (ContainsKeywords(questionLower, new[] { "tuần này", "this week", "tuần" }))
             {
-                return $"Doanh thu tuần này của cửa hàng là {data.ThisWeekRevenue:N0} VNĐ từ {data.ThisWeekOrders} đơn hàng.";
+                return $"Doanh thu tuần này của cửa hàng là {data.ThisWeekRevenue:N0} VNĐ với lợi nhuận {data.ThisWeekProfit:N0} VNĐ từ {data.ThisWeekOrders} đơn hàng.";
             }
             
             if (ContainsKeywords(questionLower, new[] { "tháng này", "this month", "tháng" }))
             {
                 var growthText = data.RevenueGrowth > 0 ? $"tăng {data.RevenueGrowth:F1}%" : 
                                 data.RevenueGrowth < 0 ? $"giảm {Math.Abs(data.RevenueGrowth):F1}%" : "không thay đổi";
-                return $"Doanh thu tháng này của cửa hàng là {data.ThisMonthRevenue:N0} VNĐ từ {data.ThisMonthOrders} đơn hàng. " +
+                return $"Doanh thu tháng này của cửa hàng là {data.ThisMonthRevenue:N0} VNĐ với lợi nhuận {data.ThisMonthProfit:N0} VNĐ từ {data.ThisMonthOrders} đơn hàng. " +
                        $"So với tháng trước, doanh thu {growthText}.";
             }
             
-            return $"Tổng doanh thu của cửa hàng là {data.TotalRevenue:N0} VNĐ từ {data.TotalOrders} đơn hàng. " +
-                   $"Trung bình mỗi đơn hàng có giá trị {data.AverageOrderValue:N0} VNĐ.";
+            return $"Tổng doanh thu của cửa hàng là {data.TotalRevenue:N0} VNĐ với tổng lợi nhuận {data.TotalProfit:N0} VNĐ từ {data.TotalOrders} đơn hàng. " +
+                   $"Trung bình mỗi đơn hàng có giá trị {data.AverageOrderValue:N0} VNĐ. " +
+                   $"Tỷ lệ lợi nhuận: {(data.TotalRevenue > 0 ? (data.TotalProfit / data.TotalRevenue * 100).ToString("F1") : "0")}%.";
         }
 
         private string GenerateCustomerAnswer(string question, CustomerAnalyticsDto data)
@@ -933,9 +1004,9 @@ namespace ASA_TENANT_SERVICE.Implenment
             var strategies = new List<string>();
 
             // Revenue growth strategies
-            if (ContainsKeywords(questionLower, new[] { "doanh thu", "revenue", "tăng doanh thu" }))
+            if (ContainsKeywords(questionLower, new[] { "doanh thu", "revenue", "tăng doanh thu", "lợi nhuận", "profit" }))
             {
-                strategies.Add($"Chiến lược tăng doanh thu:");
+                strategies.Add($"Chiến lược tăng doanh thu và lợi nhuận:");
                 
                 if (data.RevenueGrowth < 10)
                 {
@@ -952,6 +1023,18 @@ namespace ASA_TENANT_SERVICE.Implenment
                 if (data.TopCategories.Any())
                 {
                     strategies.Add($"• Tập trung vào danh mục bán chạy: {string.Join(", ", data.TopCategories.Take(2).Select(c => c.CategoryName))}");
+                }
+                
+                // Add profit-specific recommendations
+                var profitMargin = data.ThisMonthRevenue > 0 ? (data.ThisMonthProfit / data.ThisMonthRevenue * 100) : 0;
+                strategies.Add($"• Lợi nhuận tháng này: {data.ThisMonthProfit:N0} VNĐ (tỷ lệ {profitMargin:F1}%)");
+                
+                if (profitMargin < 20)
+                {
+                    strategies.Add($"• Cần cải thiện tỷ lệ lợi nhuận bằng cách:");
+                    strategies.Add($"• Tối ưu giá vốn hàng bán");
+                    strategies.Add($"• Tăng giá bán cho các sản phẩm có nhu cầu cao");
+                    strategies.Add($"• Giảm chi phí vận hành và quản lý");
                 }
             }
 
@@ -1005,6 +1088,7 @@ namespace ASA_TENANT_SERVICE.Implenment
             {
                 strategies.Add($"Phân tích tình hình cửa hàng {data.ShopName}:");
                 strategies.Add($"• Doanh thu tháng này: {data.ThisMonthRevenue:N0} VNĐ (tăng {data.RevenueGrowth:F1}%)");
+                strategies.Add($"• Lợi nhuận tháng này: {data.ThisMonthProfit:N0} VNĐ");
                 strategies.Add($"• Trung bình đơn hàng: {data.AverageOrderValue:N0} VNĐ");
                 strategies.Add($"• Khách hàng thành viên: {data.MemberPercentage:F1}%");
                 strategies.Add($"• Tổng sản phẩm: {data.TotalProducts}");
@@ -1117,7 +1201,7 @@ namespace ASA_TENANT_SERVICE.Implenment
         {
             return $"Tổng quan về cửa hàng {data.ShopName}: " +
                    $"Có {data.TotalProducts} sản phẩm, {data.TotalCustomers} khách hàng, " +
-                   $"đã thực hiện {data.TotalOrders} đơn hàng với tổng doanh thu {data.TotalRevenue:N0} VNĐ. " +
+                   $"đã thực hiện {data.TotalOrders} đơn hàng với tổng doanh thu {data.TotalRevenue:N0} VNĐ và tổng lợi nhuận {data.TotalProfit:N0} VNĐ. " +
                    $"Trung bình mỗi đơn hàng có giá trị {data.AverageOrderValue:N0} VNĐ.";
         }
     }

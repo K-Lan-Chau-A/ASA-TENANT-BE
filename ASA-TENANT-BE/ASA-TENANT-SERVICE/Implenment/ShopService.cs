@@ -30,6 +30,7 @@ namespace ASA_TENANT_SERVICE.Implenment
         private readonly IMapper _mapper;
         private readonly HttpClient _httpClient;
         private readonly IConfiguration _configuration;
+        private readonly IUserService _userService;
 
         public ShopService(ShopRepo shopRepo,
                            ShopSubscriptionRepo shopSubscriptionRepo,
@@ -37,7 +38,8 @@ namespace ASA_TENANT_SERVICE.Implenment
                            UserFeatureRepo userFeatureRepo,
                            IMapper mapper,
                            IConfiguration configuration,
-                           System.Net.Http.IHttpClientFactory httpClientFactory)
+                           System.Net.Http.IHttpClientFactory httpClientFactory,
+                           IUserService userService)
         {
             _shopRepo = shopRepo;
             _shopSubscriptionRepo = shopSubscriptionRepo;
@@ -46,6 +48,7 @@ namespace ASA_TENANT_SERVICE.Implenment
             _mapper = mapper;
             _configuration = configuration;
             _httpClient = httpClientFactory.CreateClient("BEPlatformUrl");
+            _userService = userService;
         }
 
         private static string GenerateRandomPassword(int length = 8)
@@ -143,12 +146,10 @@ namespace ASA_TENANT_SERVICE.Implenment
 
                 await _shopSubscriptionRepo.CreateAsync(subscription);
 
-                // Tạo người dùng quản trị với tên người dùng và mật khẩu ngẫu nhiên
-                var plainPassword = GenerateRandomPassword(8);
                 var adminUser = new User
                 {
                     Username = request.Username,
-                    Password = "asa123456",
+                    Password = _userService.HashPassword("asa123456"), 
                     Status = 1,
                     ShopId = entity.ShopId,
                     Role = 1,

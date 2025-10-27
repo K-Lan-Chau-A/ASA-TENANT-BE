@@ -274,11 +274,14 @@ CREATE TABLE "order" (
 -- 20. Order Detail
 CREATE TABLE order_detail (
     order_detail_id BIGSERIAL PRIMARY KEY,
-    quantity INT,
-    product_unit_id BIGINT REFERENCES product_unit(product_unit_id),
-    product_id BIGINT REFERENCES product(product_id),
-    total_price NUMERIC(18,2),
-    order_id BIGINT REFERENCES "order"(order_id)
+    order_id BIGINT NOT NULL REFERENCES "order"(order_id),
+    product_id BIGINT NOT NULL REFERENCES product(product_id),
+    product_unit_id BIGINT NOT NULL REFERENCES product_unit(product_unit_id),
+    quantity INT NOT NULL CHECK (quantity > 0),
+    base_price  NUMERIC(18,2) NOT NULL DEFAULT 0,
+    discount_amount NUMERIC(18,2) NOT NULL DEFAULT 0,
+    final_price     NUMERIC(18,2) NOT NULL DEFAULT 0,
+    profit          NUMERIC(18,2) NOT NULL DEFAULT 0
 );
 
 -- 21. Inventory Transaction
@@ -364,8 +367,8 @@ CREATE TABLE transaction (
 );
 
 -- 1. Tạo cửa hàng
-INSERT INTO shop (shop_name, address, status, qrcode_url) VALUES
-('Tạp Hóa Minh Hạnh', '123 Đường Nguyễn Văn Cừ, Quận 5, TP.HCM', 1, 'https://qr.example.com/shop001');
+INSERT INTO shop (shop_name, address,bank_name,bank_code, bank_num, status, qrcode_url,sepay_api_key,current_request,current_account) VALUES
+('Tạp Hóa Minh Hạnh', '123 Đường Nguyễn Văn Cừ, Quận 5, TP.HCM','Vietinbank','970415','103872620454', 1, 'https://qr.example.com/shop001','MZ6BVRISGLGLEDMG4NPAB7JE1XQXFFI2YJ4TR8EV5BLJQTOD0H5YSYNAO7UOCNNI',0,0);
 
 -- 2. Shop Subscription
 INSERT INTO shop_subscription (shop_id, platform_product_id, start_date, end_date, status) VALUES
@@ -403,7 +406,7 @@ INSERT INTO rank (rank_name, benefit, threshold, shop_id) VALUES
 
 -- 7. Customers
 INSERT INTO customer (shop_id, full_name, phone, email, birthday, gender, status, spent, rank_id, created_at) VALUES
-(1, 'Nguyễn Văn An', '0901234567', 'vana@example.com', '1990-05-15', 1, 1, 2500000, 2, '2025-10-01 08:30:00'::TIMESTAMPTZ),
+(1, 'Nguyễn Văn An', '0901234567', 'ngochau1310@gmail.com', '1990-05-15', 1, 1, 2500000, 2, '2025-10-01 08:30:00'::TIMESTAMPTZ),
 (1, 'Trần Thị Bình', '0912345678', 'thib@example.com', '1985-10-20', 0, 1, 1800000, 2, '2025-10-02 09:15:00'::TIMESTAMPTZ),
 (1, 'Lê Minh Cường', '0923456789', 'cuong@example.com', '1992-03-08', 1, 1, 950000, 1, '2025-10-03 10:00:00'::TIMESTAMPTZ),
 (1, 'Phạm Thị Dung', '0934567890', 'dung@example.com', '1988-12-25', 0, 1, 450000, 1, '2025-10-05 11:20:00'::TIMESTAMPTZ);
@@ -414,7 +417,7 @@ INSERT INTO "user" (username, password, status, shop_id, role, avatar) VALUES
 ('nhanvien01', '$2a$11$cXr.pHhel84XmsT6bgwzlOcHxrLF.MgjWHbyNL.9ED1Ls/lKDiVhS', 1, 1, 2, 'https://avatar.example.com/nv1.jpg'),
 ('nhanvien02', '$2a$11$cXr.pHhel84XmsT6bgwzlOcHxrLF.MgjWHbyNL.9ED1Ls/lKDiVhS', 1, 1, 2, 'https://avatar.example.com/nv2.jpg');
 
--- 9. User Features (Cập nhật theo yêu cầu mới)
+-- 9. User Features
 INSERT INTO user_feature (user_id, feature_id, feature_name, is_enabled) VALUES
 -- Admin có tất cả quyền
 (1, 1, 'Xuất báo cáo', TRUE),
@@ -434,29 +437,29 @@ INSERT INTO user_feature (user_id, feature_id, feature_name, is_enabled) VALUES
 (3, 2, 'Tư vấn AI', TRUE),
 (3, 4, 'Bán hàng', TRUE);
 
--- 10. Products
-INSERT INTO product (category_id, product_name, quantity, is_low, cost, price, barcode,image_url, discount, status, unit_id_fk, shop_id) VALUES
+-- 10. Products (Số lượng ban đầu - sẽ được điều chỉnh sau khi nhập kho và bán hàng)
+INSERT INTO product (category_id, product_name, quantity, is_low, cost, price, barcode, image_url, discount, status, unit_id_fk, shop_id) VALUES
 -- Nước giải khát
-(1, 'Pepsi Cola 330ml', 120, 10, 8000, 12000, '8934673001234','https://www.lottemart.vn/media/catalog/product/cache/0x0/8/9/8934588013027-1-1.jpg.webp', 0, 1, 1, 1),
-(1, 'Coca Cola 330ml', 150, 10, 8500, 12000, '8934673001235','https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQowvqmp0hU5U9tiRxyAmAsW2ukDVgrpkBQkw&s', 0, 1, 1, 1),
-(1, '7Up 330ml', 80, 10, 7500, 11000, '8934673001236','https://cdn.tgdd.vn/Products/Images/2443/319488/bhx/nuoc-ngot-7-up-vi-chanh-chai-330ml-202312301036328194.jpg', 0, 1, 1, 1),
-(1, 'Pepsi Cola Lon 330ml', 200, 10, 9000, 13000, '8934673001237','https://cdn.tgdd.vn/Products/Images/2443/88121/bhx/thung-24-lon-nuoc-ngot-pepsi-cola-320ml-202405140910328596.jpg', 0, 1, 2, 1),
-(1, 'Coca Cola Lon 330ml', 180, 10, 9500, 13000, '8934673001238','https://cdnv2.tgdd.vn/webmwg/comment/ef/4a/ef4a44fb0c806a130d74efca2ee6ce87.jpg', 0, 1, 2, 1),
-(1, '7Up Lon 330ml', 100, 10, 8500, 12000, '8934673001239','https://cdn.tgdd.vn/Products/Images/2443/76446/bhx/nuoc-ngot-7-up-lon-330ml-202312252102017018.jpg', 0, 1, 2, 1),
+(1, 'Pepsi Cola 330ml', 100, 10, 8000, 12000, '8934673001234','https://www.lottemart.vn/media/catalog/product/cache/0x0/8/9/8934588013027-1-1.jpg.webp', 0, 1, 1, 1),
+(1, 'Coca Cola 330ml', 133, 10, 8500, 12000, '8934673001235','https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQowvqmp0hU5U9tiRxyAmAsW2ukDVgrpkBQkw&s', 0, 1, 1, 1),
+(1, '7Up 330ml', 75, 10, 7500, 11000, '8934673001236','https://cdn.tgdd.vn/Products/Images/2443/319488/bhx/nuoc-ngot-7-up-vi-chanh-chai-330ml-202312301036328194.jpg', 0, 1, 1, 1),
+(1, 'Pepsi Cola Lon 330ml', 190, 10, 9000, 13000, '8934673001237','https://cdn.tgdd.vn/Products/Images/2443/88121/bhx/thung-24-lon-nuoc-ngot-pepsi-cola-320ml-202405140910328596.jpg', 0, 1, 2, 1),
+(1, 'Coca Cola Lon 330ml', 170, 10, 9500, 13000, '8934673001238','https://cdnv2.tgdd.vn/webmwg/comment/ef/4a/ef4a44fb0c806a130d74efca2ee6ce87.jpg', 0, 1, 2, 1),
+(1, '7Up Lon 330ml', 98, 10, 8500, 12000, '8934673001239','https://cdn.tgdd.vn/Products/Images/2443/76446/bhx/nuoc-ngot-7-up-lon-330ml-202312252102017018.jpg', 0, 1, 2, 1),
 -- Bánh khoai tây
-(2, 'Poca Vị Tự Nhiên 54g', 200, 10, 6000, 9000, '8934673002234','https://cdnv2.tgdd.vn/bhx-static/bhx/Products/Images/3364/193606/bhx/snack-poca-khoai-tay-tu-nhien-goi-52g_202510150941133229.jpg', 0, 1, 3, 1),
-(2, 'Poca Vị Cay 54g', 150, 10, 6000, 9000, '8934673002235','https://product.hstatic.net/200000495609/product/snack-poca-vi-muc-cay-dac-biet-banh-keo-an-vat-imnuts-n1_b75b1cfcb05641e982f8cc55912cee8b_master.jpg', 0, 1, 3, 1),
-(2, 'Lays Vị Tự Nhiên 56g', 180, 10, 7000, 10000, '8934673002236','https://product.hstatic.net/200000352097/product/a138b002816dfdb5c290cdb4631d16ec_4385524afb404d6a847d3d42c0f52b1e_1024x1024.png', 0, 1, 3, 1),
-(2, 'Lays Vị Cà Chua 56g', 120, 10, 7000, 10000, '8934673002237','https://img08.weeecdn.net/product/image/502/574/301032507DC379D4.png!c750x0_q80_t1.auto', 0, 1, 3, 1),
-(2, 'Oishi Vị Tôm Chua Ngọt 60g', 100, 10, 8000, 12000, '8934673002238','https://product.hstatic.net/200000495609/product/snack-tom-cay-oishi-du-vi-goi-lon-68g-banh-keo-an-vat-imnuts-03_ac70449375bc4b3998c72422e9c3d7f5.jpg', 0, 1, 3, 1),
-(2, 'Oishi Snack Bí Đỏ 60g', 80, 10, 8000, 12000, '8934673002239','https://www.lottemart.vn/media/catalog/product/cache/0x0/8/9/8934803012880.jpg.webp', 0, 1, 3, 1),
+(2, 'Poca Vì Tự Nhiên 54g', 188, 10, 6000, 9000, '8934673002234','https://cdnv2.tgdd.vn/bhx-static/bhx/Products/Images/3364/193606/bhx/snack-poca-khoai-tay-tu-nhien-goi-52g_202510150941133229.jpg', 0, 1, 3, 1),
+(2, 'Poca Vì Cay 54g', 141, 10, 6000, 9000, '8934673002235','https://product.hstatic.net/200000495609/product/snack-poca-vi-muc-cay-dac-biet-banh-keo-an-vat-imnuts-n1_b75b1cfcb05641e982f8cc55912cee8b_master.jpg', 0, 1, 3, 1),
+(2, 'Lays Vì Tự Nhiên 56g', 173, 10, 7000, 10000, '8934673002236','https://product.hstatic.net/200000352097/product/a138b002816dfdb5c290cdb4631d16ec_4385524afb404d6a847d3d42c0f52b1e_1024x1024.png', 0, 1, 3, 1),
+(2, 'Lays Vì Cà Chua 56g', 118, 10, 7000, 10000, '8934673002237','https://img08.weeecdn.net/product/image/502/574/301032507DC379D4.png!c750x0_q80_t1.auto', 0, 1, 3, 1),
+(2, 'Oishi Vì Tôm Chua Ngọt 60g', 96, 10, 8000, 12000, '8934673002238','https://product.hstatic.net/200000495609/product/snack-tom-cay-oishi-du-vi-goi-lon-68g-banh-keo-an-vat-imnuts-03_ac70449375bc4b3998c72422e9c3d7f5.jpg', 0, 1, 3, 1),
+(2, 'Oishi Snack Bí Đỏ 60g', 78, 10, 8000, 12000, '8934673002239','https://www.lottemart.vn/media/catalog/product/cache/0x0/8/9/8934803012880.jpg.webp', 0, 1, 3, 1),
 -- Kẹo
-(3, 'Kẹo Dẻo Haribo 100g', 150, 10, 15000, 22000, '8934673003234','https://bizweb.dktcdn.net/thumb/1024x1024/100/436/921/products/8691216090439-1-209bf20bb99c4b3298dd9ed3d64704e5-bd04cb8ed15345718d45810f9e771c9c-master.jpg?v=1631854528787', 0, 1, 3, 1),
-(3, 'Kẹo Dẻo Ricola 80g', 120, 10, 12000, 18000, '8934673003235','https://cdn.upharma.vn/unsafe/3840x0/filters:quality(90)/san-pham/20714.png', 0, 1, 3, 1),
-(3, 'Kẹo Mút Chupa Chups', 200, 10, 2000, 3000, '8934673003236','https://bizweb.dktcdn.net/thumb/grande/100/514/431/products/3b43ab3e8f836e2bb1e286a63d2f355b.jpg?v=1716027827830', 0, 1, 4, 1),
-(3, 'Kẹo Mút Alpenliebe', 180, 10, 1500, 2500, '8934673003237','https://minhcaumart.vn//media/com_eshop/products/resized/8935001708452-500x500.webp', 0, 1, 4, 1),
-(3, 'Kẹo Ngậm Halls Chanh', 100, 10, 8000, 12000, '8934673003238','https://www.guardian.com.vn/media/catalog/product/cache/30b2b44eba57cd45fd3ef9287600968e/9/e/9e0e24742624fdcaee948073623b6a043622271ae835d2516144fd86525a1710.jpeg', 0, 1, 5, 1),
-(3, 'Kẹo Ngậm Ricola Bạc Hà', 80, 10, 10000, 15000, '8934673003239','https://www.lottemart.vn/media/catalog/product/cache/0x0/7/6/7610700948460-1.jpg.webp', 0, 1, 5, 1);
+(3, 'Kẹo Dẻo Haribo 100g', 147, 10, 15000, 22000, '8934673003234','https://bizweb.dktcdn.net/thumb/1024x1024/100/436/921/products/8691216090439-1-209bf20bb99c4b3298dd9ed3d64704e5-bd04cb8ed15345718d45810f9e771c9c-master.jpg?v=1631854528787', 0, 1, 3, 1),
+(3, 'Kẹo Dẻo Ricola 80g', 118, 10, 12000, 18000, '8934673003235','https://cdn.upharma.vn/unsafe/3840x0/filters:quality(90)/san-pham/20714.png', 0, 1, 3, 1),
+(3, 'Kẹo Mút Chupa Chups', 189, 10, 2000, 3000, '8934673003236','https://bizweb.dktcdn.net/thumb/grande/100/514/431/products/3b43ab3e8f836e2bb1e286a63d2f355b.jpg?v=1716027827830', 0, 1, 4, 1),
+(3, 'Kẹo Mút Alpenliebe', 179, 10, 1500, 2500, '8934673003237','https://minhcaumart.vn//media/com_eshop/products/resized/8935001708452-500x500.webp', 0, 1, 4, 1),
+(3, 'Kẹo Ngậm Halls Chanh', 99, 10, 8000, 12000, '8934673003238','https://www.guardian.com.vn/media/catalog/product/cache/30b2b44eba57cd45fd3ef9287600968e/9/e/9e0e24742624fdcaee948073623b6a043622271ae835d2516144fd86525a1710.jpeg', 0, 1, 5, 1),
+(3, 'Kẹo Ngậm Ricola Bạc Hà', 79, 10, 10000, 15000, '8934673003239','https://www.lottemart.vn/media/catalog/product/cache/0x0/7/6/7610700948460-1.jpg.webp', 0, 1, 5, 1);
 
 -- 11. Product Units
 INSERT INTO product_unit (product_id, unit_id, conversion_factor, price, shop_id) VALUES
@@ -467,7 +470,7 @@ INSERT INTO product_unit (product_id, unit_id, conversion_factor, price, shop_id
 (13, 3, 1.0000, 22000, 1), (14, 3, 1.0000, 18000, 1), (15, 4, 1.0000, 3000, 1),
 (16, 4, 1.0000, 2500, 1),  (17, 5, 1.0000, 12000, 1), (18, 5, 1.0000, 15000, 1);
 
--- 12. Shifts (Cập nhật ngày gần đây)
+-- 12. Shifts
 INSERT INTO shift (user_id, start_date, closed_date, status, revenue, opening_cash, shop_id) VALUES
 (1, '2025-10-15 08:00:00'::TIMESTAMPTZ, '2025-10-15 20:00:00'::TIMESTAMPTZ, 2, 1250000, 500000, 1),
 (2, '2025-10-16 08:00:00'::TIMESTAMPTZ, '2025-10-16 20:00:00'::TIMESTAMPTZ, 2, 980000, 500000, 1),
@@ -481,92 +484,277 @@ INSERT INTO voucher (value, type, expired, shop_id, code) VALUES
 (5000, 1, '2025-12-31 23:59:59'::TIMESTAMPTZ, 1, 'GIAM5K'),
 (15, 2, '2025-12-31 23:59:59'::TIMESTAMPTZ, 1, 'GIAM15P');
 
--- 14. Orders (Cập nhật status và payment_method theo số, thêm 10 order mới)
--- Orders cũ (ngày 15-18/10)
-INSERT INTO "order" (datetime, customer_id, total_price, payment_method, status, shift_id, shop_id, voucher_id, discount, note) VALUES
-('2025-10-15 10:30:00'::TIMESTAMPTZ, 1, 75000, 1, 1, 1, 1, NULL, 0, 'Khách hàng VIP'),
-('2025-10-15 14:15:00'::TIMESTAMPTZ, 2, 45000, 2, 1, 1, 1, 1, 10000, 'Sử dụng voucher giảm 10k'),
-('2025-10-15 16:45:00'::TIMESTAMPTZ, 3, 28000, 1, 1, 1, 1, NULL, 0, NULL),
-('2025-10-16 09:20:00'::TIMESTAMPTZ, 4, 65000, 3, 1, 2, 1, NULL, 0, 'Thanh toán NFC'),
-('2025-10-16 11:30:00'::TIMESTAMPTZ, 1, 52000, 1, 1, 2, 1, NULL, 0, NULL),
-('2025-10-17 08:45:00'::TIMESTAMPTZ, 2, 89000, 2, 1, 3, 1, NULL, 0, 'Chuyển khoản ngân hàng'),
-('2025-10-17 13:20:00'::TIMESTAMPTZ, 3, 45000, 1, 1, 3, 1, 2, 5000, 'Voucher 5k'),
-('2025-10-18 10:15:00'::TIMESTAMPTZ, 4, 72000, 3, 1, 4, 1, NULL, 0, 'NFC Card'),
+-- 14. Orders
+INSERT INTO "order" (datetime, customer_id, total_price, total_discount, final_price, payment_method, status, shift_id, shop_id, voucher_id, discount, note) VALUES
+-- Order 1: customer_id=1 (Bạc 2%), total_price=91000, discount=1820, final_price=89180
+('2025-10-15 10:30:00'::TIMESTAMPTZ, 1, 91000, 1820, 89180, 1, 1, 1, 1, NULL, 0, 'Giảm 2% cho khách hàng rank Bạc'),
 
--- 10 Orders mới (ngày 19/10 - hôm nay)
-('2025-10-19 09:00:00'::TIMESTAMPTZ, 1, 96000, 1, 1, 5, 1, NULL, 0, 'Mua sỉ nước ngọt'),
-('2025-10-19 09:45:00'::TIMESTAMPTZ, 2, 64000, 2, 1, 5, 1, NULL, 0, 'Chuyển khoản MB Bank'),
-('2025-10-19 10:30:00'::TIMESTAMPTZ, 3, 55000, 1, 1, 5, 1, 2, 5000, 'Dùng voucher'),
-('2025-10-19 11:15:00'::TIMESTAMPTZ, 4, 83000, 3, 1, 5, 1, NULL, 0, 'Thanh toán NFC'),
-('2025-10-19 12:00:00'::TIMESTAMPTZ, 1, 108000, 1, 1, 5, 1, NULL, 0, 'Khách quen'),
-('2025-10-19 13:30:00'::TIMESTAMPTZ, 2, 41000, 4, 1, 5, 1, NULL, 0, 'Thanh toán ATM'),
-('2025-10-19 14:15:00'::TIMESTAMPTZ, 3, 76000, 1, 1, 5, 1, 3, 13500, 'Áp dụng voucher 15%'),
-('2025-10-19 15:00:00'::TIMESTAMPTZ, 4, 92000, 2, 1, 5, 1, NULL, 0, 'Banking'),
-('2025-10-19 15:45:00'::TIMESTAMPTZ, 1, 58000, 1, 0, 5, 1, NULL, 0, 'Đang chờ thanh toán'),
-('2025-10-19 16:20:00'::TIMESTAMPTZ, 2, 0, 1, 2, 5, 1, NULL, 0, 'Đơn hàng bị hủy');
+-- Order 2: customer_id=2 (Bạc 2%), voucher 10000, total_price=70000, discount=1400+10000=11400, final_price=58600
+('2025-10-15 14:15:00'::TIMESTAMPTZ, 2, 70000, 11400, 58600, 2, 1, 1, 1, 1, 10000, 'Giảm 2% cho khách hàng rank Bạc, sử dụng voucher giảm 10k'),
 
--- 15. Order Details (Thêm chi tiết cho 10 order mới)
--- Order details cho orders cũ
-INSERT INTO order_detail (quantity, product_unit_id, product_id, total_price, order_id) VALUES
+-- Order 3: customer_id=3 (Đồng 1%), total_price=28500, discount=285, final_price=28215
+('2025-10-15 16:45:00'::TIMESTAMPTZ, 3, 28500, 285, 28215, 1, 1, 1, 1, NULL, 0, 'Giảm 1% cho khách hàng rank Đồng'),
+
+-- Order 4: customer_id=4 (Đồng 1%), total_price=72000, discount=720, final_price=71280
+('2025-10-16 09:20:00'::TIMESTAMPTZ, 4, 72000, 720, 71280, 3, 1, 2, 1, NULL, 0, 'Giảm 1% cho khách hàng rank Đồng, thanh toán NFC'),
+
+-- Order 5: customer_id=1 (Bạc 2%), total_price=47000, discount=940, final_price=46060
+('2025-10-16 11:30:00'::TIMESTAMPTZ, 1, 47000, 940, 46060, 1, 1, 2, 1, NULL, 0, 'Giảm 2% cho khách hàng rank Bạc'),
+
+-- Order 6: customer_id=2 (Bạc 2%), total_price=119000, discount=2380, final_price=116620
+('2025-10-17 08:45:00'::TIMESTAMPTZ, 2, 119000, 2380, 116620, 2, 1, 3, 1, NULL, 0, 'Giảm 2% cho khách hàng rank Bạc, chuyển khoản ngân hàng'),
+
+-- Order 7: customer_id=3 (Đồng 1%), voucher 5000, total_price=49000, discount=490+5000=5490, final_price=43510
+('2025-10-17 13:20:00'::TIMESTAMPTZ, 3, 49000, 5490, 43510, 1, 1, 3, 1, 2, 5000, 'Giảm 1% cho khách hàng rank Đồng, sử dụng voucher giảm 5k'),
+
+-- Order 8: customer_id=4 (Đồng 1%), total_price=81000, discount=810, final_price=80190
+('2025-10-18 10:15:00'::TIMESTAMPTZ, 4, 81000, 810, 80190, 3, 1, 4, 1, NULL, 0, 'Giảm 1% cho khách hàng rank Đồng, thanh toán NFC'),
+
+-- Order 9: customer_id=1 (Bạc 2%), total_price=92500, discount=1850, final_price=90650
+('2025-10-19 09:00:00'::TIMESTAMPTZ, 1, 92500, 1850, 90650, 1, 1, 5, 1, NULL, 0, 'Giảm 2% cho khách hàng rank Bạc'),
+
+-- Order 10: customer_id=2 (Bạc 2%), total_price=59000, discount=1180, final_price=57820
+('2025-10-19 09:45:00'::TIMESTAMPTZ, 2, 59000, 1180, 57820, 2, 1, 5, 1, NULL, 0, 'Giảm 2% cho khách hàng rank Bạc, chuyển khoản MB Bank'),
+
+-- Order 11: customer_id=3 (Đồng 1%), voucher 5000, total_price=65000, discount=650+5000=5650, final_price=59350
+('2025-10-19 10:30:00'::TIMESTAMPTZ, 3, 65000, 5650, 59350, 1, 1, 5, 1, 2, 5000, 'Giảm 1% cho khách hàng rank Đồng, sử dụng voucher giảm 5k'),
+
+-- Order 12: customer_id=4 (Đồng 1%), total_price=108000, discount=1080, final_price=106920
+('2025-10-19 11:15:00'::TIMESTAMPTZ, 4, 108000, 1080, 106920, 3, 1, 5, 1, NULL, 0, 'Giảm 1% cho khách hàng rank Đồng, thanh toán NFC'),
+
+-- Order 13: customer_id=1 (Bạc 2%), total_price=134000, discount=2680, final_price=131320
+('2025-10-19 12:00:00'::TIMESTAMPTZ, 1, 134000, 2680, 131320, 1, 1, 5, 1, NULL, 0, 'Giảm 2% cho khách hàng rank Bạc'),
+
+-- Order 14: customer_id=2 (Bạc 2%), total_price=51500, discount=1030, final_price=50470
+('2025-10-19 13:30:00'::TIMESTAMPTZ, 2, 51500, 1030, 50470, 4, 1, 5, 1, NULL, 0, 'Giảm 2% cho khách hàng rank Bạc, thanh toán ATM'),
+
+-- Order 15: customer_id=3 (Đồng 1%), voucher 15%=13500, total_price=90000, discount=900+13500=14400, final_price=75600
+('2025-10-19 14:15:00'::TIMESTAMPTZ, 3, 90000, 14400, 75600, 1, 1, 5, 1, 3, 13500, 'Giảm 1% cho khách hàng rank Đồng, áp dụng voucher giảm 15%'),
+
+-- Order 16: customer_id=4 (Đồng 1%), total_price=115000, discount=1150, final_price=113850
+('2025-10-19 15:00:00'::TIMESTAMPTZ, 4, 115000, 1150, 113850, 2, 1, 5, 1, NULL, 0, 'Giảm 1% cho khách hàng rank Đồng, chuyển khoản ngân hàng'),
+
+-- Order 17: customer_id=1 (Bạc 2%), Đang chờ thanh toán - chưa có discount
+('2025-10-19 15:45:00'::TIMESTAMPTZ, 1, 69000, 0, 69000, 1, 0, 5, 1, NULL, 0, 'Đang chờ thanh toán'),
+
+-- Order 18: customer_id=2 (Bạc 2%), Đơn hàng bị hủy
+('2025-10-19 16:20:00'::TIMESTAMPTZ, 2, 42000, 0, 0, 1, 2, 5, 1, NULL, 0, 'Đơn hàng bị hủy');
+
+-- 15. Order Details
+INSERT INTO order_detail (order_id, product_id, product_unit_id, quantity, base_price, discount_amount, final_price, profit) VALUES
+-- Order 1: customer 1 (Bạc 2%), total=91000, discount=1820
+(1, 1, 1, 3, 36000, 720, 35280, 11280),   -- cost: 8000*3=24000
+(1, 7, 1, 2, 18000, 360, 17640, 5640),    -- cost: 6000*2=12000
+(1, 15, 1, 1, 3000, 60, 2940, 940),       -- cost: 2000*1=2000
+(1, 17, 1, 1, 12000, 240, 11760, 3760),   -- cost: 8000*1=8000
+(1, 13, 1, 1, 22000, 440, 21560, 6560),   -- cost: 15000*1=15000
+
+-- Order 2: customer 2 (Bạc 2% + voucher 10000), total=70000, discount=11400
+(2, 2, 2, 2, 24000, 3908, 20092, 3092),   -- cost: 8500*2=17000
+(2, 9, 9, 1, 10000, 1629, 8371, 1371),    -- cost: 7000*1=7000
+(2, 15, 15, 2, 6000, 977, 5023, 1023),    -- cost: 2000*2=4000
+(2, 11, 11, 1, 12000, 1954, 10046, 2046), -- cost: 8000*1=8000
+(2, 14, 14, 1, 18000, 2932, 15068, 3068), -- cost: 12000*1=12000
+
+-- Order 3: customer 3 (Đồng 1%), total=28500, discount=285
+(3, 4, 4, 2, 26000, 260, 25740, 7740),    -- cost: 9000*2=18000
+(3, 16, 16, 1, 2500, 25, 2475, 975),      -- cost: 1500*1=1500
+
+-- Order 4: customer 4 (Đồng 1%), total=72000, discount=720
+(4, 5, 5, 3, 39000, 390, 38610, 10110),   -- cost: 9500*3=28500
+(4, 8, 8, 2, 18000, 180, 17820, 5820),    -- cost: 6000*2=12000
+(4, 18, 18, 1, 15000, 150, 14850, 4850),  -- cost: 10000*1=10000
+
+-- Order 5: customer 1 (Bạc 2%), total=47000, discount=940
+(5, 1, 1, 2, 24000, 480, 23520, 7520),    -- cost: 8000*2=16000
+(5, 9, 9, 2, 20000, 400, 19600, 5600),    -- cost: 7000*2=14000
+(5, 15, 15, 1, 3000, 60, 2940, 940),      -- cost: 2000*1=2000
+
+-- Order 6: customer 2 (Bạc 2%), total=119000, discount=2380
+(6, 2, 2, 4, 48000, 960, 47040, 13040),   -- cost: 8500*4=34000
+(6, 7, 7, 3, 27000, 540, 26460, 8460),    -- cost: 6000*3=18000
+(6, 13, 13, 2, 44000, 880, 43120, 13120), -- cost: 15000*2=30000
+
+-- Order 7: customer 3 (Đồng 1% + voucher 5000), total=49000, discount=5490
+(7, 3, 3, 2, 22000, 2467, 19533, 4533),   -- cost: 7500*2=15000
+(7, 10, 10, 1, 10000, 1120, 8880, 1880),  -- cost: 7000*1=7000
+(7, 16, 16, 2, 5000, 561, 4439, 1439),    -- cost: 1500*2=3000
+(7, 17, 17, 1, 12000, 1342, 10658, 2658), -- cost: 8000*1=8000
+
+-- Order 8: customer 4 (Đồng 1%), total=81000, discount=810
+(8, 4, 4, 3, 39000, 390, 38610, 11610),   -- cost: 9000*3=27000
+(8, 11, 11, 2, 24000, 240, 23760, 7760),  -- cost: 8000*2=16000
+(8, 14, 14, 1, 18000, 180, 17820, 5820),  -- cost: 12000*1=12000
+
+-- Order 9: customer 1 (Bạc 2%), total=92500, discount=1850
+(9, 1, 1, 4, 48000, 960, 47040, 15040),   -- cost: 8000*4=32000
+(9, 2, 2, 3, 36000, 720, 35280, 9780),    -- cost: 8500*3=25500
+(9, 15, 15, 2, 6000, 120, 5880, 1880),    -- cost: 2000*2=4000
+(9, 16, 16, 1, 2500, 50, 2450, 950),      -- cost: 1500*1=1500
+
+-- Order 10: customer 2 (Bạc 2%), total=59000, discount=1180
+(10, 4, 4, 2, 26000, 520, 25480, 7480),   -- cost: 9000*2=18000
+(10, 7, 7, 3, 27000, 540, 26460, 8460),   -- cost: 6000*3=18000
+(10, 15, 15, 2, 6000, 120, 5880, 1880),   -- cost: 2000*2=4000
+
+-- Order 11: customer 3 (Đồng 1% + voucher 5000), total=65000, discount=5650
+(11, 3, 3, 3, 33000, 2868, 30132, 7632),  -- cost: 7500*3=22500
+(11, 9, 9, 2, 20000, 1738, 18262, 4262),  -- cost: 7000*2=14000
+(11, 17, 17, 1, 12000, 1044, 10956, 2956), -- cost: 8000*1=8000
+
+-- Order 12: customer 4 (Đồng 1%), total=108000, discount=1080
+(12, 5, 5, 2, 26000, 260, 25740, 6740),   -- cost: 9500*2=19000
+(12, 8, 8, 4, 36000, 360, 35640, 11640),  -- cost: 6000*4=24000
+(12, 11, 11, 2, 24000, 240, 23760, 7760), -- cost: 8000*2=16000
+(12, 13, 13, 1, 22000, 220, 21780, 6780), -- cost: 15000*1=15000
+
+-- Order 13: customer 1 (Bạc 2%), total=134000, discount=2680
+(13, 1, 1, 5, 60000, 1200, 58800, 18800), -- cost: 8000*5=40000
+(13, 9, 9, 3, 30000, 600, 29400, 8400),   -- cost: 7000*3=21000
+(13, 13, 13, 2, 44000, 880, 43120, 13120), -- cost: 15000*2=30000
+
+-- Order 14: customer 2 (Bạc 2%), total=51500, discount=1030
+(14, 2, 2, 2, 24000, 480, 23520, 6520),   -- cost: 8500*2=17000
+(14, 10, 10, 1, 10000, 200, 9800, 2800),  -- cost: 7000*1=7000
+(14, 16, 16, 1, 2500, 50, 2450, 950),     -- cost: 1500*1=1500
+(14, 18, 18, 1, 15000, 300, 14700, 4700), -- cost: 10000*1=10000
+
+-- Order 15: customer 3 (Đồng 1% + voucher 15%=13500), total=90000, discount=14400
+(15, 4, 4, 3, 39000, 6240, 32760, 5760),  -- cost: 9000*3=27000
+(15, 7, 7, 2, 18000, 2880, 15120, 3120),  -- cost: 6000*2=12000
+(15, 12, 12, 2, 24000, 3840, 20160, 4160), -- cost: 8000*2=16000
+(15, 15, 15, 3, 9000, 1440, 7560, 1560),  -- cost: 2000*3=6000
+
+-- Order 16: customer 4 (Đồng 1%), total=115000, discount=1150
+(16, 5, 5, 4, 52000, 520, 51480, 13480),  -- cost: 9500*4=38000
+(16, 8, 8, 3, 27000, 270, 26730, 8730),   -- cost: 6000*3=18000
+(16, 14, 14, 2, 36000, 360, 35640, 11640), -- cost: 12000*2=24000
+
+-- Order 17: customer 1 (Bạc 2%), Đang chờ thanh toán - chưa có discount
+(17, 3, 3, 3, 33000, 0, 33000, 10500),    -- cost: 7500*3=22500
+(17, 6, 6, 2, 24000, 0, 24000, 7000),     -- cost: 8500*2=17000
+(17, 17, 17, 1, 12000, 0, 12000, 4000),   -- cost: 8000*1=8000
+
+-- Order 18: customer 2 (Bạc 2%), Đơn bị hủy - không tính discount
+(18, 1, 1, 2, 24000, 0, 24000, 8000),     -- cost: 8000*2=16000
+(18, 7, 7, 2, 18000, 0, 18000, 6000);     -- cost: 6000*2=12000
+
+-- 16. Inventory Transactions
+-- BƯỚC 1: NHẬP KHO BAN ĐẦU (type = 2)
+INSERT INTO inventory_transaction (type, product_id, order_id, unit_id, quantity, price, shop_id, created_at) VALUES
+-- Nhập kho nước giải khát
+(2, 1, NULL, 1, 120, 8000, 1, '2025-10-01 08:00:00'::TIMESTAMPTZ),
+(2, 2, NULL, 1, 150, 8500, 1, '2025-10-01 08:00:00'::TIMESTAMPTZ),
+(2, 3, NULL, 1, 80, 7500, 1, '2025-10-01 08:00:00'::TIMESTAMPTZ),
+(2, 4, NULL, 2, 200, 9000, 1, '2025-10-01 08:00:00'::TIMESTAMPTZ),
+(2, 5, NULL, 2, 180, 9500, 1, '2025-10-01 08:00:00'::TIMESTAMPTZ),
+(2, 6, NULL, 2, 100, 8500, 1, '2025-10-01 08:00:00'::TIMESTAMPTZ),
+-- Nhập kho bánh khoai tây
+(2, 7, NULL, 3, 200, 6000, 1, '2025-10-01 08:00:00'::TIMESTAMPTZ),
+(2, 8, NULL, 3, 150, 6000, 1, '2025-10-01 08:00:00'::TIMESTAMPTZ),
+(2, 9, NULL, 3, 180, 7000, 1, '2025-10-01 08:00:00'::TIMESTAMPTZ),
+(2, 10, NULL, 3, 120, 7000, 1, '2025-10-01 08:00:00'::TIMESTAMPTZ),
+(2, 11, NULL, 3, 100, 8000, 1, '2025-10-01 08:00:00'::TIMESTAMPTZ),
+(2, 12, NULL, 3, 80, 8000, 1, '2025-10-01 08:00:00'::TIMESTAMPTZ),
+-- Nhập kho kẹo
+(2, 13, NULL, 3, 150, 15000, 1, '2025-10-01 08:00:00'::TIMESTAMPTZ),
+(2, 14, NULL, 3, 120, 12000, 1, '2025-10-01 08:00:00'::TIMESTAMPTZ),
+(2, 15, NULL, 4, 200, 2000, 1, '2025-10-01 08:00:00'::TIMESTAMPTZ),
+(2, 16, NULL, 4, 180, 1500, 1, '2025-10-01 08:00:00'::TIMESTAMPTZ),
+(2, 17, NULL, 5, 100, 8000, 1, '2025-10-01 08:00:00'::TIMESTAMPTZ),
+(2, 18, NULL, 5, 80, 10000, 1, '2025-10-01 08:00:00'::TIMESTAMPTZ);
+
+-- BƯỚC 2: BÁN HÀNG (type = 1) - price là profit của lần bán hàng
+INSERT INTO inventory_transaction (type, product_id, order_id, unit_id, quantity, price, shop_id, created_at) VALUES
 -- Order 1
-(3, 1, 1, 36000, 1), (2, 7, 7, 18000, 1), (1, 15, 15, 3000, 1), (1, 17, 17, 12000, 1), (1, 13, 13, 22000, 1),
+(1, 1, 1, 1, 3, 11280, 1, '2025-10-15 10:30:00'::TIMESTAMPTZ),
+(1, 7, 1, 3, 2, 5640, 1, '2025-10-15 10:30:00'::TIMESTAMPTZ),
+(1, 15, 1, 4, 1, 940, 1, '2025-10-15 10:30:00'::TIMESTAMPTZ),
+(1, 17, 1, 5, 1, 3760, 1, '2025-10-15 10:30:00'::TIMESTAMPTZ),
+(1, 13, 1, 3, 1, 6560, 1, '2025-10-15 10:30:00'::TIMESTAMPTZ),
+
 -- Order 2
-(2, 2, 2, 24000, 2), (1, 9, 9, 10000, 2), (2, 15, 15, 6000, 2), (1, 11, 11, 12000, 2), (1, 14, 14, 18000, 2),
+(1, 2, 2, 1, 2, 3092, 1, '2025-10-15 14:15:00'::TIMESTAMPTZ),
+(1, 9, 2, 3, 1, 1371, 1, '2025-10-15 14:15:00'::TIMESTAMPTZ),
+(1, 15, 2, 4, 2, 1023, 1, '2025-10-15 14:15:00'::TIMESTAMPTZ),
+(1, 11, 2, 3, 1, 2046, 1, '2025-10-15 14:15:00'::TIMESTAMPTZ),
+(1, 14, 2, 3, 1, 3068, 1, '2025-10-15 14:15:00'::TIMESTAMPTZ),
+
 -- Order 3
-(2, 4, 4, 26000, 3), (1, 16, 16, 2500, 3),
+(1, 4, 3, 2, 2, 7740, 1, '2025-10-15 16:45:00'::TIMESTAMPTZ),
+(1, 16, 3, 4, 1, 975, 1, '2025-10-15 16:45:00'::TIMESTAMPTZ),
+
 -- Order 4
-(3, 5, 5, 39000, 4), (2, 8, 8, 18000, 4), (1, 18, 18, 15000, 4),
+(1, 5, 4, 2, 3, 10110, 1, '2025-10-16 09:20:00'::TIMESTAMPTZ),
+(1, 8, 4, 3, 2, 5820, 1, '2025-10-16 09:20:00'::TIMESTAMPTZ),
+(1, 18, 4, 5, 1, 4850, 1, '2025-10-16 09:20:00'::TIMESTAMPTZ),
+
 -- Order 5
-(2, 1, 1, 24000, 5), (2, 9, 9, 20000, 5), (1, 15, 15, 3000, 5),
+(1, 1, 5, 1, 2, 7520, 1, '2025-10-16 11:30:00'::TIMESTAMPTZ),
+(1, 9, 5, 3, 2, 5600, 1, '2025-10-16 11:30:00'::TIMESTAMPTZ),
+(1, 15, 5, 4, 1, 940, 1, '2025-10-16 11:30:00'::TIMESTAMPTZ),
+
 -- Order 6
-(4, 2, 2, 48000, 6), (3, 7, 7, 27000, 6), (2, 13, 13, 44000, 6),
+(1, 2, 6, 1, 4, 13040, 1, '2025-10-17 08:45:00'::TIMESTAMPTZ),
+(1, 7, 6, 3, 3, 8460, 1, '2025-10-17 08:45:00'::TIMESTAMPTZ),
+(1, 13, 6, 3, 2, 13120, 1, '2025-10-17 08:45:00'::TIMESTAMPTZ),
+
 -- Order 7
-(2, 3, 3, 22000, 7), (1, 10, 10, 10000, 7), (2, 16, 16, 5000, 7), (1, 17, 17, 12000, 7),
+(1, 3, 7, 1, 2, 4533, 1, '2025-10-17 13:20:00'::TIMESTAMPTZ),
+(1, 10, 7, 3, 1, 1880, 1, '2025-10-17 13:20:00'::TIMESTAMPTZ),
+(1, 16, 7, 4, 2, 1439, 1, '2025-10-17 13:20:00'::TIMESTAMPTZ),
+(1, 17, 7, 5, 1, 2658, 1, '2025-10-17 13:20:00'::TIMESTAMPTZ),
+
 -- Order 8
-(3, 4, 4, 39000, 8), (2, 11, 11, 24000, 8), (1, 14, 14, 18000, 8),
+(1, 4, 8, 2, 3, 11610, 1, '2025-10-18 10:15:00'::TIMESTAMPTZ),
+(1, 11, 8, 3, 2, 7760, 1, '2025-10-18 10:15:00'::TIMESTAMPTZ),
+(1, 14, 8, 3, 1, 5820, 1, '2025-10-18 10:15:00'::TIMESTAMPTZ),
 
--- Order details cho 10 orders mới (order 9-18)
 -- Order 9
-(4, 1, 1, 48000, 9), (3, 2, 2, 36000, 9), (2, 15, 15, 6000, 9), (1, 16, 16, 2500, 9),
--- Order 10
-(2, 4, 4, 26000, 10), (3, 7, 7, 27000, 10), (2, 15, 15, 6000, 10),
--- Order 11
-(3, 3, 3, 33000, 11), (2, 9, 9, 20000, 11), (1, 17, 17, 12000, 11),
--- Order 12
-(2, 5, 5, 26000, 12), (4, 8, 8, 36000, 12), (2, 11, 11, 24000, 12), (1, 13, 13, 22000, 12),
--- Order 13
-(5, 1, 1, 60000, 13), (3, 9, 9, 30000, 13), (2, 13, 13, 44000, 13),
--- Order 14
-(2, 2, 2, 24000, 14), (1, 10, 10, 10000, 14), (1, 16, 16, 2500, 14), (1, 18, 18, 15000, 14),
--- Order 15
-(3, 4, 4, 39000, 15), (2, 7, 7, 18000, 15), (2, 12, 12, 24000, 15), (3, 15, 15, 9000, 15),
--- Order 16
-(4, 5, 5, 52000, 16), (3, 8, 8, 27000, 16), (2, 14, 14, 36000, 16),
--- Order 17
-(3, 3, 3, 33000, 17), (2, 6, 6, 24000, 17), (1, 17, 17, 12000, 17),
--- Order 18 (đơn bị hủy - không có order detail hoặc có nhưng đã hoàn)
-(2, 1, 1, 24000, 18), (2, 7, 7, 18000, 18);
+(1, 1, 9, 1, 4, 15040, 1, '2025-10-19 09:00:00'::TIMESTAMPTZ),
+(1, 2, 9, 1, 3, 9780, 1, '2025-10-19 09:00:00'::TIMESTAMPTZ),
+(1, 15, 9, 4, 2, 1880, 1, '2025-10-19 09:00:00'::TIMESTAMPTZ),
+(1, 16, 9, 4, 1, 950, 1, '2025-10-19 09:00:00'::TIMESTAMPTZ),
 
--- 16. Inventory Transactions (Cập nhật cho các order đã thanh toán)
-INSERT INTO inventory_transaction (type, product_id, order_id, unit_id, quantity, price, shop_id) VALUES
--- Order 1-8 (orders cũ)
-(2, 1, 1, 1, 3, 12000, 1), (2, 7, 1, 3, 2, 9000, 1), (2, 15, 1, 4, 1, 3000, 1), (2, 17, 1, 5, 1, 12000, 1), (2, 13, 1, 3, 1, 22000, 1),
-(2, 2, 2, 1, 2, 12000, 1), (2, 9, 2, 3, 1, 10000, 1), (2, 15, 2, 4, 2, 3000, 1), (2, 11, 2, 3, 1, 12000, 1), (2, 14, 2, 3, 1, 18000, 1),
-(2, 4, 3, 2, 2, 13000, 1), (2, 16, 3, 4, 1, 2500, 1),
-(2, 5, 4, 2, 3, 13000, 1), (2, 8, 4, 3, 2, 9000, 1), (2, 18, 4, 5, 1, 15000, 1),
-(2, 1, 5, 1, 2, 12000, 1), (2, 9, 5, 3, 2, 10000, 1), (2, 15, 5, 4, 1, 3000, 1),
-(2, 2, 6, 1, 4, 12000, 1), (2, 7, 6, 3, 3, 9000, 1), (2, 13, 6, 3, 2, 22000, 1),
-(2, 3, 7, 1, 2, 11000, 1), (2, 10, 7, 3, 1, 10000, 1), (2, 16, 7, 4, 2, 2500, 1), (2, 17, 7, 5, 1, 12000, 1),
-(2, 4, 8, 2, 3, 13000, 1), (2, 11, 8, 3, 2, 12000, 1), (2, 14, 8, 3, 1, 18000, 1),
--- Order 9-17 (orders mới đã thanh toán, bỏ qua order 17 đang chờ và order 18 đã hủy)
-(2, 1, 9, 1, 4, 12000, 1), (2, 2, 9, 1, 3, 12000, 1), (2, 15, 9, 4, 2, 3000, 1), (2, 16, 9, 4, 1, 2500, 1),
-(2, 4, 10, 2, 2, 13000, 1), (2, 7, 10, 3, 3, 9000, 1), (2, 15, 10, 4, 2, 3000, 1),
-(2, 3, 11, 1, 3, 11000, 1), (2, 9, 11, 3, 2, 10000, 1), (2, 17, 11, 5, 1, 12000, 1),
-(2, 5, 12, 2, 2, 13000, 1), (2, 8, 12, 3, 4, 9000, 1), (2, 11, 12, 3, 2, 12000, 1), (2, 13, 12, 3, 1, 22000, 1),
-(2, 1, 13, 1, 5, 12000, 1), (2, 9, 13, 3, 3, 10000, 1), (2, 13, 13, 3, 2, 22000, 1),
-(2, 2, 14, 1, 2, 12000, 1), (2, 10, 14, 3, 1, 10000, 1), (2, 16, 14, 4, 1, 2500, 1), (2, 18, 14, 5, 1, 15000, 1),
-(2, 4, 15, 2, 3, 13000, 1), (2, 7, 15, 3, 2, 9000, 1), (2, 12, 15, 3, 2, 12000, 1), (2, 15, 15, 4, 3, 3000, 1),
-(2, 5, 16, 2, 4, 13000, 1), (2, 8, 16, 3, 3, 9000, 1), (2, 14, 16, 3, 2, 18000, 1);
+-- Order 10
+(1, 4, 10, 2, 2, 7480, 1, '2025-10-19 09:45:00'::TIMESTAMPTZ),
+(1, 7, 10, 3, 3, 8460, 1, '2025-10-19 09:45:00'::TIMESTAMPTZ),
+(1, 15, 10, 4, 2, 1880, 1, '2025-10-19 09:45:00'::TIMESTAMPTZ),
+
+-- Order 11
+(1, 3, 11, 1, 3, 7632, 1, '2025-10-19 10:30:00'::TIMESTAMPTZ),
+(1, 9, 11, 3, 2, 4262, 1, '2025-10-19 10:30:00'::TIMESTAMPTZ),
+(1, 17, 11, 5, 1, 2956, 1, '2025-10-19 10:30:00'::TIMESTAMPTZ),
+
+-- Order 12
+(1, 5, 12, 2, 2, 6740, 1, '2025-10-19 11:15:00'::TIMESTAMPTZ),
+(1, 8, 12, 3, 4, 11640, 1, '2025-10-19 11:15:00'::TIMESTAMPTZ),
+(1, 11, 12, 3, 2, 7760, 1, '2025-10-19 11:15:00'::TIMESTAMPTZ),
+(1, 13, 12, 3, 1, 6780, 1, '2025-10-19 11:15:00'::TIMESTAMPTZ),
+
+-- Order 13
+(1, 1, 13, 1, 5, 18800, 1, '2025-10-19 12:00:00'::TIMESTAMPTZ),
+(1, 9, 13, 3, 3, 8400, 1, '2025-10-19 12:00:00'::TIMESTAMPTZ),
+(1, 13, 13, 3, 2, 13120, 1, '2025-10-19 12:00:00'::TIMESTAMPTZ),
+
+-- Order 14
+(1, 2, 14, 1, 2, 6520, 1, '2025-10-19 13:30:00'::TIMESTAMPTZ),
+(1, 10, 14, 3, 1, 2800, 1, '2025-10-19 13:30:00'::TIMESTAMPTZ),
+(1, 16, 14, 4, 1, 950, 1, '2025-10-19 13:30:00'::TIMESTAMPTZ),
+(1, 18, 14, 5, 1, 4700, 1, '2025-10-19 13:30:00'::TIMESTAMPTZ),
+
+-- Order 15
+(1, 4, 15, 2, 3, 5760, 1, '2025-10-19 14:15:00'::TIMESTAMPTZ),
+(1, 7, 15, 3, 2, 3120, 1, '2025-10-19 14:15:00'::TIMESTAMPTZ),
+(1, 12, 15, 3, 2, 4160, 1, '2025-10-19 14:15:00'::TIMESTAMPTZ),
+(1, 15, 15, 4, 3, 1560, 1, '2025-10-19 14:15:00'::TIMESTAMPTZ),
+
+-- Order 16
+(1, 5, 16, 2, 4, 13480, 1, '2025-10-19 15:00:00'::TIMESTAMPTZ),
+(1, 8, 16, 3, 3, 8730, 1, '2025-10-19 15:00:00'::TIMESTAMPTZ),
+(1, 14, 16, 3, 2, 11640, 1, '2025-10-19 15:00:00'::TIMESTAMPTZ);
+
+-- Order 17 và 18 không có inventory_transaction vì chưa thanh toán/bị hủy
 
 -- 17. NFC Cards
 INSERT INTO nfc (status, balance, customer_id, nfc_code, last_used_date) VALUES
@@ -575,19 +763,57 @@ INSERT INTO nfc (status, balance, customer_id, nfc_code, last_used_date) VALUES
 
 -- 18. Notifications
 INSERT INTO notification (shop_id, user_id, title, content, type, is_read) VALUES
-(1, 1, 'Sản phẩm sắp hết hàng', 'Oishi Vị Bò Nướng chỉ còn 80 sản phẩm', 1, FALSE),
-(1, 2, 'Ca làm việc mới', 'Bạn đã được phân công ca làm việc hôm nay', 2, TRUE),
+(1, 1, 'Sản phẩm sắp hết hàng', 'Oishi Snack Bí Đỏ chỉ còn 78 sản phẩm', 1, FALSE),
+(1, 2, 'Ưu đãi cuối năm', 'Kì lân châu Á thông báo ưu đãi giảm 30% khi mua 6 tháng liên tiếp cho gói basic', 2, TRUE),
 (1, 1, 'Doanh thu ngày hôm qua', 'Tổng doanh thu: 1,250,000 VNĐ', 3, FALSE),
 (1, 1, 'Báo cáo tuần', 'Doanh thu tuần này tăng 15% so với tuần trước', 3, FALSE);
 
--- 19. Log Activities
-INSERT INTO log_activity (user_id, content, type, shop_id) VALUES
-(1, 'Đăng nhập vào hệ thống', 1, 1),
-(2, 'Tạo đơn hàng #9', 2, 1),
-(1, 'Cập nhật thông tin sản phẩm Pepsi', 3, 1),
-(3, 'Đăng nhập vào hệ thống', 1, 1),
-(2, 'Tạo đơn hàng #10', 2, 1),
-(2, 'Tạo đơn hàng #11', 2, 1);
+-- 19. Log Activities (Cập nhật theo 19 type)
+INSERT INTO log_activity (user_id, content, type, shop_id, created_at) VALUES
+(1, 'Admin đăng nhập vào hệ thống', 1, 1, '2025-10-15 07:55:00'::TIMESTAMPTZ),
+(1, 'Admin mở ca làm việc', 15, 1, '2025-10-15 08:00:00'::TIMESTAMPTZ),
+(1, 'Tạo đơn hàng #1', 7, 1, '2025-10-15 10:30:00'::TIMESTAMPTZ),
+(1, 'Áp dụng giảm giá cho đơn hàng #2', 8, 1, '2025-10-15 14:15:00'::TIMESTAMPTZ),
+(1, 'Tạo đơn hàng #2', 7, 1, '2025-10-15 14:15:00'::TIMESTAMPTZ),
+(1, 'Tạo đơn hàng #3', 7, 1, '2025-10-15 16:45:00'::TIMESTAMPTZ),
+(1, 'Admin đóng ca làm việc', 16, 1, '2025-10-15 20:00:00'::TIMESTAMPTZ),
+(1, 'Tạo báo cáo ngày 15/10', 17, 1, '2025-10-15 20:05:00'::TIMESTAMPTZ),
+(1, 'Admin đăng xuất', 2, 1, '2025-10-15 20:10:00'::TIMESTAMPTZ),
+(2, 'Nhân viên 01 đăng nhập', 1, 1, '2025-10-16 07:55:00'::TIMESTAMPTZ),
+(2, 'Nhân viên 01 mở ca', 15, 1, '2025-10-16 08:00:00'::TIMESTAMPTZ),
+(2, 'Tạo đơn hàng #4', 7, 1, '2025-10-16 09:20:00'::TIMESTAMPTZ),
+(2, 'Tạo đơn hàng #5', 7, 1, '2025-10-16 11:30:00'::TIMESTAMPTZ),
+(2, 'Nhân viên 01 đóng ca', 16, 1, '2025-10-16 20:00:00'::TIMESTAMPTZ),
+(2, 'Nhân viên 01 đăng xuất', 2, 1, '2025-10-16 20:05:00'::TIMESTAMPTZ),
+(3, 'Nhân viên 02 đăng nhập', 1, 1, '2025-10-17 07:55:00'::TIMESTAMPTZ),
+(3, 'Nhân viên 02 mở ca', 15, 1, '2025-10-17 08:00:00'::TIMESTAMPTZ),
+(3, 'Tạo đơn hàng #6', 7, 1, '2025-10-17 08:45:00'::TIMESTAMPTZ),
+(3, 'Áp dụng voucher cho đơn hàng #7', 8, 1, '2025-10-17 13:20:00'::TIMESTAMPTZ),
+(3, 'Tạo đơn hàng #7', 7, 1, '2025-10-17 13:20:00'::TIMESTAMPTZ),
+(3, 'Nhân viên 02 đóng ca', 16, 1, '2025-10-17 20:00:00'::TIMESTAMPTZ),
+(3, 'Nhân viên 02 đăng xuất', 2, 1, '2025-10-17 20:05:00'::TIMESTAMPTZ),
+(1, 'Admin đăng nhập', 1, 1, '2025-10-18 07:55:00'::TIMESTAMPTZ),
+(1, 'Admin mở ca', 15, 1, '2025-10-18 08:00:00'::TIMESTAMPTZ),
+(1, 'Tạo đơn hàng #8', 7, 1, '2025-10-18 10:15:00'::TIMESTAMPTZ),
+(1, 'Admin đóng ca', 16, 1, '2025-10-18 20:00:00'::TIMESTAMPTZ),
+(1, 'Tạo báo cáo tuần', 17, 1, '2025-10-18 20:05:00'::TIMESTAMPTZ),
+(1, 'Xuất báo cáo tuần', 18, 1, '2025-10-18 20:10:00'::TIMESTAMPTZ),
+(1, 'Admin đăng xuất', 2, 1, '2025-10-18 20:15:00'::TIMESTAMPTZ),
+(2, 'Nhân viên 01 đăng nhập', 1, 1, '2025-10-19 07:55:00'::TIMESTAMPTZ),
+(2, 'Nhân viên 01 mở ca', 15, 1, '2025-10-19 08:00:00'::TIMESTAMPTZ),
+(1, 'Admin thêm sản phẩm mới vào kho', 9, 1, '2025-10-19 08:30:00'::TIMESTAMPTZ),
+(2, 'Tạo đơn hàng #9', 7, 1, '2025-10-19 09:00:00'::TIMESTAMPTZ),
+(2, 'Tạo đơn hàng #10', 7, 1, '2025-10-19 09:45:00'::TIMESTAMPTZ),
+(2, 'Áp dụng voucher cho đơn hàng #11', 8, 1, '2025-10-19 10:30:00'::TIMESTAMPTZ),
+(2, 'Tạo đơn hàng #11', 7, 1, '2025-10-19 10:30:00'::TIMESTAMPTZ),
+(2, 'Tạo đơn hàng #12', 7, 1, '2025-10-19 11:15:00'::TIMESTAMPTZ),
+(2, 'Tạo đơn hàng #13', 7, 1, '2025-10-19 12:00:00'::TIMESTAMPTZ),
+(2, 'Tạo đơn hàng #14', 7, 1, '2025-10-19 13:30:00'::TIMESTAMPTZ),
+(2, 'Áp dụng voucher cho đơn hàng #15', 8, 1, '2025-10-19 14:15:00'::TIMESTAMPTZ),
+(2, 'Tạo đơn hàng #15', 7, 1, '2025-10-19 14:15:00'::TIMESTAMPTZ),
+(2, 'Tạo đơn hàng #16', 7, 1, '2025-10-19 15:00:00'::TIMESTAMPTZ),
+(2, 'Tạo đơn hàng #17', 7, 1, '2025-10-19 15:45:00'::TIMESTAMPTZ),
+(2, 'Hủy đơn hàng #18', 7, 1, '2025-10-19 16:20:00'::TIMESTAMPTZ);
 
 -- 20. Chat Messages
 INSERT INTO chat_message (shop_id, user_id, content, sender) VALUES
@@ -622,26 +848,18 @@ INSERT INTO fcm (fcm_token, user_id, uniqueid) VALUES
 ('fcm_token_nv1_example_987654321', 2, 'UID_NV1_001'),
 ('fcm_token_nv2_example_456789123', 3, 'UID_NV2_001');
 
--- 26. Reports
+-- 26. Reports (Chỉ có type 1: Tuần và type 2: Tháng)
 INSERT INTO report (type, start_date, end_date, revenue, order_counter, shop_id, gross_profit, cost) VALUES
-(1, '2025-10-15', '2025-10-15', 1250000, 3, 1, 625000, 625000),
-(1, '2025-10-16', '2025-10-16', 980000, 2, 1, 490000, 490000),
-(1, '2025-10-17', '2025-10-17', 1150000, 2, 1, 575000, 575000),
-(1, '2025-10-18', '2025-10-18', 890000, 1, 1, 445000, 445000),
-(2, '2025-10-01', '2025-10-18', 4270000, 8, 1, 2135000, 2135000),
-(3, '2025-10-01', '2025-10-31', 5500000, 18, 1, 2750000, 2750000);
+(1, '2025-10-14', '2025-10-20', 4270000, 16, 1, 2135000, 2135000),
+(2, '2025-10-01', '2025-10-31', 5500000, 18, 1, 2750000, 2750000);
 
 -- 27. Report Details
 INSERT INTO report_detail (report_id, product_id, quantity) VALUES
--- Report ngày 15/10
-(1, 1, 5), (1, 2, 2), (1, 7, 2), (1, 9, 1), (1, 13, 1), (1, 15, 3), (1, 17, 1),
--- Report ngày 16/10
-(2, 1, 2), (2, 4, 3), (2, 5, 3), (2, 8, 2), (2, 9, 2), (2, 15, 1), (2, 18, 1),
--- Report ngày 17/10
-(3, 2, 4), (3, 3, 2), (3, 7, 3), (3, 10, 1), (3, 13, 2), (3, 16, 2), (3, 17, 1),
--- Report ngày 18/10
-(4, 4, 3), (4, 11, 2), (4, 14, 1),
--- Report tuần
-(5, 1, 12), (5, 2, 8), (5, 3, 2), (5, 4, 8), (5, 5, 3), (5, 7, 5), (5, 8, 2), (5, 9, 5), (5, 11, 2), (5, 13, 3), (5, 14, 1), (5, 15, 4), (5, 17, 2), (5, 18, 1),
--- Report tháng
-(6, 1, 25), (6, 2, 18), (6, 3, 8), (6, 4, 15), (6, 5, 12), (6, 7, 14), (6, 8, 10), (6, 9, 15), (6, 10, 6), (6, 11, 8), (6, 12, 5), (6, 13, 10), (6, 14, 7), (6, 15, 12), (6, 16, 8), (6, 17, 5), (6, 18, 4);
+-- Report tuần (14-20/10)
+(1, 1, 17), (1, 2, 11), (1, 3, 5), (1, 4, 10), (1, 5, 9), (1, 6, 0),
+(1, 7, 10), (1, 8, 9), (1, 9, 8), (1, 10, 2), (1, 11, 4), (1, 12, 2),
+(1, 13, 3), (1, 14, 2), (1, 15, 11), (1, 16, 4), (1, 17, 2), (1, 18, 1),
+-- Report tháng (1-31/10)
+(2, 1, 25), (2, 2, 18), (2, 3, 8), (2, 4, 15), (2, 5, 12), (2, 6, 2),
+(2, 7, 14), (2, 8, 10), (2, 9, 15), (2, 10, 6), (2, 11, 8), (2, 12, 5),
+(2, 13, 10), (2, 14, 7), (2, 15, 12), (2, 16, 8), (2, 17, 5), (2, 18, 4);

@@ -52,7 +52,10 @@ namespace ASA_TENANT_SERVICE.Implenment
                 }
                 if (request.Quantity.HasValue && unitPrice > 0)
                 {
-                    entity.TotalPrice = unitPrice * request.Quantity.Value;
+                    entity.BasePrice = unitPrice * request.Quantity.Value;
+                    entity.DiscountAmount = 0;
+                    entity.FinalPrice = entity.BasePrice;
+                    entity.Profit = 0;
                 }
                 var affected = await _orderDetailRepo.CreateAsync(entity);
                 if (affected > 0)
@@ -109,7 +112,10 @@ namespace ASA_TENANT_SERVICE.Implenment
                 }
                 if (request.Quantity.HasValue && unitPrice > 0)
                 {
-                    entity.TotalPrice = unitPrice * request.Quantity.Value;
+                    entity.BasePrice = unitPrice * request.Quantity.Value;
+                    entity.DiscountAmount = 0;
+                    entity.FinalPrice = entity.BasePrice;
+                    entity.Profit = 0;
                 }
                 var affected = await _orderDetailRepo.CreateAsync(entity);
                 if (affected > 0)
@@ -234,7 +240,7 @@ namespace ASA_TENANT_SERVICE.Implenment
             }
         }
 
-        public async Task<ApiResponse<bool>> UpdateTotalPriceAsync(long orderDetailId, decimal newTotalPrice)
+        public async Task<ApiResponse<bool>> UpdateFinalPriceAsync(long orderDetailId, decimal newFinalPrice)
         {
             try
             {
@@ -249,13 +255,52 @@ namespace ASA_TENANT_SERVICE.Implenment
                     };
                 }
 
-                existing.TotalPrice = newTotalPrice;
+                existing.FinalPrice = newFinalPrice;
                 var affected = await _orderDetailRepo.UpdateAsync(existing);
                 
                 return new ApiResponse<bool>
                 {
                     Success = affected > 0,
                     Message = affected > 0 ? "OrderDetail total price updated successfully" : "Update failed",
+                    Data = affected > 0
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = $"Error: {ex.Message}",
+                    Data = false
+                };
+            }
+        }
+
+        public async Task<ApiResponse<bool>> UpdateOrderDetailPricingAsync(long orderDetailId, decimal discountAmount, decimal finalPrice, decimal profit)
+        {
+            try
+            {
+                var existing = await _orderDetailRepo.GetByIdAsync(orderDetailId);
+                if (existing == null)
+                {
+                    return new ApiResponse<bool>
+                    {
+                        Success = false,
+                        Message = "OrderDetail not found",
+                        Data = false
+                    };
+                }
+
+                existing.DiscountAmount = discountAmount;
+                existing.FinalPrice = finalPrice;
+                existing.Profit = profit;
+                
+                var affected = await _orderDetailRepo.UpdateAsync(existing);
+                
+                return new ApiResponse<bool>
+                {
+                    Success = affected > 0,
+                    Message = affected > 0 ? "OrderDetail pricing updated successfully" : "Update failed",
                     Data = affected > 0
                 };
             }

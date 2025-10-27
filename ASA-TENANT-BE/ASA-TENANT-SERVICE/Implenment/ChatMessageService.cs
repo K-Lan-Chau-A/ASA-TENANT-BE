@@ -84,7 +84,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                             var aiMessage = new ChatMessage
                             {
                                 ShopId = user.ShopId,
-                                UserId = null, // AI message doesn't have userId
+                                UserId = entity.UserId, // Same UserId as the sender
                                 Content = aiResponse.Answer,
                                 Sender = "AI",
                                 CreatedAt = DateTime.UtcNow
@@ -110,7 +110,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                             var fallbackMessage = new ChatMessage
                             {
                                 ShopId = user.ShopId,
-                                UserId = null,
+                                UserId = entity.UserId, // Same UserId as the sender
                                 Content = "Xin lỗi, tôi đang gặp sự cố kỹ thuật. Vui lòng thử lại sau.",
                                 Sender = "AI",
                                 CreatedAt = DateTime.UtcNow

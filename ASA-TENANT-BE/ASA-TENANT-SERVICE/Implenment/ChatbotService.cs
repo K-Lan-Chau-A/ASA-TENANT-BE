@@ -201,8 +201,13 @@ namespace ASA_TENANT_SERVICE.Implenment
             var orders = await _orderRepo.GetByShopIdAsync(shopId);
             var customers = await _customerRepo.GetByShopIdAsync(shopId);
             var products = await _productRepo.GetByShopIdAsync(shopId);
+            var orderDetails = await _orderDetailRepo.GetByShopIdAsync(shopId);
 
-            var totalRevenue = orders.Where(o => o.Status == 1).Sum(o => o.TotalPrice ?? 0);
+            var completedOrders = orders.Where(o => o.Status == 1).ToList();
+            var totalRevenue = completedOrders.Sum(o => o.FinalPrice ?? 0);
+            var totalProfit = orderDetails
+                .Where(od => completedOrders.Any(o => o.OrderId == od.OrderId))
+                .Sum(od => od.Profit);
             var totalOrders = orders.Count();
             var averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
@@ -215,6 +220,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                 TotalCustomers = customers.Count,
                 TotalOrders = totalOrders,
                 TotalRevenue = totalRevenue,
+                TotalProfit = totalProfit,
                 AverageOrderValue = averageOrderValue,
                 Status = shop.Status == 1 ? "Active" : "Inactive"
             };
@@ -330,9 +336,9 @@ namespace ASA_TENANT_SERVICE.Implenment
             var categories = await _categoryRepo.GetByShopIdAsync(shopId);
             var orderDetails = await _orderDetailRepo.GetByShopIdAsync(shopId);
 
-            var lowStockProducts = products.Where(p => (p.Quantity ?? 0) <= (p.IsLow ?? 0) && (p.Quantity ?? 0) > 0).ToList();
-            var outOfStockProducts = products.Where(p => (p.Quantity ?? 0) <= 0).ToList();
-            var inStockProducts = products.Where(p => (p.Quantity ?? 0) > (p.IsLow ?? 0)).ToList();
+            var lowStockProducts = products.Where(p => p.Quantity <= p.IsLow && p.Quantity > 0).ToList();
+            var outOfStockProducts = products.Where(p => p.Quantity <= 0).ToList();
+            var inStockProducts = products.Where(p => p.Quantity > p.IsLow).ToList();
 
             var totalInventoryValue = products.Sum(p => (p.Quantity ?? 0) * (p.Cost ?? 0));
 
@@ -347,9 +353,9 @@ namespace ASA_TENANT_SERVICE.Implenment
                     Price = p.Price ?? 0m,
                     Cost = p.Cost ?? 0m,
                     ProfitMargin = (p.Price ?? 0m) > 0 && (p.Cost ?? 0m) > 0 ? (((p.Price ?? 0m) - (p.Cost ?? 0m)) / (p.Price ?? 0m) * 100) : 0m,
-                    TotalSold = orderDetails.Where(od => od.ProductId == p.ProductId).Sum(od => od.Quantity ?? 0),
-                    TotalRevenue = orderDetails.Where(od => od.ProductId == p.ProductId).Sum(od => od.TotalPrice ?? 0m),
-                    StockStatus = (p.Quantity ?? 0) <= 0 ? "Out of Stock" : (p.Quantity ?? 0) <= (p.IsLow ?? 0) ? "Low Stock" : "In Stock"
+                    TotalSold = orderDetails.Where(od => od.ProductId == p.ProductId).Sum(od => od.Quantity),
+                    TotalRevenue = orderDetails.Where(od => od.ProductId == p.ProductId).Sum(od => od.FinalPrice),
+                    StockStatus = p.Quantity <= 0 ? "Out of Stock" : p.Quantity <= p.IsLow ? "Low Stock" : "In Stock"
                 })
                 .ToList();
 
@@ -357,7 +363,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                 .Select(p => new
                 {
                     Product = p,
-                    TotalSold = orderDetails.Where(od => od.ProductId == p.ProductId).Sum(od => od.Quantity ?? 0)
+                    TotalSold = orderDetails.Where(od => od.ProductId == p.ProductId).Sum(od => od.Quantity)
                 })
                 .OrderByDescending(x => x.TotalSold)
                 .Take(10)
@@ -372,8 +378,8 @@ namespace ASA_TENANT_SERVICE.Implenment
                     Cost = x.Product.Cost ?? 0m,
                     ProfitMargin = (x.Product.Price ?? 0m) > 0 && (x.Product.Cost ?? 0m) > 0 ? (((x.Product.Price ?? 0m) - (x.Product.Cost ?? 0m)) / (x.Product.Price ?? 0m) * 100) : 0m,
                     TotalSold = x.TotalSold,
-                    TotalRevenue = orderDetails.Where(od => od.ProductId == x.Product.ProductId).Sum(od => od.TotalPrice ?? 0m),
-                    StockStatus = (x.Product.Quantity ?? 0) <= 0 ? "Out of Stock" : (x.Product.Quantity ?? 0) <= (x.Product.IsLow ?? 0) ? "Low Stock" : "In Stock"
+                    TotalRevenue = orderDetails.Where(od => od.ProductId == x.Product.ProductId).Sum(od => od.FinalPrice),
+                    StockStatus = x.Product.Quantity <= 0 ? "Out of Stock" : x.Product.Quantity <= x.Product.IsLow ? "Low Stock" : "In Stock"
                 })
                 .ToList();
 
@@ -381,7 +387,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                 .Select(p => new
                 {
                     Product = p,
-                    TotalSold = orderDetails.Where(od => od.ProductId == p.ProductId).Sum(od => od.Quantity ?? 0)
+                    TotalSold = orderDetails.Where(od => od.ProductId == p.ProductId).Sum(od => od.Quantity)
                 })
                 .Where(x => x.TotalSold < 5) // Products with less than 5 units sold
                 .OrderBy(x => x.TotalSold)
@@ -397,8 +403,8 @@ namespace ASA_TENANT_SERVICE.Implenment
                     Cost = x.Product.Cost ?? 0m,
                     ProfitMargin = (x.Product.Price ?? 0m) > 0 && (x.Product.Cost ?? 0m) > 0 ? (((x.Product.Price ?? 0m) - (x.Product.Cost ?? 0m)) / (x.Product.Price ?? 0m) * 100) : 0m,
                     TotalSold = x.TotalSold,
-                    TotalRevenue = orderDetails.Where(od => od.ProductId == x.Product.ProductId).Sum(od => od.TotalPrice ?? 0m),
-                    StockStatus = (x.Product.Quantity ?? 0) <= 0 ? "Out of Stock" : (x.Product.Quantity ?? 0) <= (x.Product.IsLow ?? 0) ? "Low Stock" : "In Stock"
+                    TotalRevenue = orderDetails.Where(od => od.ProductId == x.Product.ProductId).Sum(od => od.FinalPrice),
+                    StockStatus = x.Product.Quantity <= 0 ? "Out of Stock" : x.Product.Quantity <= x.Product.IsLow ? "Low Stock" : "In Stock"
                 })
                 .ToList();
 
@@ -434,13 +440,30 @@ namespace ASA_TENANT_SERVICE.Implenment
             var lastMonthStart = thisMonthStart.AddMonths(-1);
             var lastMonthEnd = thisMonthStart.AddDays(-1);
 
-            var totalRevenue = completedOrders.Sum(o => o.TotalPrice ?? 0);
-            var todayRevenue = completedOrders.Where(o => o.Datetime?.Date == today).Sum(o => o.TotalPrice ?? 0);
-            var thisWeekRevenue = completedOrders.Where(o => o.Datetime >= thisWeekStart).Sum(o => o.TotalPrice ?? 0);
-            var thisMonthRevenue = completedOrders.Where(o => o.Datetime >= thisMonthStart).Sum(o => o.TotalPrice ?? 0);
-            var lastMonthRevenue = completedOrders.Where(o => o.Datetime >= lastMonthStart && o.Datetime <= lastMonthEnd).Sum(o => o.TotalPrice ?? 0);
+            var totalRevenue = completedOrders.Sum(o => o.FinalPrice ?? 0);
+            var todayRevenue = completedOrders.Where(o => o.Datetime?.Date == today).Sum(o => o.FinalPrice ?? 0);
+            var thisWeekRevenue = completedOrders.Where(o => o.Datetime >= thisWeekStart).Sum(o => o.FinalPrice ?? 0);
+            var thisMonthRevenue = completedOrders.Where(o => o.Datetime >= thisMonthStart).Sum(o => o.FinalPrice ?? 0);
+            var lastMonthRevenue = completedOrders.Where(o => o.Datetime >= lastMonthStart && o.Datetime <= lastMonthEnd).Sum(o => o.FinalPrice ?? 0);
 
             var revenueGrowth = lastMonthRevenue > 0 ? ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue * 100) : 0;
+
+            // Calculate profits
+            var totalProfit = orderDetails
+                .Where(od => completedOrders.Any(o => o.OrderId == od.OrderId))
+                .Sum(od => od.Profit);
+            var todayProfit = orderDetails
+                .Where(od => completedOrders.Any(o => o.OrderId == od.OrderId && o.Datetime?.Date == today))
+                .Sum(od => od.Profit);
+            var thisWeekProfit = orderDetails
+                .Where(od => completedOrders.Any(o => o.OrderId == od.OrderId && o.Datetime >= thisWeekStart))
+                .Sum(od => od.Profit);
+            var thisMonthProfit = orderDetails
+                .Where(od => completedOrders.Any(o => o.OrderId == od.OrderId && o.Datetime >= thisMonthStart))
+                .Sum(od => od.Profit);
+            var lastMonthProfit = orderDetails
+                .Where(od => completedOrders.Any(o => o.OrderId == od.OrderId && o.Datetime >= lastMonthStart && o.Datetime <= lastMonthEnd))
+                .Sum(od => od.Profit);
 
             var totalOrders = completedOrders.Count();
             var averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
@@ -451,12 +474,12 @@ namespace ASA_TENANT_SERVICE.Implenment
 
             var revenueByPaymentMethod = completedOrders
                 .GroupBy(o => o.PaymentMethod ?? "Unknown")
-                .ToDictionary(g => g.Key, g => g.Sum(o => o.TotalPrice ?? 0));
+                .ToDictionary(g => g.Key, g => g.Sum(o => o.FinalPrice ?? 0));
 
             var revenueByCategory = orderDetails
                 .Join(completedOrders, od => od.OrderId, o => o.OrderId, (od, o) => new { od, o })
                 .GroupBy(x => x.od.Product?.Category?.CategoryName ?? "Chưa phân loại")
-                .ToDictionary(g => g.Key, g => g.Sum(x => x.od.TotalPrice ?? 0));
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.od.FinalPrice));
 
             var dailyRevenue = completedOrders
                 .Where(o => o.Datetime >= thisMonthStart)
@@ -464,7 +487,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                 .Select(g => new DailyRevenueDto
                 {
                     Date = g.Key ?? DateTime.MinValue,
-                    Revenue = g.Sum(o => o.TotalPrice ?? 0),
+                    Revenue = g.Sum(o => o.FinalPrice ?? 0),
                     OrderCount = g.Count()
                 })
                 .OrderBy(d => d.Date)
@@ -477,7 +500,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                     Year = g.Key.Year ?? DateTime.Now.Year,
                     Month = g.Key.Month ?? DateTime.Now.Month,
                     MonthName = g.Key.Month.HasValue ? new DateTime(g.Key.Year ?? DateTime.Now.Year, g.Key.Month.Value, 1).ToString("MM/yyyy") : "",
-                    Revenue = g.Sum(o => o.TotalPrice ?? 0),
+                    Revenue = g.Sum(o => o.FinalPrice ?? 0),
                     OrderCount = g.Count()
                 })
                 .OrderByDescending(m => m.Year).ThenByDescending(m => m.Month)
@@ -488,10 +511,15 @@ namespace ASA_TENANT_SERVICE.Implenment
             {
                 ShopId = shopId,
                 TotalRevenue = totalRevenue,
+                TotalProfit = totalProfit,
                 TodayRevenue = todayRevenue,
+                TodayProfit = todayProfit,
                 ThisWeekRevenue = thisWeekRevenue,
+                ThisWeekProfit = thisWeekProfit,
                 ThisMonthRevenue = thisMonthRevenue,
+                ThisMonthProfit = thisMonthProfit,
                 LastMonthRevenue = lastMonthRevenue,
+                LastMonthProfit = lastMonthProfit,
                 RevenueGrowth = revenueGrowth,
                 AverageOrderValue = averageOrderValue,
                 TotalOrders = totalOrders,
@@ -516,13 +544,24 @@ namespace ASA_TENANT_SERVICE.Implenment
             var transactions = await _transactionRepo.GetByShopIdAsync(shopId);
 
             var completedOrders = orders.Where(o => o.Status == 1).ToList();
-            var totalRevenue = completedOrders.Sum(o => o.TotalPrice ?? 0);
+            var totalRevenue = completedOrders.Sum(o => o.FinalPrice ?? 0);
+            var totalProfit = orderDetails
+                .Where(od => completedOrders.Any(o => o.OrderId == od.OrderId))
+                .Sum(od => od.Profit);
             var totalOrders = completedOrders.Count();
             var averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
             var today = DateTime.Today;
-            var thisMonthRevenue = completedOrders.Where(o => o.Datetime >= new DateTime(today.Year, today.Month, 1)).Sum(o => o.TotalPrice ?? 0);
-            var lastMonthRevenue = completedOrders.Where(o => o.Datetime >= new DateTime(today.Year, today.Month, 1).AddMonths(-1) && o.Datetime < new DateTime(today.Year, today.Month, 1)).Sum(o => o.TotalPrice ?? 0);
+            var thisMonthStart = new DateTime(today.Year, today.Month, 1);
+            var thisMonthRevenue = completedOrders.Where(o => o.Datetime >= thisMonthStart).Sum(o => o.FinalPrice ?? 0);
+            var thisMonthProfit = orderDetails
+                .Where(od => completedOrders.Any(o => o.OrderId == od.OrderId && o.Datetime >= thisMonthStart))
+                .Sum(od => od.Profit);
+            var lastMonthStart = thisMonthStart.AddMonths(-1);
+            var lastMonthRevenue = completedOrders.Where(o => o.Datetime >= lastMonthStart && o.Datetime < thisMonthStart).Sum(o => o.FinalPrice ?? 0);
+            var lastMonthProfit = orderDetails
+                .Where(od => completedOrders.Any(o => o.OrderId == od.OrderId && o.Datetime >= lastMonthStart && o.Datetime < thisMonthStart))
+                .Sum(od => od.Profit);
             
             var revenueGrowth = lastMonthRevenue > 0 ? ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue * 100) : 0;
 
@@ -531,13 +570,13 @@ namespace ASA_TENANT_SERVICE.Implenment
             var memberPercentage = customers.Any() ? (double)memberCustomers / customers.Count() * 100 : 0;
 
             var lowStockProducts = products.Where(p => p.IsLow == 1).Count();
-            var outOfStockProducts = products.Where(p => (p.Quantity ?? 0) <= 0).Count();
+            var outOfStockProducts = products.Where(p => p.Quantity <= 0).Count();
 
             var topSellingProducts = products
                 .Select(p => new
                 {
                     Product = p,
-                    TotalSold = orderDetails.Where(od => od.ProductId == p.ProductId).Sum(od => od.Quantity ?? 0)
+                    TotalSold = orderDetails.Where(od => od.ProductId == p.ProductId).Sum(od => od.Quantity)
                 })
                 .OrderByDescending(x => x.TotalSold)
                 .Take(5)
@@ -546,7 +585,7 @@ namespace ASA_TENANT_SERVICE.Implenment
             var topCategories = orderDetails
                 .Join(completedOrders, od => od.OrderId, o => o.OrderId, (od, o) => new { od, o })
                 .GroupBy(x => x.od.Product?.Category?.CategoryName ?? "Chưa phân loại")
-                .Select(g => new { Category = g.Key, Revenue = g.Sum(x => x.od.TotalPrice ?? 0) })
+                .Select(g => new { Category = g.Key, Revenue = g.Sum(x => x.od.FinalPrice) })
                 .OrderByDescending(x => x.Revenue)
                 .Take(3)
                 .ToList();
@@ -556,8 +595,11 @@ namespace ASA_TENANT_SERVICE.Implenment
                 ShopId = shopId,
                 ShopName = shop.ShopName ?? "Unknown",
                 TotalRevenue = totalRevenue,
+                TotalProfit = totalProfit,
                 ThisMonthRevenue = thisMonthRevenue,
+                ThisMonthProfit = thisMonthProfit,
                 LastMonthRevenue = lastMonthRevenue,
+                LastMonthProfit = lastMonthProfit,
                 RevenueGrowth = revenueGrowth,
                 AverageOrderValue = averageOrderValue,
                 TotalOrders = totalOrders,
@@ -573,7 +615,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                     ProductId = x.Product.ProductId,
                     ProductName = x.Product.ProductName ?? "Unknown",
                     TotalSold = x.TotalSold,
-                    Revenue = orderDetails.Where(od => od.ProductId == x.Product.ProductId).Sum(od => od.TotalPrice ?? 0),
+                    Revenue = orderDetails.Where(od => od.ProductId == x.Product.ProductId).Sum(od => od.FinalPrice),
                     ProfitMargin = (x.Product.Price ?? 0) > 0 && (x.Product.Cost ?? 0) > 0 ? (((x.Product.Price ?? 0) - (x.Product.Cost ?? 0)) / (x.Product.Price ?? 0) * 100) : 0
                 }).ToList(),
                 TopCategories = topCategories.Select(x => new CategoryStrategyDto
@@ -598,8 +640,8 @@ namespace ASA_TENANT_SERVICE.Implenment
             var currentProducts = products.Select(p => new
             {
                 Product = p,
-                TotalSold = orderDetails.Where(od => od.ProductId == p.ProductId).Sum(od => od.Quantity ?? 0),
-                TotalRevenue = orderDetails.Where(od => od.ProductId == p.ProductId).Sum(od => od.TotalPrice ?? 0m),
+                    TotalSold = orderDetails.Where(od => od.ProductId == p.ProductId).Sum(od => od.Quantity),
+                    TotalRevenue = orderDetails.Where(od => od.ProductId == p.ProductId).Sum(od => od.FinalPrice),
                 ProfitMargin = (p.Price ?? 0) > 0 && (p.Cost ?? 0) > 0 ? (((p.Price ?? 0) - (p.Cost ?? 0)) / (p.Price ?? 0) * 100) : 0
             }).ToList();
 
@@ -676,8 +718,8 @@ namespace ASA_TENANT_SERVICE.Implenment
                 CategoriesPerformance = categoriesPerformance,
                 LowStockProducts = lowStockProducts,
                 SlowMovingProducts = slowMovingProducts,
-                TotalRevenue = completedOrders.Sum(o => o.TotalPrice ?? 0),
-                AverageOrderValue = completedOrders.Any() ? completedOrders.Average(o => o.TotalPrice ?? 0) : 0
+                TotalRevenue = completedOrders.Sum(o => o.FinalPrice ?? 0),
+                AverageOrderValue = completedOrders.Any() ? completedOrders.Average(o => o.FinalPrice ?? 0) : 0
             };
         }
 
@@ -690,8 +732,8 @@ namespace ASA_TENANT_SERVICE.Implenment
             var productPerformance = products.Select(p => new
             {
                 Product = p,
-                TotalSold = orderDetails.Where(od => od.ProductId == p.ProductId).Sum(od => od.Quantity ?? 0),
-                TotalRevenue = orderDetails.Where(od => od.ProductId == p.ProductId).Sum(od => od.TotalPrice ?? 0m),
+                    TotalSold = orderDetails.Where(od => od.ProductId == p.ProductId).Sum(od => od.Quantity),
+                    TotalRevenue = orderDetails.Where(od => od.ProductId == p.ProductId).Sum(od => od.FinalPrice),
                 ProfitMargin = p.Price > 0 && p.Cost > 0 ? ((p.Price - p.Cost) / p.Price * 100) : 0m
             }).ToList();
 
@@ -710,7 +752,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                     ProfitMargin = x.ProfitMargin ?? 0m,
                     TotalSold = x.TotalSold,
                     TotalRevenue = x.TotalRevenue,
-                    StockStatus = (x.Product.Quantity ?? 0) <= 0 ? "Out of Stock" : (x.Product.Quantity ?? 0) <= (x.Product.IsLow ?? 0) ? "Low Stock" : "In Stock"
+                    StockStatus = x.Product.Quantity <= 0 ? "Out of Stock" : x.Product.Quantity <= x.Product.IsLow ? "Low Stock" : "In Stock"
                 })
                 .ToList();
 
@@ -729,7 +771,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                     ProfitMargin = x.ProfitMargin ?? 0m,
                     TotalSold = x.TotalSold,
                     TotalRevenue = x.TotalRevenue,
-                    StockStatus = (x.Product.Quantity ?? 0) <= 0 ? "Out of Stock" : (x.Product.Quantity ?? 0) <= (x.Product.IsLow ?? 0) ? "Low Stock" : "In Stock"
+                    StockStatus = x.Product.Quantity <= 0 ? "Out of Stock" : x.Product.Quantity <= x.Product.IsLow ? "Low Stock" : "In Stock"
                 })
                 .ToList();
 
@@ -749,7 +791,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                     ProfitMargin = x.ProfitMargin ?? 0m,
                     TotalSold = x.TotalSold,
                     TotalRevenue = x.TotalRevenue,
-                    StockStatus = (x.Product.Quantity ?? 0) <= 0 ? "Out of Stock" : (x.Product.Quantity ?? 0) <= (x.Product.IsLow ?? 0) ? "Low Stock" : "In Stock"
+                    StockStatus = x.Product.Quantity <= 0 ? "Out of Stock" : x.Product.Quantity <= x.Product.IsLow ? "Low Stock" : "In Stock"
                 })
                 .ToList();
 
@@ -769,7 +811,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                     ProfitMargin = x.ProfitMargin ?? 0m,
                     TotalSold = x.TotalSold,
                     TotalRevenue = x.TotalRevenue,
-                    StockStatus = (x.Product.Quantity ?? 0) <= 0 ? "Out of Stock" : (x.Product.Quantity ?? 0) <= (x.Product.IsLow ?? 0) ? "Low Stock" : "In Stock"
+                    StockStatus = x.Product.Quantity <= 0 ? "Out of Stock" : x.Product.Quantity <= x.Product.IsLow ? "Low Stock" : "In Stock"
                 })
                 .ToList();
 
@@ -802,27 +844,56 @@ namespace ASA_TENANT_SERVICE.Implenment
         {
             var questionLower = question.ToLower();
             
+            if (ContainsKeywords(questionLower, new[] { "lợi nhuận", "profit", "lãi" }))
+            {
+                if (ContainsKeywords(questionLower, new[] { "hôm nay", "today" }))
+                {
+                    return $"Lợi nhuận hôm nay của cửa hàng là {data.TodayProfit:N0} VNĐ từ doanh thu {data.TodayRevenue:N0} VNĐ. " +
+                           $"Tỷ lệ lợi nhuận: {(data.TodayRevenue > 0 ? (data.TodayProfit / data.TodayRevenue * 100).ToString("F1") : "0")}%.";
+                }
+                
+                if (ContainsKeywords(questionLower, new[] { "tuần này", "this week", "tuần" }))
+                {
+                    return $"Lợi nhuận tuần này của cửa hàng là {data.ThisWeekProfit:N0} VNĐ từ doanh thu {data.ThisWeekRevenue:N0} VNĐ. " +
+                           $"Tỷ lệ lợi nhuận: {(data.ThisWeekRevenue > 0 ? (data.ThisWeekProfit / data.ThisWeekRevenue * 100).ToString("F1") : "0")}%.";
+                }
+                
+                if (ContainsKeywords(questionLower, new[] { "tháng này", "this month", "tháng" }))
+                {
+                    var profitGrowth = data.LastMonthProfit > 0 ? ((data.ThisMonthProfit - data.LastMonthProfit) / data.LastMonthProfit * 100) : 0;
+                    var growthText = profitGrowth > 0 ? $"tăng {profitGrowth:F1}%" : 
+                                    profitGrowth < 0 ? $"giảm {Math.Abs(profitGrowth):F1}%" : "không thay đổi";
+                    return $"Lợi nhuận tháng này của cửa hàng là {data.ThisMonthProfit:N0} VNĐ từ doanh thu {data.ThisMonthRevenue:N0} VNĐ. " +
+                           $"So với tháng trước, lợi nhuận {growthText}. " +
+                           $"Tỷ lệ lợi nhuận: {(data.ThisMonthRevenue > 0 ? (data.ThisMonthProfit / data.ThisMonthRevenue * 100).ToString("F1") : "0")}%.";
+                }
+                
+                return $"Tổng lợi nhuận của cửa hàng là {data.TotalProfit:N0} VNĐ từ doanh thu {data.TotalRevenue:N0} VNĐ. " +
+                       $"Tỷ lệ lợi nhuận: {(data.TotalRevenue > 0 ? (data.TotalProfit / data.TotalRevenue * 100).ToString("F1") : "0")}%.";
+            }
+            
             if (ContainsKeywords(questionLower, new[] { "hôm nay", "today" }))
             {
-                return $"Doanh thu hôm nay của cửa hàng là {data.TodayRevenue:N0} VNĐ từ {data.TodayOrders} đơn hàng. " +
+                return $"Doanh thu hôm nay của cửa hàng là {data.TodayRevenue:N0} VNĐ với lợi nhuận {data.TodayProfit:N0} VNĐ từ {data.TodayOrders} đơn hàng. " +
                        $"Trung bình mỗi đơn hàng có giá trị {data.AverageOrderValue:N0} VNĐ.";
             }
             
             if (ContainsKeywords(questionLower, new[] { "tuần này", "this week", "tuần" }))
             {
-                return $"Doanh thu tuần này của cửa hàng là {data.ThisWeekRevenue:N0} VNĐ từ {data.ThisWeekOrders} đơn hàng.";
+                return $"Doanh thu tuần này của cửa hàng là {data.ThisWeekRevenue:N0} VNĐ với lợi nhuận {data.ThisWeekProfit:N0} VNĐ từ {data.ThisWeekOrders} đơn hàng.";
             }
             
             if (ContainsKeywords(questionLower, new[] { "tháng này", "this month", "tháng" }))
             {
                 var growthText = data.RevenueGrowth > 0 ? $"tăng {data.RevenueGrowth:F1}%" : 
                                 data.RevenueGrowth < 0 ? $"giảm {Math.Abs(data.RevenueGrowth):F1}%" : "không thay đổi";
-                return $"Doanh thu tháng này của cửa hàng là {data.ThisMonthRevenue:N0} VNĐ từ {data.ThisMonthOrders} đơn hàng. " +
+                return $"Doanh thu tháng này của cửa hàng là {data.ThisMonthRevenue:N0} VNĐ với lợi nhuận {data.ThisMonthProfit:N0} VNĐ từ {data.ThisMonthOrders} đơn hàng. " +
                        $"So với tháng trước, doanh thu {growthText}.";
             }
             
-            return $"Tổng doanh thu của cửa hàng là {data.TotalRevenue:N0} VNĐ từ {data.TotalOrders} đơn hàng. " +
-                   $"Trung bình mỗi đơn hàng có giá trị {data.AverageOrderValue:N0} VNĐ.";
+            return $"Tổng doanh thu của cửa hàng là {data.TotalRevenue:N0} VNĐ với tổng lợi nhuận {data.TotalProfit:N0} VNĐ từ {data.TotalOrders} đơn hàng. " +
+                   $"Trung bình mỗi đơn hàng có giá trị {data.AverageOrderValue:N0} VNĐ. " +
+                   $"Tỷ lệ lợi nhuận: {(data.TotalRevenue > 0 ? (data.TotalProfit / data.TotalRevenue * 100).ToString("F1") : "0")}%.";
         }
 
         private string GenerateCustomerAnswer(string question, CustomerAnalyticsDto data)
@@ -933,9 +1004,9 @@ namespace ASA_TENANT_SERVICE.Implenment
             var strategies = new List<string>();
 
             // Revenue growth strategies
-            if (ContainsKeywords(questionLower, new[] { "doanh thu", "revenue", "tăng doanh thu" }))
+            if (ContainsKeywords(questionLower, new[] { "doanh thu", "revenue", "tăng doanh thu", "lợi nhuận", "profit" }))
             {
-                strategies.Add($"Chiến lược tăng doanh thu:");
+                strategies.Add($"Chiến lược tăng doanh thu và lợi nhuận:");
                 
                 if (data.RevenueGrowth < 10)
                 {
@@ -952,6 +1023,18 @@ namespace ASA_TENANT_SERVICE.Implenment
                 if (data.TopCategories.Any())
                 {
                     strategies.Add($"• Tập trung vào danh mục bán chạy: {string.Join(", ", data.TopCategories.Take(2).Select(c => c.CategoryName))}");
+                }
+                
+                // Add profit-specific recommendations
+                var profitMargin = data.ThisMonthRevenue > 0 ? (data.ThisMonthProfit / data.ThisMonthRevenue * 100) : 0;
+                strategies.Add($"• Lợi nhuận tháng này: {data.ThisMonthProfit:N0} VNĐ (tỷ lệ {profitMargin:F1}%)");
+                
+                if (profitMargin < 20)
+                {
+                    strategies.Add($"• Cần cải thiện tỷ lệ lợi nhuận bằng cách:");
+                    strategies.Add($"• Tối ưu giá vốn hàng bán");
+                    strategies.Add($"• Tăng giá bán cho các sản phẩm có nhu cầu cao");
+                    strategies.Add($"• Giảm chi phí vận hành và quản lý");
                 }
             }
 
@@ -1005,6 +1088,7 @@ namespace ASA_TENANT_SERVICE.Implenment
             {
                 strategies.Add($"Phân tích tình hình cửa hàng {data.ShopName}:");
                 strategies.Add($"• Doanh thu tháng này: {data.ThisMonthRevenue:N0} VNĐ (tăng {data.RevenueGrowth:F1}%)");
+                strategies.Add($"• Lợi nhuận tháng này: {data.ThisMonthProfit:N0} VNĐ");
                 strategies.Add($"• Trung bình đơn hàng: {data.AverageOrderValue:N0} VNĐ");
                 strategies.Add($"• Khách hàng thành viên: {data.MemberPercentage:F1}%");
                 strategies.Add($"• Tổng sản phẩm: {data.TotalProducts}");
@@ -1117,7 +1201,7 @@ namespace ASA_TENANT_SERVICE.Implenment
         {
             return $"Tổng quan về cửa hàng {data.ShopName}: " +
                    $"Có {data.TotalProducts} sản phẩm, {data.TotalCustomers} khách hàng, " +
-                   $"đã thực hiện {data.TotalOrders} đơn hàng với tổng doanh thu {data.TotalRevenue:N0} VNĐ. " +
+                   $"đã thực hiện {data.TotalOrders} đơn hàng với tổng doanh thu {data.TotalRevenue:N0} VNĐ và tổng lợi nhuận {data.TotalProfit:N0} VNĐ. " +
                    $"Trung bình mỗi đơn hàng có giá trị {data.AverageOrderValue:N0} VNĐ.";
         }
     }

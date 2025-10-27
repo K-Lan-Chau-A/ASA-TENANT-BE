@@ -22,16 +22,22 @@ namespace ASA_TENANT_REPO.Repository
 
             if (filter.OrderDetailId > 0)
                 query = query.Where(od => od.OrderDetailId == filter.OrderDetailId);
-            if (filter.OrderId.HasValue && filter.OrderId.Value > 0)
+            if (filter.OrderId > 0)
                 query = query.Where(od => od.OrderId == filter.OrderId);
-            if (filter.ProductId.HasValue && filter.ProductId.Value > 0)
+            if (filter.ProductId > 0)
                 query = query.Where(od => od.ProductId == filter.ProductId);
-            if (filter.ProductUnitId.HasValue && filter.ProductUnitId.Value > 0)
+            if (filter.ProductUnitId > 0)
                 query = query.Where(od => od.ProductUnitId == filter.ProductUnitId);
-            if (filter.Quantity.HasValue && filter.Quantity.Value > 0)
+            if (filter.Quantity > 0)
                 query = query.Where(od => od.Quantity == filter.Quantity);
-            if (filter.TotalPrice.HasValue && filter.TotalPrice.Value > 0)
-                query = query.Where(od => od.TotalPrice == filter.TotalPrice);
+            if (filter.BasePrice > 0)
+                query = query.Where(od => od.BasePrice == filter.BasePrice);
+            if (filter.DiscountAmount > 0)
+                query = query.Where(od => od.DiscountAmount == filter.DiscountAmount);
+            if (filter.FinalPrice > 0)
+                query = query.Where(od => od.FinalPrice == filter.FinalPrice);
+            if (filter.Profit != 0)
+                query = query.Where(od => od.Profit == filter.Profit);
 
             return query.OrderBy(od => od.OrderDetailId);
         }

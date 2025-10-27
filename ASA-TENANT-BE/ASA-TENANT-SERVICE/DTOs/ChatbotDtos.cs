@@ -20,6 +20,7 @@ namespace ASA_TENANT_SERVICE.DTOs
         public int TotalCustomers { get; set; }
         public int TotalOrders { get; set; }
         public decimal TotalRevenue { get; set; }
+        public decimal TotalProfit { get; set; }
         public decimal AverageOrderValue { get; set; }
         public string Status { get; set; } = string.Empty;
     }
@@ -92,10 +93,15 @@ namespace ASA_TENANT_SERVICE.DTOs
     {
         public long ShopId { get; set; }
         public decimal TotalRevenue { get; set; }
+        public decimal TotalProfit { get; set; }
         public decimal TodayRevenue { get; set; }
+        public decimal TodayProfit { get; set; }
         public decimal ThisWeekRevenue { get; set; }
+        public decimal ThisWeekProfit { get; set; }
         public decimal ThisMonthRevenue { get; set; }
+        public decimal ThisMonthProfit { get; set; }
         public decimal LastMonthRevenue { get; set; }
+        public decimal LastMonthProfit { get; set; }
         public decimal RevenueGrowth { get; set; } // Percentage change from last month
         public decimal AverageOrderValue { get; set; }
         public int TotalOrders { get; set; }
@@ -161,8 +167,11 @@ namespace ASA_TENANT_SERVICE.DTOs
         public long ShopId { get; set; }
         public string ShopName { get; set; } = string.Empty;
         public decimal TotalRevenue { get; set; }
+        public decimal TotalProfit { get; set; }
         public decimal ThisMonthRevenue { get; set; }
+        public decimal ThisMonthProfit { get; set; }
         public decimal LastMonthRevenue { get; set; }
+        public decimal LastMonthProfit { get; set; }
         public decimal RevenueGrowth { get; set; }
         public decimal AverageOrderValue { get; set; }
         public int TotalOrders { get; set; }

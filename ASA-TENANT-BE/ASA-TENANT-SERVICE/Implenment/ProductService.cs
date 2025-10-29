@@ -89,6 +89,7 @@ namespace ASA_TENANT_SERVICE.Implenment
 
                 var response = _mapper.Map<ProductResponse>(product);
                 response.PromotionPrice = await CalculatePromotionPriceAsync(product);
+                response.Units = await BuildProductUnitsAsync(product);
                 return new ApiResponse<ProductResponse>
                 {
                     Success = true,
@@ -297,6 +298,7 @@ namespace ASA_TENANT_SERVICE.Implenment
             for (int i = 0; i < items.Count; i++)
             {
                 responses[i].PromotionPrice = await CalculatePromotionPriceAsync(items[i]);
+                responses[i].Units = await BuildProductUnitsAsync(items[i]);
             }
 
             return new PagedResponse<ProductResponse>
@@ -417,6 +419,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                 {
                     var response = _mapper.Map<ProductResponse>(existing);
                     response.PromotionPrice = await CalculatePromotionPriceAsync(existing);
+                    response.Units = await BuildProductUnitsAsync(existing);
                     return new ApiResponse<ProductResponse>
                     {
                         Success = true,
@@ -449,6 +452,10 @@ namespace ASA_TENANT_SERVICE.Implenment
                 return null;
 
             var filter = new PromotionProduct { ProductId = product.ProductId };
+            if (product.UnitIdFk.HasValue && product.UnitIdFk.Value > 0)
+            {
+                filter.UnitId = product.UnitIdFk.Value;
+            }
             var promosQuery = _promotionProductRepo.GetFiltered(filter)
                 .Select(pp => pp.Promotion);
 
@@ -482,6 +489,110 @@ namespace ASA_TENANT_SERVICE.Implenment
                     continue;
 
                 // Time window (if both set, enforce range within the day)
+                if (promo.StartTime != null && promo.EndTime != null)
+                {
+                    if (currentTime < promo.StartTime.Value || currentTime > promo.EndTime.Value)
+                        continue;
+                }
+                else if (promo.StartTime != null && currentTime < promo.StartTime.Value)
+                {
+                    continue;
+                }
+                else if (promo.EndTime != null && currentTime > promo.EndTime.Value)
+                {
+                    continue;
+                }
+
+                if (promo.Type == null || promo.Value == null)
+                    continue;
+
+                if (promo.Type == (short)PromotionType.Percentage)
+                {
+                    var pct = promo.Value.Value;
+                    if (pct < 0) pct = 0;
+                    if (pct > 100) pct = 100;
+                    currentPrice = currentPrice - (currentPrice * (pct / 100m));
+                    anyApplied = true;
+                }
+                else if (promo.Type == (short)PromotionType.Money)
+                {
+                    currentPrice = currentPrice - promo.Value.Value;
+                    anyApplied = true;
+                }
+
+                if (currentPrice < 0)
+                    currentPrice = 0;
+            }
+
+            if (!anyApplied)
+                return null;
+
+            return currentPrice;
+        }
+
+        private async Task<List<ProductUnitItemResponse>> BuildProductUnitsAsync(Product product)
+        {
+            var results = new List<ProductUnitItemResponse>();
+            if (product == null || product.ProductId <= 0 || product.ShopId == null)
+                return results;
+
+            var filter = new ProductUnit { ProductId = product.ProductId, ShopId = product.ShopId.Value };
+            var query = _productUnitRepo.GetFiltered(filter);
+            var units = await query.ToListAsync();
+
+            foreach (var pu in units)
+            {
+                if (product.UnitIdFk.HasValue && pu.UnitId == product.UnitIdFk.Value)
+                    continue; // skip base unit which is displayed above
+
+                var unitItem = new ProductUnitItemResponse
+                {
+                    UnitId = pu.UnitId ?? 0,
+                    UnitName = pu.Unit?.Name ?? string.Empty,
+                    ConversionFactor = pu.ConversionFactor,
+                    Price = pu.Price
+                };
+
+                if (pu.Price.HasValue && pu.Price.Value > 0 && pu.UnitId.HasValue)
+                {
+                    var promoPrice = await CalculatePromotionPriceForUnitAsync(product.ProductId, product.ShopId, pu.UnitId.Value, pu.Price.Value);
+                    unitItem.PromotionPrice = promoPrice;
+                }
+
+                results.Add(unitItem);
+            }
+
+            return results;
+        }
+
+        private async Task<decimal?> CalculatePromotionPriceForUnitAsync(long productId, long? shopId, long unitId, decimal basePrice)
+        {
+            var filter = new PromotionProduct { ProductId = productId, UnitId = unitId };
+            var promos = await _promotionProductRepo.GetFiltered(filter)
+                .Select(pp => pp.Promotion)
+                .ToListAsync();
+            if (promos == null || promos.Count == 0)
+                return null;
+
+            var now = DateTime.Now;
+            var today = DateOnly.FromDateTime(now);
+            var currentTime = TimeOnly.FromDateTime(now);
+
+            decimal currentPrice = basePrice;
+            bool anyApplied = false;
+
+            foreach (var promo in promos
+                .Where(p => p != null)
+                .OrderBy(p => p.Type == (short)PromotionType.Percentage ? 0 : 1))
+            {
+                if (promo.Status != (short?)PromotionStatus.Active)
+                    continue;
+                if (promo.ShopId != null && shopId != null && promo.ShopId != shopId)
+                    continue;
+                if (promo.StartDate != null && today < promo.StartDate.Value)
+                    continue;
+                if (promo.EndDate != null && today > promo.EndDate.Value)
+                    continue;
                 if (promo.StartTime != null && promo.EndTime != null)
                 {
                     if (currentTime < promo.StartTime.Value || currentTime > promo.EndTime.Value)

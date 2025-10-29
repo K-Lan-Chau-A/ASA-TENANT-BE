@@ -520,6 +520,7 @@ public partial class ASATENANTDBContext : DbContext
             entity.Property(e => e.PromotionProductId).HasColumnName("promotion_product_id");
             entity.Property(e => e.ProductId).HasColumnName("product_id");
             entity.Property(e => e.PromotionId).HasColumnName("promotion_id");
+            entity.Property(e => e.UnitId).HasColumnName("unit_id");
 
             entity.HasOne(d => d.Product).WithMany(p => p.PromotionProducts)
                 .HasForeignKey(d => d.ProductId)
@@ -528,6 +529,10 @@ public partial class ASATENANTDBContext : DbContext
             entity.HasOne(d => d.Promotion).WithMany(p => p.PromotionProducts)
                 .HasForeignKey(d => d.PromotionId)
                 .HasConstraintName("promotion_product_promotion_id_fkey");
+
+            entity.HasOne(d => d.Unit).WithMany(p => p.PromotionProducts)
+                .HasForeignKey(d => d.UnitId)
+                .HasConstraintName("promotion_product_unit_id_fkey");
         });
 
         modelBuilder.Entity<Prompt>(entity =>

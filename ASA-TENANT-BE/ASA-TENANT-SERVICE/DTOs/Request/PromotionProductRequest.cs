@@ -10,6 +10,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
     {
         public long? PromotionId { get; set; }
         public long? ProductId { get; set; }
+        public long? UnitId { get; set; }
     }
 
     public class PromotionProductGetRequest
@@ -17,5 +18,6 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
         public long PromotionProductId { get; set; }
         public long? PromotionId { get; set; }
         public long? ProductId { get; set; }
+        public long? UnitId { get; set; }
     }
 }

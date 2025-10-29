@@ -150,6 +150,14 @@ builder.Services.AddQuartz(q =>
         .ForJob(subExpiryJobKey)
         .WithIdentity("SubscriptionExpiryReminderTrigger")
         .WithSimpleSchedule(x => x.WithIntervalInMinutes(1).RepeatForever()));
+
+    // Daily promotion expiry job: chạy 00:15 hằng ngày (SE Asia time)
+    var expiryJobKey = new JobKey("PromotionExpiryJob");
+    q.AddJob<PromotionExpiryJob>(opts => opts.WithIdentity(expiryJobKey));
+    q.AddTrigger(opts => opts
+        .ForJob(expiryJobKey)
+        .WithIdentity("PromotionExpiryTrigger")
+        .WithCronSchedule("0 15 0 * * ?", x => x.InTimeZone(TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"))));
 });
 
 //// Quartz test 5p và 10p

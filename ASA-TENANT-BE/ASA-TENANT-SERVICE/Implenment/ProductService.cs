@@ -456,7 +456,7 @@ namespace ASA_TENANT_SERVICE.Implenment
             if (promos == null || promos.Count == 0)
                 return null;
 
-            var now = DateTime.UtcNow;
+            var now = DateTime.Now;
             var today = DateOnly.FromDateTime(now);
             var currentTime = TimeOnly.FromDateTime(now);
 

@@ -86,7 +86,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                     if (promotionProducts.Any())
                     {
                         response.Products = promotionProducts
-                            .Select(pp => pp.ProductId.Value)
+                            .Select(pp => pp.ProductId)
                             .ToHashSet();
                     }
 
@@ -261,7 +261,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                     if (promotionProducts.Any())
                     {
                         response.Products = promotionProducts
-                            .Select(pp => pp.ProductId.Value)
+                            .Select(pp => pp.ProductId)
                             .ToHashSet();
                     }
 

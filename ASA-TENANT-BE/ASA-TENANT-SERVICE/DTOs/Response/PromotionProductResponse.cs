@@ -11,6 +11,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Response
         public long PromotionProductId { get; set; }
         public long? PromotionId { get; set; }
         public long? ProductId { get; set; }
+        public long? UnitId { get; set; }
         public string? PromotionName { get; set; }
         public short? PromotionType { get; set; }
         public decimal? PromotionValue { get; set; }
@@ -19,6 +20,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Response
         public TimeOnly? PromotionStartTime { get; set; }
         public TimeOnly? PromotionEndTime { get; set; }
         public string? ProductName { get; set; }
+        public string? UnitName { get; set; }
 
     }
 }

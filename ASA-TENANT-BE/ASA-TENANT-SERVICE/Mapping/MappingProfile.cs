@@ -85,7 +85,7 @@ namespace ASA_TENANT_SERVICE.Mapping
                  .ForMember(dest => dest.Products,
             opt => opt.MapFrom(src =>
             src.PromotionProducts != null
-                ? src.PromotionProducts.Select(pp => pp.ProductId.Value).ToHashSet()
+                ? src.PromotionProducts.Select(pp => pp.ProductId).ToHashSet()
                 : new HashSet<long>()))
                 .ReverseMap()
                 .ForMember(dest => dest.Type, opt => opt.MapFrom(src => (PromotionType)src.Type));
@@ -183,7 +183,8 @@ namespace ASA_TENANT_SERVICE.Mapping
                 .ForMember(dest => dest.PromotionStartDate, opt => opt.MapFrom(src => src.Promotion.StartDate))
                 .ForMember(dest => dest.PromotionEndDate, opt => opt.MapFrom(src => src.Promotion.EndDate))
                 .ForMember(dest => dest.PromotionStartTime, opt => opt.MapFrom(src => src.Promotion.StartTime))
-                .ForMember(dest => dest.PromotionEndTime, opt => opt.MapFrom(src => src.Promotion.EndTime));
+                .ForMember(dest => dest.PromotionEndTime, opt => opt.MapFrom(src => src.Promotion.EndTime))
+                .ForMember(dest => dest.UnitName, opt => opt.MapFrom(src => src.Unit.Name));
             CreateMap<PromotionProductRequest, PromotionProduct>().ReverseMap();
             CreateMap<PromotionProductGetRequest, PromotionProduct>().ReverseMap();
 

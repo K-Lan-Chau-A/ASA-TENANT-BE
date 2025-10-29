@@ -18,6 +18,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
         public long? VoucherId { get; set; }
         public decimal? Discount { get; set; }
         public string? Note { get; set; }
+        public bool? IsSendInvoice { get; set; }
         public List<OrderDetailRequest>? OrderDetails { get; set; }
     }
 

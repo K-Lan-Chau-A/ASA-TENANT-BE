@@ -21,13 +21,16 @@ namespace ASA_TENANT_REPO.Repository
             var query = _context.PromotionProducts
                 .Include(pp => pp.Product)
                 .Include(pp => pp.Promotion)
+                .Include(pp => pp.Unit)
                 .AsQueryable();
             if (filter.PromotionProductId != 0)
                 query = query.Where(x => x.PromotionProductId == filter.PromotionProductId);
-            if (filter.PromotionId != null)
+            if (filter.PromotionId > 0)
                 query = query.Where(x => x.PromotionId == filter.PromotionId);
-            if (filter.ProductId != null)
+            if (filter.ProductId > 0)
                 query = query.Where(x => x.ProductId == filter.ProductId);
+            if (filter.UnitId != 0)
+                query = query.Where(x => x.UnitId == filter.UnitId);
             return query.OrderBy(x => x.PromotionProductId);
         }
 

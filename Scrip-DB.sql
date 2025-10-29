@@ -315,8 +315,9 @@ CREATE TABLE promotion (
 -- 23. Promotion Product
 CREATE TABLE promotion_product (
     promotion_product_id BIGSERIAL PRIMARY KEY,
-    promotion_id BIGINT REFERENCES promotion(promotion_id),
-    product_id BIGINT REFERENCES product(product_id)
+    promotion_id BIGINT NOT NULL REFERENCES promotion(promotion_id) ON DELETE CASCADE,
+    product_id BIGINT NOT NULL REFERENCES product(product_id) ON DELETE CASCADE,
+    unit_id BIGINT NOT NULL REFERENCES unit(unit_id) ON DELETE CASCADE
 );
 
 -- 24. Report
@@ -388,7 +389,9 @@ INSERT INTO unit (name, shop_id) VALUES
 ('Lon', 1),
 ('Gói', 1),
 ('Cái', 1),
-('Hộp', 1);
+('Hộp', 1),
+('Lốc',1),
+('Thùng',1);
 
 -- 5. Categories
 INSERT INTO category (category_name, description, shop_id) VALUES
@@ -468,7 +471,11 @@ INSERT INTO product_unit (product_id, unit_id, conversion_factor, price, shop_id
 (7, 3, 1.0000, 9000, 1),  (8, 3, 1.0000, 9000, 1),  (9, 3, 1.0000, 10000, 1),
 (10, 3, 1.0000, 10000, 1), (11, 3, 1.0000, 12000, 1), (12, 3, 1.0000, 12000, 1),
 (13, 3, 1.0000, 22000, 1), (14, 3, 1.0000, 18000, 1), (15, 4, 1.0000, 3000, 1),
-(16, 4, 1.0000, 2500, 1),  (17, 5, 1.0000, 12000, 1), (18, 5, 1.0000, 15000, 1);
+(16, 4, 1.0000, 2500, 1),  (17, 5, 1.0000, 12000, 1), (18, 5, 1.0000, 15000, 1),
+(1, 6, 6.0000, 65000, 1), (2, 6, 6.0000, 65000, 1), (3, 6, 6.0000, 65000, 1),
+(4, 6, 6.0000, 65000, 1), (5,6, 6.0000, 65000, 1), (6, 6, 6.0000, 65000, 1),
+(1, 7, 24.0000, 255000, 1), (2, 7, 24.0000, 255000, 1), (3, 7, 24.0000, 255000, 1),
+(4, 7, 24.0000, 255000, 1), (5,7, 24.0000, 255000, 1), (6,7, 24.0000, 255000, 1);
 
 -- 12. Shifts
 INSERT INTO shift (user_id, start_date, closed_date, status, revenue, opening_cash, shop_id) VALUES
@@ -837,10 +844,23 @@ INSERT INTO promotion (start_date, end_date, start_time, end_time, value, type, 
 ('2025-10-01', '2025-10-31', '08:00:00', '20:00:00', 5000, 1, 1, 'Khuyến mãi tháng 10', 1),
 ('2025-10-15', '2025-10-30', '14:00:00', '18:00:00', 10, 2, 1, 'Happy Hour - Giảm 10%', 1);
 
--- 24. Promotion Products
-INSERT INTO promotion_product (promotion_id, product_id) VALUES
-(1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6),
-(2, 7), (2, 8), (2, 9), (2, 10), (2, 11), (2, 12);
+-- 24. Promotion Products (ĐÃ THÊM unit_id)
+INSERT INTO promotion_product (promotion_id, product_id, unit_id) VALUES
+-- Promotion 1: Khuyến mãi cho các loại nước giải khát (chai và lon)
+(1, 1, 7), -- Pepsi Cola 330ml - Thùng
+(1, 2, 7), -- Coca Cola 330ml - Thùng
+(1, 3, 7), -- 7Up 330ml - Thùng
+(1, 4, 7), -- Pepsi Cola Lon 330ml - Thùng
+(1, 5, 7), -- Coca Cola Lon 330ml - Thùng
+(1, 6, 7), -- 7Up Lon 330ml - Thùng
+
+-- Promotion 2: Happy Hour - Giảm 10% cho bánh khoai tây (gói)
+(2, 7, 3),  -- Poca Vì Tự Nhiên 54g - Gói
+(2, 8, 3),  -- Poca Vì Cay 54g - Gói
+(2, 9, 3),  -- Lays Vì Tự Nhiên 56g - Gói
+(2, 10, 3), -- Lays Vì Cà Chua 56g - Gói
+(2, 11, 3), -- Oishi Vì Tôm Chua Ngọt 60g - Gói
+(2, 12, 3); -- Oishi Snack Bí Đỏ 60g - Gói
 
 -- 25. FCM Tokens
 INSERT INTO fcm (fcm_token, user_id, uniqueid) VALUES

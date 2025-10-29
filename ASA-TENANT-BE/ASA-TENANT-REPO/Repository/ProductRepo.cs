@@ -18,7 +18,10 @@ namespace ASA_TENANT_REPO.Repository
 
         public IQueryable<Product> GetFiltered(Product filter)
         {
-            var query = _context.Products.Include(p => p.Category).AsQueryable();
+            var query = _context.Products
+                .Include(p => p.Category)
+                .Include(p => p.UnitIdFkNavigation)
+                .AsQueryable();
             if (filter.ProductId > 0)
                 query = query.Where(p => p.ProductId == filter.ProductId);
             if (!string.IsNullOrEmpty(filter.ProductName))
@@ -45,11 +48,17 @@ namespace ASA_TENANT_REPO.Repository
         }
         public async Task<Product> GetByBarcodeAsync(string barcode, long shopId)
         {
-            return await _context.Products.FirstOrDefaultAsync(p => p.Barcode == barcode && p.ShopId == shopId);
+            return await _context.Products
+                .Include(p => p.Category)
+                .Include(p => p.UnitIdFkNavigation)
+                .FirstOrDefaultAsync(p => p.Barcode == barcode && p.ShopId == shopId);
         }
         public async Task<Product> GetByNameAsync(string name, long shopId)
         {
-            return await _context.Products.FirstOrDefaultAsync(p => p.ProductName.ToLower() == name.ToLower() && p.ShopId == shopId);
+            return await _context.Products
+                .Include(p => p.Category)
+                .Include(p => p.UnitIdFkNavigation)
+                .FirstOrDefaultAsync(p => p.ProductName.ToLower() == name.ToLower() && p.ShopId == shopId);
         }
         public async Task<bool> UnActiveProduct(long productId, long shopId)
         {
@@ -68,6 +77,7 @@ namespace ASA_TENANT_REPO.Repository
         {
             return await _context.Products
                 .Include(p => p.Category)
+                .Include(p => p.UnitIdFkNavigation)
                 .Where(p => p.ShopId == shopId)
                 .ToListAsync();
         }

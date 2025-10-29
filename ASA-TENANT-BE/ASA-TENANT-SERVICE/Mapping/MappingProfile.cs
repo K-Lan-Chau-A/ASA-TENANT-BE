@@ -32,6 +32,7 @@ namespace ASA_TENANT_SERVICE.Mapping
             CreateMap<Product, ProductResponse>()
                 .ForMember(dest => dest.ProductImageURL, opt => opt.MapFrom(src => src.ImageUrl))
                 .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category.CategoryName))
+                .ForMember(dest => dest.UnitName, opt => opt.MapFrom(src => src.UnitIdFkNavigation != null ? src.UnitIdFkNavigation.Name : null))
                 .ReverseMap();
             CreateMap<ProductRequest, Product>().ReverseMap();
             CreateMap<ProductGetRequest, Product>().ReverseMap();

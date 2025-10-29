@@ -32,6 +32,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Response
         public long CategoryId { get; set; }
         public string? CategoryName { get; set; }
         public long? UnitIdFk { get; set; }
+        public string? UnitName { get; set; }
         public DateTime? CreatedAt { get; set; }
         public DateTime? UpdateAt { get; set; }
         public List<ProductUnitItemResponse> Units { get; set; }

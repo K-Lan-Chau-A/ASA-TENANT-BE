@@ -38,7 +38,8 @@ namespace ASA_TENANT_SERVICE.Implenment
         private readonly ShopRepo _shopRepo;
         private readonly ASATENANTDBContext _context;
         private readonly IEmailService _emailService;
-        public OrderService(OrderRepo orderRepo, IOrderDetailService orderDetailService, IInventoryTransactionService inventoryTransactionService, ProductUnitRepo productUnitRepo, IMapper mapper, VoucherRepo voucherRepo, ProductRepo productRepo, INotificationService notificationService, IFcmService fcmService, IRealtimeNotifier realtimeNotifier, UserRepo userRepo, UnitRepo unitRepo, ICustomerService customerService, CustomerRepo customerRepo, ShopRepo shopRepo, ASATENANTDBContext context, IEmailService emailService, OrderDetailRepo orderDetailRepo)
+        private readonly PromotionProductRepo _promotionProductRepo;
+        public OrderService(OrderRepo orderRepo, IOrderDetailService orderDetailService, IInventoryTransactionService inventoryTransactionService, ProductUnitRepo productUnitRepo, IMapper mapper, VoucherRepo voucherRepo, ProductRepo productRepo, INotificationService notificationService, IFcmService fcmService, IRealtimeNotifier realtimeNotifier, UserRepo userRepo, UnitRepo unitRepo, ICustomerService customerService, CustomerRepo customerRepo, ShopRepo shopRepo, ASATENANTDBContext context, IEmailService emailService, OrderDetailRepo orderDetailRepo, PromotionProductRepo promotionProductRepo)
         {
             _orderRepo = orderRepo;
             _orderDetailService = orderDetailService;
@@ -58,6 +59,7 @@ namespace ASA_TENANT_SERVICE.Implenment
             _context = context;
             _emailService = emailService;
             _orderDetailRepo = orderDetailRepo;
+            _promotionProductRepo = promotionProductRepo;
         }
 
         public async Task<ApiResponse<OrderResponse>> GetByIdAsync(long id)
@@ -178,12 +180,16 @@ namespace ASA_TENANT_SERVICE.Implenment
                 var discountAmount = 0m;
                 var voucherAmount = 0m;
                 var rankBenefitAmount = 0m;
+                var promotionAmount = 0m;
                 var discountNotes = new List<string>();
                 
                 // Không cần tính rank benefit ở đây, sẽ tính ở phần sau
                 
-                // Lưu discount rate từ request (phần trăm)
-                entity.Discount = request.Discount ?? 0m;
+                // Lưu discount rate từ request (phần trăm) và chuẩn hóa về [0, 100]
+                var normalizedDiscount = request.Discount ?? 0m;
+                if (normalizedDiscount < 0m) normalizedDiscount = 0m;
+                if (normalizedDiscount > 100m) normalizedDiscount = 100m;
+                entity.Discount = normalizedDiscount;
 
                 // Tạo OrderDetails nếu có và tính tổng BasePrice
                 var createdOrderDetails = new List<OrderDetailResponse>();
@@ -279,7 +285,28 @@ namespace ASA_TENANT_SERVICE.Implenment
                     entity.TotalPrice = totalProductPrice;
                     
                     // BƯỚC 3: TÍNH TOÁN DISCOUNT VÀ FINAL PRICE
-                    // Tính discount từ request (phần trăm)
+                    // 3.1 Tính promotion THEO TỪNG SẢN PHẨM
+                    //    - Promotion được áp riêng cho từng item, không phân bổ theo tỷ lệ
+                    //    - Tổng promotionAmount sẽ được cộng vào TotalDiscount
+                    foreach (var orderDetail in createdOrderDetails)
+                    {
+                        if (orderDetail.ProductId > 0 && orderDetail.Quantity > 0 && orderDetail.BasePrice > 0)
+                        {
+                            var itemUnitPrice = orderDetail.BasePrice / orderDetail.Quantity;
+                            var promoPricePerUnit = await CalculatePromotionUnitPriceAsync(orderDetail.ProductId, entity.ShopId, itemUnitPrice);
+                            if (promoPricePerUnit.HasValue && promoPricePerUnit.Value < itemUnitPrice)
+                            {
+                                var itemPromoDiscount = (itemUnitPrice - promoPricePerUnit.Value) * orderDetail.Quantity;
+                                if (itemPromoDiscount > 0)
+                                {
+                                    promotionAmount += itemPromoDiscount;
+                                    discountNotes.Add($"Promotion cho sản phẩm #{orderDetail.ProductId}: -{itemPromoDiscount:N0} đ");
+                                }
+                            }
+                        }
+                    }
+
+                    // 3.2 Tính discount % từ request (áp dụng trên tổng tiền sản phẩm)
                     if (entity.Discount.HasValue && entity.Discount.Value > 0)
                     {
                         discountAmount = totalProductPrice * (entity.Discount.Value / 100m);
@@ -354,8 +381,8 @@ namespace ASA_TENANT_SERVICE.Implenment
                         }
                     }
                     
-                    // Tính tổng discount
-                    entity.TotalDiscount = discountAmount + voucherAmount + rankBenefitAmount;
+                    // Tính tổng discount (bao gồm promotion)
+                    entity.TotalDiscount = discountAmount + voucherAmount + rankBenefitAmount + promotionAmount;
                     
                     // Tính final price
                     entity.FinalPrice = entity.TotalPrice - entity.TotalDiscount;
@@ -378,14 +405,31 @@ namespace ASA_TENANT_SERVICE.Implenment
                     // BƯỚC 3.5: PHÂN BỔ DISCOUNT VÀ TÍNH PROFIT CHO TỪNG ORDERDETAIL
                     if (entity.TotalDiscount > 0 && totalProductPrice > 0)
                     {
-                        var discountRatio = (entity.TotalDiscount ?? 0) / totalProductPrice;
+                        // Phân bổ chỉ các khoản giảm giá toàn cục (không bao gồm promotion theo item)
+                        var globalDiscount = (entity.TotalDiscount ?? 0) - promotionAmount;
+                        if (globalDiscount < 0) globalDiscount = 0;
+                        var discountRatio = totalProductPrice > 0 ? (globalDiscount / totalProductPrice) : 0;
                         
                         foreach (var orderDetail in createdOrderDetails)
                         {
                             if (orderDetail.BasePrice > 0)
                             {
-                                // Tính discount cho item này
-                                var itemDiscount = orderDetail.BasePrice * discountRatio;
+                                // Promotion cho item này (tính lại tương tự để áp riêng)
+                                decimal itemPromotion = 0m;
+                                if (orderDetail.Quantity > 0)
+                                {
+                                    var unitPrice = orderDetail.BasePrice / orderDetail.Quantity;
+                                    var promoUnitPrice = await CalculatePromotionUnitPriceAsync(orderDetail.ProductId, entity.ShopId, unitPrice);
+                                    if (promoUnitPrice.HasValue && promoUnitPrice.Value < unitPrice)
+                                    {
+                                        itemPromotion = (unitPrice - promoUnitPrice.Value) * orderDetail.Quantity;
+                                        if (itemPromotion < 0) itemPromotion = 0;
+                                    }
+                                }
+
+                                // Giảm giá toàn cục phân bổ theo tỷ lệ
+                                var itemGlobalDiscount = orderDetail.BasePrice * discountRatio;
+                                var itemDiscount = itemPromotion + itemGlobalDiscount;
                                 var finalPrice = orderDetail.BasePrice - itemDiscount;
                                 
                                 // Tính profit = finalPrice - cost
@@ -542,6 +586,86 @@ namespace ASA_TENANT_SERVICE.Implenment
                     Message = $"Error: {ex.Message}",
                     Data = null
                 };
+            }
+        }
+
+        private async Task<decimal?> CalculatePromotionUnitPriceAsync(long productId, long? shopId, decimal baseUnitPrice)
+        {
+            try
+            {
+                var filter = new PromotionProduct { ProductId = productId };
+                var promosQuery = _promotionProductRepo.GetFiltered(filter)
+                    .Select(pp => pp.Promotion);
+
+                var promos = await promosQuery.ToListAsync();
+                if (promos == null || promos.Count == 0)
+                    return null;
+
+                var now = DateTime.Now;
+                var today = DateOnly.FromDateTime(now);
+                var currentTime = TimeOnly.FromDateTime(now);
+
+                decimal currentPrice = baseUnitPrice;
+                bool anyApplied = false;
+
+                foreach (var promo in promos
+                    .Where(p => p != null)
+                    .OrderBy(p => p.Type == (short)PromotionType.Percentage ? 0 : 1))
+                {
+                    if (promo.Status != (short?)PromotionStatus.Active)
+                        continue;
+
+                    if (promo.ShopId != null && shopId != null && promo.ShopId != shopId)
+                        continue;
+
+                    if (promo.StartDate != null && today < promo.StartDate.Value)
+                        continue;
+                    if (promo.EndDate != null && today > promo.EndDate.Value)
+                        continue;
+
+                    if (promo.StartTime != null && promo.EndTime != null)
+                    {
+                        if (currentTime < promo.StartTime.Value || currentTime > promo.EndTime.Value)
+                            continue;
+                    }
+                    else if (promo.StartTime != null && currentTime < promo.StartTime.Value)
+                    {
+                        continue;
+                    }
+                    else if (promo.EndTime != null && currentTime > promo.EndTime.Value)
+                    {
+                        continue;
+                    }
+
+                    if (promo.Type == null || promo.Value == null)
+                        continue;
+
+                    if (promo.Type == (short)PromotionType.Percentage)
+                    {
+                        var pct = promo.Value.Value;
+                        if (pct < 0) pct = 0;
+                        if (pct > 100) pct = 100;
+                        currentPrice = currentPrice - (currentPrice * (pct / 100m));
+                        anyApplied = true;
+                    }
+                    else if (promo.Type == (short)PromotionType.Money)
+                    {
+                        currentPrice = currentPrice - promo.Value.Value;
+                        anyApplied = true;
+                    }
+
+                    if (currentPrice < 0)
+                        currentPrice = 0;
+                }
+
+                if (!anyApplied)
+                    return null;
+
+                return currentPrice;
+            }
+            catch
+            {
+                return null;
             }
         }
 

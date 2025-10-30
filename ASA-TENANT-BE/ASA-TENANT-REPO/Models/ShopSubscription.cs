@@ -13,6 +13,10 @@ public partial class ShopSubscription
 
     public long? PlatformProductId { get; set; }
 
+    public int? RequestLimit { get; set; }
+
+    public int? AccountLimit { get; set; }
+
     public DateTime StartDate { get; set; }
 
     public DateTime EndDate { get; set; }

@@ -60,6 +60,8 @@ CREATE TABLE shop_subscription (
     shop_subscription_id BIGSERIAL PRIMARY KEY,
     shop_id BIGINT REFERENCES shop(shop_id),
     platform_product_id BIGINT,
+	request_limit INT,
+    account_limit INT,
     start_date TIMESTAMPTZ NOT NULL,
     end_date TIMESTAMPTZ NOT NULL,
     status SMALLINT,
@@ -258,6 +260,7 @@ CREATE TABLE "order" (
     order_id BIGSERIAL PRIMARY KEY,
     datetime TIMESTAMPTZ,
     customer_id BIGINT REFERENCES customer(customer_id),
+	gross_revenue NUMERIC(18,2),
     total_price NUMERIC(18,2),
     total_discount NUMERIC(18,2),      -- Tổng số tiền giảm
     final_price NUMERIC(18,2),         -- Tổng tiền cuối cùng sau giảm
@@ -372,9 +375,9 @@ INSERT INTO shop (shop_name, address,bank_name,bank_code, bank_num, status, qrco
 ('Tạp Hóa Minh Hạnh', '123 Đường Nguyễn Văn Cừ, Quận 5, TP.HCM','Vietinbank','970415','103872620454', 1, 'https://qr.example.com/shop001','MZ6BVRISGLGLEDMG4NPAB7JE1XQXFFI2YJ4TR8EV5BLJQTOD0H5YSYNAO7UOCNNI',0,0);
 
 -- 2. Shop Subscription
-INSERT INTO shop_subscription (shop_id, platform_product_id, start_date, end_date, status) VALUES
-(1, 2, '2025-01-01 00:00:00'::TIMESTAMPTZ, '2025-12-31 23:59:59'::TIMESTAMPTZ, 0),
-(1, 1, '2024-01-01 00:00:00'::TIMESTAMPTZ, '2024-12-31 23:59:59'::TIMESTAMPTZ, 1);
+INSERT INTO shop_subscription (shop_id, platform_product_id, request_limit,account_limit,start_date, end_date, status) VALUES
+(1, 2,100 ,6,'2025-01-01 00:00:00'::TIMESTAMPTZ, '2025-12-31 23:59:59'::TIMESTAMPTZ, 0),
+(1, 1, 50,3,'2024-01-01 00:00:00'::TIMESTAMPTZ, '2024-12-31 23:59:59'::TIMESTAMPTZ, 1);
 
 -- 3. Prompt Templates
 INSERT INTO prompt (title, content, description) VALUES
@@ -415,10 +418,10 @@ INSERT INTO customer (shop_id, full_name, phone, email, birthday, gender, status
 (1, 'Phạm Thị Dung', '0934567890', 'dung@example.com', '1988-12-25', 0, 1, 450000, 1, '2025-10-05 11:20:00'::TIMESTAMPTZ);
 
 -- 8. Users
-INSERT INTO "user" (username, password, status, shop_id, role, avatar) VALUES
-('admin01', '$2a$11$cXr.pHhel84XmsT6bgwzlOcHxrLF.MgjWHbyNL.9ED1Ls/lKDiVhS', 1, 1, 1, 'https://avatar.example.com/admin.jpg'),
-('nhanvien01', '$2a$11$cXr.pHhel84XmsT6bgwzlOcHxrLF.MgjWHbyNL.9ED1Ls/lKDiVhS', 1, 1, 2, 'https://avatar.example.com/nv1.jpg'),
-('nhanvien02', '$2a$11$cXr.pHhel84XmsT6bgwzlOcHxrLF.MgjWHbyNL.9ED1Ls/lKDiVhS', 1, 1, 2, 'https://avatar.example.com/nv2.jpg');
+INSERT INTO "user" (username, password, full_name,phone_number,status, shop_id, role, avatar) VALUES
+('admin01', '$2a$11$cXr.pHhel84XmsT6bgwzlOcHxrLF.MgjWHbyNL.9ED1Ls/lKDiVhS', 'Nguyễn Hà Mai Hân','0937532958',1, 1, 1, 'https://res.cloudinary.com/dx3fdlq2p/image/upload/v1761798039/z7078741646504_688f59d83ebff4d919c49c2374ab377e_t1xksy.jpg'),
+('nhanvien01', '$2a$11$cXr.pHhel84XmsT6bgwzlOcHxrLF.MgjWHbyNL.9ED1Ls/lKDiVhS', 'Phan Võ Thành Tài','0974284753',1, 1, 2, 'https://res.cloudinary.com/dx3fdlq2p/image/upload/v1761798033/tai_an5xyq.png'),
+('nhanvien02', '$2a$11$cXr.pHhel84XmsT6bgwzlOcHxrLF.MgjWHbyNL.9ED1Ls/lKDiVhS', 'Phạm Trung Tín','0912478584',1, 1, 2, 'https://res.cloudinary.com/dx3fdlq2p/image/upload/v1761798056/z7078799655467_f81c8f03b3e48d23223cb47d152f6a13_du7dbx.jpg');
 
 -- 9. User Features
 INSERT INTO user_feature (user_id, feature_id, feature_name, is_enabled) VALUES
@@ -491,61 +494,61 @@ INSERT INTO voucher (value, type, expired, shop_id, code) VALUES
 (5000, 1, '2025-12-31 23:59:59'::TIMESTAMPTZ, 1, 'GIAM5K'),
 (15, 2, '2025-12-31 23:59:59'::TIMESTAMPTZ, 1, 'GIAM15P');
 
--- 14. Orders
-INSERT INTO "order" (datetime, customer_id, total_price, total_discount, final_price, payment_method, status, shift_id, shop_id, voucher_id, discount, note) VALUES
--- Order 1: customer_id=1 (Bạc 2%), total_price=91000, discount=1820, final_price=89180
-('2025-10-15 10:30:00'::TIMESTAMPTZ, 1, 91000, 1820, 89180, 1, 1, 1, 1, NULL, 0, 'Giảm 2% cho khách hàng rank Bạc'),
+-- 14. Orders (ĐÃ CẬP NHẬT gross_revenue)
+INSERT INTO "order" (datetime, customer_id, gross_revenue, total_price, total_discount, final_price, payment_method, status, shift_id, shop_id, voucher_id, discount, note) VALUES
+-- Order 1: 3*12000 + 2*9000 + 1*3000 + 1*12000 + 1*22000 = 91000
+('2025-10-15 10:30:00'::TIMESTAMPTZ, 1, 91000, 91000, 1820, 89180, 1, 1, 1, 1, NULL, 0, 'Giảm 2% cho khách hàng rank Bạc'),
 
--- Order 2: customer_id=2 (Bạc 2%), voucher 10000, total_price=70000, discount=1400+10000=11400, final_price=58600
-('2025-10-15 14:15:00'::TIMESTAMPTZ, 2, 70000, 11400, 58600, 2, 1, 1, 1, 1, 10000, 'Giảm 2% cho khách hàng rank Bạc, sử dụng voucher giảm 10k'),
+-- Order 2: 2*12000 + 1*10000 + 2*3000 + 1*12000 + 1*18000 = 70000
+('2025-10-15 14:15:00'::TIMESTAMPTZ, 2, 70000, 70000, 11400, 58600, 2, 1, 1, 1, 1, 10000, 'Giảm 2% cho khách hàng rank Bạc, sử dụng voucher giảm 10k'),
 
--- Order 3: customer_id=3 (Đồng 1%), total_price=28500, discount=285, final_price=28215
-('2025-10-15 16:45:00'::TIMESTAMPTZ, 3, 28500, 285, 28215, 1, 1, 1, 1, NULL, 0, 'Giảm 1% cho khách hàng rank Đồng'),
+-- Order 3: 2*13000 + 1*2500 = 28500
+('2025-10-15 16:45:00'::TIMESTAMPTZ, 3, 28500, 28500, 285, 28215, 1, 1, 1, 1, NULL, 0, 'Giảm 1% cho khách hàng rank Đồng'),
 
--- Order 4: customer_id=4 (Đồng 1%), total_price=72000, discount=720, final_price=71280
-('2025-10-16 09:20:00'::TIMESTAMPTZ, 4, 72000, 720, 71280, 3, 1, 2, 1, NULL, 0, 'Giảm 1% cho khách hàng rank Đồng, thanh toán NFC'),
+-- Order 4: 3*13000 + 2*9000 + 1*15000 = 72000
+('2025-10-16 09:20:00'::TIMESTAMPTZ, 4, 72000, 72000, 720, 71280, 3, 1, 2, 1, NULL, 0, 'Giảm 1% cho khách hàng rank Đồng, thanh toán NFC'),
 
--- Order 5: customer_id=1 (Bạc 2%), total_price=47000, discount=940, final_price=46060
-('2025-10-16 11:30:00'::TIMESTAMPTZ, 1, 47000, 940, 46060, 1, 1, 2, 1, NULL, 0, 'Giảm 2% cho khách hàng rank Bạc'),
+-- Order 5: 2*12000 + 2*10000 + 1*3000 = 47000
+('2025-10-16 11:30:00'::TIMESTAMPTZ, 1, 47000, 47000, 940, 46060, 1, 1, 2, 1, NULL, 0, 'Giảm 2% cho khách hàng rank Bạc'),
 
--- Order 6: customer_id=2 (Bạc 2%), total_price=119000, discount=2380, final_price=116620
-('2025-10-17 08:45:00'::TIMESTAMPTZ, 2, 119000, 2380, 116620, 2, 1, 3, 1, NULL, 0, 'Giảm 2% cho khách hàng rank Bạc, chuyển khoản ngân hàng'),
+-- Order 6: 4*12000 + 3*9000 + 2*22000 = 119000
+('2025-10-17 08:45:00'::TIMESTAMPTZ, 2, 119000, 119000, 2380, 116620, 2, 1, 3, 1, NULL, 0, 'Giảm 2% cho khách hàng rank Bạc, chuyển khoản ngân hàng'),
 
--- Order 7: customer_id=3 (Đồng 1%), voucher 5000, total_price=49000, discount=490+5000=5490, final_price=43510
-('2025-10-17 13:20:00'::TIMESTAMPTZ, 3, 49000, 5490, 43510, 1, 1, 3, 1, 2, 5000, 'Giảm 1% cho khách hàng rank Đồng, sử dụng voucher giảm 5k'),
+-- Order 7: 2*11000 + 1*10000 + 2*2500 + 1*12000 = 49000
+('2025-10-17 13:20:00'::TIMESTAMPTZ, 3, 49000, 49000, 5490, 43510, 1, 1, 3, 1, 2, 5000, 'Giảm 1% cho khách hàng rank Đồng, sử dụng voucher giảm 5k'),
 
--- Order 8: customer_id=4 (Đồng 1%), total_price=81000, discount=810, final_price=80190
-('2025-10-18 10:15:00'::TIMESTAMPTZ, 4, 81000, 810, 80190, 3, 1, 4, 1, NULL, 0, 'Giảm 1% cho khách hàng rank Đồng, thanh toán NFC'),
+-- Order 8: 3*13000 + 2*12000 + 1*18000 = 81000
+('2025-10-18 10:15:00'::TIMESTAMPTZ, 4, 81000, 81000, 810, 80190, 3, 1, 4, 1, NULL, 0, 'Giảm 1% cho khách hàng rank Đồng, thanh toán NFC'),
 
--- Order 9: customer_id=1 (Bạc 2%), total_price=92500, discount=1850, final_price=90650
-('2025-10-19 09:00:00'::TIMESTAMPTZ, 1, 92500, 1850, 90650, 1, 1, 5, 1, NULL, 0, 'Giảm 2% cho khách hàng rank Bạc'),
+-- Order 9: 4*12000 + 3*12000 + 2*3000 + 1*2500 = 92500
+('2025-10-19 09:00:00'::TIMESTAMPTZ, 1, 92500, 92500, 1850, 90650, 1, 1, 5, 1, NULL, 0, 'Giảm 2% cho khách hàng rank Bạc'),
 
--- Order 10: customer_id=2 (Bạc 2%), total_price=59000, discount=1180, final_price=57820
-('2025-10-19 09:45:00'::TIMESTAMPTZ, 2, 59000, 1180, 57820, 2, 1, 5, 1, NULL, 0, 'Giảm 2% cho khách hàng rank Bạc, chuyển khoản MB Bank'),
+-- Order 10: 2*13000 + 3*9000 + 2*3000 = 59000
+('2025-10-19 09:45:00'::TIMESTAMPTZ, 2, 59000, 59000, 1180, 57820, 2, 1, 5, 1, NULL, 0, 'Giảm 2% cho khách hàng rank Bạc, chuyển khoản MB Bank'),
 
--- Order 11: customer_id=3 (Đồng 1%), voucher 5000, total_price=65000, discount=650+5000=5650, final_price=59350
-('2025-10-19 10:30:00'::TIMESTAMPTZ, 3, 65000, 5650, 59350, 1, 1, 5, 1, 2, 5000, 'Giảm 1% cho khách hàng rank Đồng, sử dụng voucher giảm 5k'),
+-- Order 11: 3*11000 + 2*10000 + 1*12000 = 65000
+('2025-10-19 10:30:00'::TIMESTAMPTZ, 3, 65000, 65000, 5650, 59350, 1, 1, 5, 1, 2, 5000, 'Giảm 1% cho khách hàng rank Đồng, sử dụng voucher giảm 5k'),
 
--- Order 12: customer_id=4 (Đồng 1%), total_price=108000, discount=1080, final_price=106920
-('2025-10-19 11:15:00'::TIMESTAMPTZ, 4, 108000, 1080, 106920, 3, 1, 5, 1, NULL, 0, 'Giảm 1% cho khách hàng rank Đồng, thanh toán NFC'),
+-- Order 12: 2*13000 + 4*9000 + 2*12000 + 1*22000 = 108000
+('2025-10-19 11:15:00'::TIMESTAMPTZ, 4, 108000, 108000, 1080, 106920, 3, 1, 5, 1, NULL, 0, 'Giảm 1% cho khách hàng rank Đồng, thanh toán NFC'),
 
--- Order 13: customer_id=1 (Bạc 2%), total_price=134000, discount=2680, final_price=131320
-('2025-10-19 12:00:00'::TIMESTAMPTZ, 1, 134000, 2680, 131320, 1, 1, 5, 1, NULL, 0, 'Giảm 2% cho khách hàng rank Bạc'),
+-- Order 13: 5*12000 + 3*10000 + 2*22000 = 134000
+('2025-10-19 12:00:00'::TIMESTAMPTZ, 1, 134000, 134000, 2680, 131320, 1, 1, 5, 1, NULL, 0, 'Giảm 2% cho khách hàng rank Bạc'),
 
--- Order 14: customer_id=2 (Bạc 2%), total_price=51500, discount=1030, final_price=50470
-('2025-10-19 13:30:00'::TIMESTAMPTZ, 2, 51500, 1030, 50470, 4, 1, 5, 1, NULL, 0, 'Giảm 2% cho khách hàng rank Bạc, thanh toán ATM'),
+-- Order 14: 2*12000 + 1*10000 + 1*2500 + 1*15000 = 51500
+('2025-10-19 13:30:00'::TIMESTAMPTZ, 2, 51500, 51500, 1030, 50470, 4, 1, 5, 1, NULL, 0, 'Giảm 2% cho khách hàng rank Bạc, thanh toán ATM'),
 
--- Order 15: customer_id=3 (Đồng 1%), voucher 15%=13500, total_price=90000, discount=900+13500=14400, final_price=75600
-('2025-10-19 14:15:00'::TIMESTAMPTZ, 3, 90000, 14400, 75600, 1, 1, 5, 1, 3, 13500, 'Giảm 1% cho khách hàng rank Đồng, áp dụng voucher giảm 15%'),
+-- Order 15: 3*13000 + 2*9000 + 2*12000 + 3*3000 = 90000
+('2025-10-19 14:15:00'::TIMESTAMPTZ, 3, 90000, 90000, 14400, 75600, 1, 1, 5, 1, 3, 13500, 'Giảm 1% cho khách hàng rank Đồng, áp dụng voucher giảm 15%'),
 
--- Order 16: customer_id=4 (Đồng 1%), total_price=115000, discount=1150, final_price=113850
-('2025-10-19 15:00:00'::TIMESTAMPTZ, 4, 115000, 1150, 113850, 2, 1, 5, 1, NULL, 0, 'Giảm 1% cho khách hàng rank Đồng, chuyển khoản ngân hàng'),
+-- Order 16: 4*13000 + 3*9000 + 2*18000 = 115000
+('2025-10-19 15:00:00'::TIMESTAMPTZ, 4, 115000, 115000, 1150, 113850, 2, 1, 5, 1, NULL, 0, 'Giảm 1% cho khách hàng rank Đồng, chuyển khoản ngân hàng'),
 
--- Order 17: customer_id=1 (Bạc 2%), Đang chờ thanh toán - chưa có discount
-('2025-10-19 15:45:00'::TIMESTAMPTZ, 1, 69000, 0, 69000, 1, 0, 5, 1, NULL, 0, 'Đang chờ thanh toán'),
+-- Order 17: 3*11000 + 2*12000 + 1*12000 = 69000 (Đang chờ thanh toán)
+('2025-10-19 15:45:00'::TIMESTAMPTZ, 1, 69000, 69000, 0, 69000, 1, 0, 5, 1, NULL, 0, 'Đang chờ thanh toán'),
 
--- Order 18: customer_id=2 (Bạc 2%), Đơn hàng bị hủy
-('2025-10-19 16:20:00'::TIMESTAMPTZ, 2, 42000, 0, 0, 1, 2, 5, 1, NULL, 0, 'Đơn hàng bị hủy');
+-- Order 18: 2*12000 + 2*9000 = 42000 (Đơn hàng bị hủy)
+('2025-10-19 16:20:00'::TIMESTAMPTZ, 2, 42000, 42000, 0, 0, 1, 2, 5, 1, NULL, 0, 'Đơn hàng bị hủy');
 
 -- 15. Order Details
 INSERT INTO order_detail (order_id, product_id, product_unit_id, quantity, base_price, discount_amount, final_price, profit) VALUES

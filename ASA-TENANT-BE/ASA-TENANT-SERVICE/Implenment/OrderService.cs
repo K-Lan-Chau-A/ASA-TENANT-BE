@@ -193,6 +193,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                 // Tạo OrderDetails nếu có và tính tổng BasePrice
                 var createdOrderDetails = new List<OrderDetailResponse>();
                 decimal totalProductPrice = 0m; // Tổng tiền sản phẩm (chưa giảm giá)
+                decimal grossRevenueTotal = 0m; // Tổng giá bán gốc (không khuyến mãi, không chiết khấu)
                 
                 if (request.OrderDetails != null && request.OrderDetails.Any())
                 {
@@ -273,6 +274,35 @@ namespace ASA_TENANT_SERVICE.Implenment
                         }
                     }
                     
+                    // TÍNH GROSS REVENUE (giá gốc) TRƯỚC KHI ÁP DỤNG KHUYẾN MÃI
+                    foreach (var orderDetail in createdOrderDetails)
+                    {
+                        if (orderDetail.ProductId > 0 && orderDetail.Quantity > 0)
+                        {
+                            decimal originalUnitPrice = 0m;
+                            if (orderDetail.ProductUnitId > 0)
+                            {
+                                var productUnitForOriginal = await _productUnitRepo.GetByIdAsync(orderDetail.ProductUnitId);
+                                if (productUnitForOriginal?.Price != null)
+                                {
+                                    originalUnitPrice = productUnitForOriginal.Price.Value;
+                                }
+                            }
+                            if (originalUnitPrice == 0m)
+                            {
+                                var productForOriginal = await _productRepo.GetByIdAsync(orderDetail.ProductId);
+                                if (productForOriginal?.Price != null)
+                                {
+                                    originalUnitPrice = productForOriginal.Price.Value;
+                                }
+                            }
+                            if (originalUnitPrice > 0m)
+                            {
+                                grossRevenueTotal += originalUnitPrice * orderDetail.Quantity;
+                            }
+                        }
+                    }
+
                     // BƯỚC 2.5: ÁP DỤNG PROMOTION PRICE CHO TỪNG ORDERDETAIL
                     // Tính promotion price và cập nhật BasePrice của từng OrderDetail
                     foreach (var orderDetail in createdOrderDetails)
@@ -309,6 +339,8 @@ namespace ASA_TENANT_SERVICE.Implenment
                     
                     // Cập nhật TotalPrice = tổng BasePrice (đã là promotion price rồi)
                     entity.TotalPrice = totalProductPrice;
+                    // Set GrossRevenue = tổng giá gốc trước khuyến mãi/chiết khấu
+                    entity.GrossRevenue = grossRevenueTotal;
                     
                     // BƯỚC 3: TÍNH TOÁN DISCOUNT VÀ FINAL PRICE
                     // Lưu ý: TotalPrice giờ đã là promotion price rồi, nên các discount tính trên TotalPrice này

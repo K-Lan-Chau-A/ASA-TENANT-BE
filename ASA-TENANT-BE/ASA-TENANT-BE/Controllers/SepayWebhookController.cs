@@ -89,7 +89,7 @@ namespace ASA_TENANT_BE.Controllers
                 }
 
                 // Tính số tiền cần thanh toán
-                var total = order.TotalPrice ?? 0m;
+                var total = order.FinalPrice ?? 0m;
                 if (total <= 0)
                 {
                     return BadRequest(new { success = false, message = "Invalid order amount" });

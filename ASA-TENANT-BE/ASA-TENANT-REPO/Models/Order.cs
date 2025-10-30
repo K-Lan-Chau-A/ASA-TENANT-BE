@@ -13,6 +13,8 @@ public partial class Order
 
     public long? CustomerId { get; set; }
 
+    public decimal? GrossRevenue { get; set; }
+
     public decimal? TotalPrice { get; set; }
 
     public decimal? TotalDiscount { get; set; }

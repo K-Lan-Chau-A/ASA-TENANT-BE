@@ -331,6 +331,9 @@ public partial class ASATENANTDBContext : DbContext
             entity.Property(e => e.FinalPrice)
                 .HasPrecision(18, 2)
                 .HasColumnName("final_price");
+            entity.Property(e => e.GrossRevenue)
+                .HasPrecision(18, 2)
+                .HasColumnName("gross_revenue");
             entity.Property(e => e.Note).HasColumnName("note");
             entity.Property(e => e.PaymentMethod)
                 .HasMaxLength(30)
@@ -520,6 +523,7 @@ public partial class ASATENANTDBContext : DbContext
             entity.Property(e => e.PromotionProductId).HasColumnName("promotion_product_id");
             entity.Property(e => e.ProductId).HasColumnName("product_id");
             entity.Property(e => e.PromotionId).HasColumnName("promotion_id");
+            entity.Property(e => e.UnitId).HasColumnName("unit_id");
 
             entity.HasOne(d => d.Product).WithMany(p => p.PromotionProducts)
                 .HasForeignKey(d => d.ProductId)
@@ -528,6 +532,10 @@ public partial class ASATENANTDBContext : DbContext
             entity.HasOne(d => d.Promotion).WithMany(p => p.PromotionProducts)
                 .HasForeignKey(d => d.PromotionId)
                 .HasConstraintName("promotion_product_promotion_id_fkey");
+
+            entity.HasOne(d => d.Unit).WithMany(p => p.PromotionProducts)
+                .HasForeignKey(d => d.UnitId)
+                .HasConstraintName("promotion_product_unit_id_fkey");
         });
 
         modelBuilder.Entity<Prompt>(entity =>
@@ -692,11 +700,13 @@ public partial class ASATENANTDBContext : DbContext
             entity.ToTable("shop_subscription");
 
             entity.Property(e => e.ShopSubscriptionId).HasColumnName("shop_subscription_id");
+            entity.Property(e => e.AccountLimit).HasColumnName("account_limit");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnName("created_at");
             entity.Property(e => e.EndDate).HasColumnName("end_date");
             entity.Property(e => e.PlatformProductId).HasColumnName("platform_product_id");
+            entity.Property(e => e.RequestLimit).HasColumnName("request_limit");
             entity.Property(e => e.ShopId).HasColumnName("shop_id");
             entity.Property(e => e.StartDate).HasColumnName("start_date");
             entity.Property(e => e.Status).HasColumnName("status");

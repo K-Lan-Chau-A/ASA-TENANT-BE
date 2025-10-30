@@ -314,5 +314,47 @@ namespace ASA_TENANT_SERVICE.Implenment
                 };
             }
         }
+
+        public async Task<ApiResponse<bool>> UpdateBasePriceAsync(long orderDetailId, decimal newBasePrice)
+        {
+            try
+            {
+                var existing = await _orderDetailRepo.GetByIdAsync(orderDetailId);
+                if (existing == null)
+                {
+                    return new ApiResponse<bool>
+                    {
+                        Success = false,
+                        Message = "OrderDetail not found",
+                        Data = false
+                    };
+                }
+
+                existing.BasePrice = newBasePrice;
+                // Nếu chưa có discount, FinalPrice cũng sẽ bằng BasePrice
+                if (existing.DiscountAmount == 0)
+                {
+                    existing.FinalPrice = newBasePrice;
+                }
+                
+                var affected = await _orderDetailRepo.UpdateAsync(existing);
+                
+                return new ApiResponse<bool>
+                {
+                    Success = affected > 0,
+                    Message = affected > 0 ? "OrderDetail base price updated successfully" : "Update failed",
+                    Data = affected > 0
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = $"Error: {ex.Message}",
+                    Data = false
+                };
+            }
+        }
     }
 }

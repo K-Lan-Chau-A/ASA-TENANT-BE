@@ -19,5 +19,7 @@ public partial class Unit
 
     public virtual ICollection<Product> Products { get; set; } = new List<Product>();
 
+    public virtual ICollection<PromotionProduct> PromotionProducts { get; set; } = new List<PromotionProduct>();
+
     public virtual Shop Shop { get; set; }
 }

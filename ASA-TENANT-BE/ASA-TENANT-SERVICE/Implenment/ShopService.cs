@@ -131,6 +131,13 @@ namespace ASA_TENANT_SERVICE.Implenment
 
                 var productElement = items[0];
                 var featureElements = productElement.GetProperty("features");
+                // Lấy request limit và account limit từ sản phẩm nếu có, fallback mặc định nếu không thấy
+                int requestLimit = 10; // Giá trị mặc định
+                int accountLimit = 1;  // Giá trị mặc định
+                if (productElement.TryGetProperty("requestLimit", out var rlProp))
+                    requestLimit = rlProp.GetInt32();
+                if (productElement.TryGetProperty("accountLimit", out var alProp))
+                    accountLimit = alProp.GetInt32();
 
                 // Tạo đăng ký cửa hàng để dùng thử trong 7 ngày
                 var now = DateTime.UtcNow;
@@ -141,7 +148,9 @@ namespace ASA_TENANT_SERVICE.Implenment
                     StartDate = now,
                     EndDate = now.AddDays(7),
                     Status = 1,
-                    CreatedAt = now
+                    CreatedAt = now,
+                    RequestLimit = requestLimit,
+                    AccountLimit = accountLimit
                 };
 
                 await _shopSubscriptionRepo.CreateAsync(subscription);

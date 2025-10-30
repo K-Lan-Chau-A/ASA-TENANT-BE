@@ -11,6 +11,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Response
         public long OrderId { get; set; }
         public DateTime? Datetime { get; set; }
         public long? CustomerId { get; set; }
+        public decimal? GrossRevenue { get; set; }
         public decimal? TotalPrice { get; set; }
         public decimal? TotalDiscount { get; set; }
         public decimal? FinalPrice { get; set; }

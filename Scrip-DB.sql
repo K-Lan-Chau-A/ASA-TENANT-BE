@@ -436,12 +436,25 @@ INSERT INTO user_feature (user_id, feature_id, feature_name, is_enabled) VALUES
 (1, 8, 'Quản lí category', TRUE),
 (1, 9, 'Quản lí khách hàng', TRUE),
 -- Nhân viên 01 có quyền bán hàng và tư vấn
+(2, 1, 'Xuất báo cáo', TRUE),
 (2, 2, 'Tư vấn AI', TRUE),
+(2, 3, 'Quản lí người dùng', FALSE),
 (2, 4, 'Bán hàng', TRUE),
+(2, 5, 'Quản lí sản phẩm', TRUE),
+(2, 6, 'Quản lí voucher', FALSE),
+(2, 7, 'Quản lí promotion', FALSE),
+(2, 8, 'Quản lí category', TRUE),
 (2, 9, 'Quản lí khách hàng', TRUE),
 -- Nhân viên 02 có quyền bán hàng
+(3, 1, 'Xuất báo cáo', TRUE),
 (3, 2, 'Tư vấn AI', TRUE),
-(3, 4, 'Bán hàng', TRUE);
+(3, 3, 'Quản lí người dùng', FALSE),
+(3, 4, 'Bán hàng', TRUE),
+(3, 5, 'Quản lí sản phẩm', TRUE),
+(3, 6, 'Quản lí voucher', FALSE),
+(3, 7, 'Quản lí promotion', FALSE),
+(3, 8, 'Quản lí category', TRUE),
+(3, 9, 'Quản lí khách hàng', TRUE);
 
 -- 10. Products (Số lượng ban đầu - sẽ được điều chỉnh sau khi nhập kho và bán hàng)
 INSERT INTO product (category_id, product_name, quantity, is_low, cost, price, barcode, image_url, discount, status, unit_id_fk, shop_id) VALUES

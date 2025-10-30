@@ -393,7 +393,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                         {
                             // Trừ số tiền cố định
                             voucherAmount = voucher.Value.Value;
-                            discountNotes.Add($"Voucher {voucher.Code}: Giảm tổng order {voucherAmount:N0} đ");
+                            discountNotes.Add($"Voucher {voucher.Code}: Giảm tổng đơn {voucherAmount:N0} đ");
                         }
                         else if (voucher.Type == 2 && voucher.Value.HasValue)
                         {
@@ -414,7 +414,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                         {
                             var rankBenefitRate = (decimal)customer.Rank.Benefit.Value;
                             rankBenefitAmount = totalProductPrice * rankBenefitRate;
-                            discountNotes.Add($"Rank benefit {customer.Rank.RankName}: Giảm {rankBenefitRate * 100:F2}% = {rankBenefitAmount:N0} đ");
+                            discountNotes.Add($"Chiết khấu khách hàng {customer.Rank.RankName}: Giảm {rankBenefitRate * 100:F2}% = {rankBenefitAmount:N0} đ");
                             
                             Console.WriteLine($"Customer {customer.CustomerId} rank {customer.Rank.RankName} có benefit {rankBenefitRate * 100:F2}%");
                         }

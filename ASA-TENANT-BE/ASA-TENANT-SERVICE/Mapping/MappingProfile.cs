@@ -118,8 +118,10 @@ namespace ASA_TENANT_SERVICE.Mapping
 
             CreateMap<Order, OrderResponse>().ReverseMap();
             CreateMap<OrderRequest, Order>()
+                .ForMember(dest => dest.PaymentMethod, opt => opt.MapFrom(src => ((int)src.PaymentMethod).ToString()))
                 .ForMember(dest => dest.OrderDetails, opt => opt.Ignore())
-                .ReverseMap();
+                .ReverseMap()
+                .ForMember(dest => dest.PaymentMethod, opt => opt.MapFrom(src => (PaymentMethodEnum)int.Parse(src.PaymentMethod)));
             CreateMap<OrderGetRequest, Order>().ReverseMap();
 
 

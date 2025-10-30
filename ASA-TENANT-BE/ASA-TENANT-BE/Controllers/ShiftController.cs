@@ -32,33 +32,100 @@ namespace ASA_TENANT_BE.Controllers
         [HttpPost]
         public async Task<ActionResult<ShiftResponse>> Create([FromBody] ShiftRequest request)
         {
-            var result = await _shiftService.CreateAsync(request);
-            return Ok(result);
+            try
+            {
+                var result = await _shiftService.CreateAsync(request);
+                if (!result.Success || result.Data == null)
+                {
+                    return BadRequest(result);
+                }
+                return StatusCode(201, result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
         [HttpPut("{id}")]
         public async Task<ActionResult<ShiftResponse>> Update(long id, [FromBody] ShiftRequest request)
         {
-            var result = await _shiftService.UpdateAsync(id, request);
-            return Ok(result);
+            try
+            {
+                var result = await _shiftService.UpdateAsync(id, request);
+                if (!result.Success)
+                {
+                    if (string.Equals(result.Message, "Shift not found", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return NotFound(result);
+                    }
+                    return BadRequest(result);
+                }
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
 
         [HttpDelete("{id}")]
         public async Task<ActionResult<bool>> Delete(long id)
         {
-            var result = await _shiftService.DeleteAsync(id);
-            return Ok(result);
+            try
+            {
+                var result = await _shiftService.DeleteAsync(id);
+                if (!result.Success || result.Data == false)
+                {
+                    if (string.Equals(result.Message, "Shift not found", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return NotFound(result);
+                    }
+                    return BadRequest(result);
+                }
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
         [HttpPost("open-shift")]
         public async Task<ActionResult<ShiftResponse>> OpenShift([FromBody] ShiftOpenRequest shiftOpenRequest)
         {
-            var result = await _shiftService.OpenShift(shiftOpenRequest);
-            return Ok(result);
+            try
+            {
+                var result = await _shiftService.OpenShift(shiftOpenRequest);
+                if (!result.Success || result.Data == null)
+                {
+                    return BadRequest(result);
+                }
+                return StatusCode(201, result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
         [HttpPost("close-shift")]
         public async Task<ActionResult<ShiftResponse>> CloseShift([FromBody] ShiftCloseRequest shiftCloseRequest)
         {
-            var result = await _shiftService.CloseShift(shiftCloseRequest);
-            return Ok(result);
+            try
+            {
+                var result = await _shiftService.CloseShift(shiftCloseRequest);
+                if (!result.Success)
+                {
+                    if (string.Equals(result.Message, "Shift not found", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return NotFound(result);
+                    }
+                    return BadRequest(result);
+                }
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
     }
 }

@@ -46,8 +46,19 @@ namespace ASA_TENANT_BE.Controllers
                 var joined = "[" + string.Join(',', unitsValues) + "]";
                 request.UnitsJson = joined;
             }
-            var result = await _productService.CreateAsync(request);
-            return Ok(result);
+            try
+            {
+                var result = await _productService.CreateAsync(request);
+                if (!result.Success || result.Data == null)
+                {
+                    return BadRequest(result);
+                }
+                return StatusCode(201, result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
         [HttpPut("{id}")]
         public async Task<ActionResult<ProductResponse>> Update(long id, [FromForm] ProductUpdateRequest request)
@@ -57,16 +68,46 @@ namespace ASA_TENANT_BE.Controllers
                 var joined = "[" + string.Join(',', unitsValues) + "]";
                 request.UnitsJson = joined;
             }
-            var result = await _productService.UpdateAsync(id, request);
-            return Ok(result);
+            try
+            {
+                var result = await _productService.UpdateAsync(id, request);
+                if (!result.Success)
+                {
+                    if (string.Equals(result.Message, "Product not found", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return NotFound(result);
+                    }
+                    return BadRequest(result);
+                }
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
 
         [HttpDelete("{id}")]
         [Authorize(Roles = "1")] // Admin only
         public async Task<ActionResult<bool>> Delete(long id, long shopid)
         {
-            var result = await _productService.DeleteAsync(id,shopid);
-            return Ok(result);
+            try
+            {
+                var result = await _productService.DeleteAsync(id,shopid);
+                if (!result.Success || result.Data == false)
+                {
+                    if (string.Equals(result.Message, "Product not found", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return NotFound(result);
+                    }
+                    return BadRequest(result);
+                }
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
     }
 }

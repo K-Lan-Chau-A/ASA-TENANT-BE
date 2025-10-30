@@ -61,8 +61,19 @@ namespace ASA_TENANT_BE.Controllers
                 request.FeatureIds = featureIds;
             }
 
-            var result = await _userService.CreateStaffAsync(request);
-            return Ok(result);
+            try
+            {
+                var result = await _userService.CreateStaffAsync(request);
+                if (!result.Success || result.Data == null)
+                {
+                    return BadRequest(result);
+                }
+                return StatusCode(201, result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
         //[HttpPost("create-admin")]
         ////public async Task<ActionResult<UserAdminResponse>> CreateAdmin([FromBody] UserAdminCreateRequest request)
@@ -73,15 +84,45 @@ namespace ASA_TENANT_BE.Controllers
         [HttpPut("{id}")]
         public async Task<ActionResult<UserResponse>> Update(long id, [FromForm] UserUpdateRequest request)
         {
-            var result = await _userService.UpdateAsync(id, request);
-            return Ok(result);
+            try
+            {
+                var result = await _userService.UpdateAsync(id, request);
+                if (!result.Success)
+                {
+                    if (string.Equals(result.Message, "User not found", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return NotFound(result);
+                    }
+                    return BadRequest(result);
+                }
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
 
         [HttpDelete("{id}")]
         public async Task<ActionResult<bool>> Delete(long id)
         {
-            var result = await _userService.DeleteAsync(id);
-            return Ok(result);
+            try
+            {
+                var result = await _userService.DeleteAsync(id);
+                if (!result.Success || result.Data == false)
+                {
+                    if (string.Equals(result.Message, "User not found", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return NotFound(result);
+                    }
+                    return BadRequest(result);
+                }
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
     }
 }

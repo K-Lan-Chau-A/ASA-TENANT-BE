@@ -83,6 +83,109 @@ namespace ASA_TENANT_SERVICE.Implenment
             };
         }
 
+        public async Task<ShiftCloseReportResponse> GenerateShiftCloseReportAsync(long shiftId)
+        {
+            // Lấy shift và kiểm tra trạng thái
+            var shift = await _context.Shifts
+                .Include(s => s.User)
+                .FirstOrDefaultAsync(s => s.ShiftId == shiftId);
+
+            if (shift == null)
+            {
+                throw new Exception("Shift not found");
+            }
+
+            if (shift.Status != 2)
+            {
+                throw new Exception("Ca này chưa được đóng");
+            }
+
+            // Lấy các order của ca, chỉ order đã thanh toán (status = 1)
+            var paidOrdersQuery = _context.Orders
+                .Include(o => o.Voucher)
+                .Include(o => o.OrderDetails)
+                    .ThenInclude(od => od.Product)
+                .Where(o => o.ShiftId == shiftId && o.Status == 1);
+
+            var paidOrders = await paidOrdersQuery.ToListAsync();
+
+            var grossRevenueTotal = paidOrders.Sum(o => o.GrossRevenue ?? 0);
+            var programDiscountsTotal = paidOrders.Sum(o => o.TotalDiscount ?? 0);
+            var manualDiscountAmount = paidOrders.Sum(o => o.Discount ?? 0);
+            var netRevenue = paidOrders.Sum(o => o.FinalPrice ?? 0);
+            var orderCount = paidOrders.Count;
+            var guestCount = paidOrders.Count(o => o.CustomerId.HasValue);
+            var aov = orderCount > 0 ? netRevenue / orderCount : 0;
+
+            // Voucher count by voucher
+            var voucherCounts = paidOrders
+                .Where(o => o.VoucherId.HasValue)
+                .GroupBy(o => new { o.VoucherId, VoucherName = o.Voucher != null ? o.Voucher.Code : $"Voucher {o.VoucherId}" })
+                .Select(g => new VoucherUsageItem
+                {
+                    VoucherId = g.Key.VoucherId ?? 0,
+                    VoucherName = g.Key.VoucherName ?? $"Voucher {g.Key.VoucherId}",
+                    Count = g.Count()
+                })
+                .OrderByDescending(v => v.Count)
+                .ToList();
+
+            // Payment methods aggregation
+            var paymentMethods = paidOrders
+                .GroupBy(o => o.PaymentMethod)
+                .Select(g => new PaymentMethodItem
+                {
+                    Method = GetPaymentMethodText(g.Key),
+                    OrderCount = g.Count(),
+                    Amount = g.Sum(o => o.FinalPrice ?? 0)
+                })
+                .OrderByDescending(p => p.Amount)
+                .ToList();
+
+            // Theoretical cash in drawer = opening_cash + sum(final_price) of cash (method "1")
+            var cashAmount = paidOrders
+                .Where(o => o.PaymentMethod == "1")
+                .Sum(o => o.FinalPrice ?? 0);
+
+            var theoreticalCashInDrawer = (shift.OpeningCash ?? 0) + cashAmount;
+
+            // Product groups from order details
+            var productGroups = paidOrders
+                .SelectMany(o => o.OrderDetails)
+                .Where(od => od.Product != null)
+                .GroupBy(od => new { od.ProductId, od.Product.ProductName })
+                .Select(g => new ProductGroupItem
+                {
+                    ProductName = g.Key.ProductName,
+                    Quantity = g.Sum(x => x.Quantity),
+                    Revenue = g.Sum(x => x.FinalPrice)
+                })
+                .OrderByDescending(pg => pg.Revenue)
+                .ToList();
+
+            return new ShiftCloseReportResponse
+            {
+                ShiftId = shift.ShiftId,
+                StartDate = shift.StartDate,
+                ClosedDate = shift.ClosedDate,
+                CreatedAt = DateTime.UtcNow,
+                UserId = shift.UserId,
+                OpeningCash = shift.OpeningCash,
+
+                GrossRevenueTotal = grossRevenueTotal,
+                ProgramDiscountsTotal = programDiscountsTotal,
+                ManualDiscountAmount = manualDiscountAmount,
+                NetRevenue = netRevenue,
+                OrderCount = orderCount,
+                GuestCount = guestCount,
+                Aov = aov,
+                TheoreticalCashInDrawer = theoreticalCashInDrawer,
+                VoucherCounts = voucherCounts,
+                PaymentMethods = paymentMethods,
+                ProductGroups = productGroups
+            };
+        }
+
 
         public async Task<byte[]> GenerateProfessionalRevenueReportAsync(ExcelReportRequest request)
         {

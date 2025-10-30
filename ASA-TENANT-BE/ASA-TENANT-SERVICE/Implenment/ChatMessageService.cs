@@ -22,6 +22,8 @@ namespace ASA_TENANT_SERVICE.Implenment
         private readonly IMapper _mapper;
         private readonly IUserService _userService;
         private readonly IChatbotService _chatbotService;
+        private readonly ShopRepo _shopRepo;
+        private readonly ShopSubscriptionRepo _shopSubscriptionRepo;
         private readonly ILogger<ChatMessageService> _logger;
         
         public ChatMessageService(
@@ -29,12 +31,16 @@ namespace ASA_TENANT_SERVICE.Implenment
             IMapper mapper, 
             IUserService userService,
             IChatbotService chatbotService,
+            ShopRepo shopRepo,
+            ShopSubscriptionRepo shopSubscriptionRepo,
             ILogger<ChatMessageService> logger)
         {
             _chatMessageRepo = chatMessageRepo;
             _mapper = mapper;
             _userService = userService;
             _chatbotService = chatbotService;
+            _shopRepo = shopRepo;
+            _shopSubscriptionRepo = shopSubscriptionRepo;
             _logger = logger;
         }
 
@@ -49,6 +55,41 @@ namespace ASA_TENANT_SERVICE.Implenment
                     entity.ShopId = user.ShopId;
                 }
 
+                // Enforce per-shop request limit before creating message
+                if (user?.ShopId.HasValue == true)
+                {
+                    try
+                    {
+                        var shop = await _shopRepo.GetByIdAsync(user.ShopId.Value);
+                        if (shop != null)
+                        {
+                            var now = DateTime.UtcNow;
+                            var activeSub = _shopSubscriptionRepo
+                                .GetFiltered(new ShopSubscription { ShopId = shop.ShopId, Status = 0 }) // 0 (active theo enum hệ thống)
+                                .Where(s => s.StartDate <= now && now <= s.EndDate)
+                                .OrderByDescending(s => s.EndDate)
+                                .FirstOrDefault();
+
+                            int? requestLimit = activeSub?.RequestLimit;
+                            int currentRequest = shop.CurrentRequest ?? 0;
+
+                            if (requestLimit.HasValue && currentRequest >= requestLimit.Value)
+                            {
+                                return new ApiResponse<ChatMessageWithAiResponse>
+                                {
+                                    Success = false,
+                                    Message = "Vượt quá giới hạn số lượt chat cho gói hiện tại",
+                                    Data = null
+                                };
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to validate request limit for shop {ShopId}", user.ShopId);
+                    }
+                }
+
                 // Set timestamp if not provided
                 if (entity.CreatedAt == null)
                 {
@@ -59,6 +100,25 @@ namespace ASA_TENANT_SERVICE.Implenment
 
                 if (affected > 0)
                 {
+                    // After successfully sending, increment current request for the shop
+                    if (user?.ShopId.HasValue == true)
+                    {
+                        try
+                        {
+                            var shop = await _shopRepo.GetByIdAsync(user.ShopId.Value);
+                            if (shop != null)
+                            {
+                                int currentRequest = shop.CurrentRequest ?? 0;
+                                shop.CurrentRequest = currentRequest + 1;
+                                await _shopRepo.UpdateAsync(shop);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to increase CurrentRequest for shop {ShopId}", user.ShopId);
+                        }
+                    }
+
                     var userMessageResponse = _mapper.Map<ChatMessageResponse>(entity);
                     var result = new ChatMessageWithAiResponse
                     {

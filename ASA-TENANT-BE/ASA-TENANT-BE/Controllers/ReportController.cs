@@ -52,7 +52,7 @@ namespace ASA_TENANT_BE.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
+                return BadRequest(new { message = ex.Message });
             }
         }
 
@@ -71,7 +71,36 @@ namespace ASA_TENANT_BE.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpGet("shift-close-report")]
+        public async Task<ActionResult<ShiftCloseReportResponse>> GetShiftCloseReport([FromQuery] long shiftId)
+        {
+            try
+            {
+                if (shiftId <= 0)
+                {
+                    return BadRequest("shiftId must be greater than 0");
+                }
+
+                var result = await _reportService.GenerateShiftCloseReportAsync(shiftId);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                // Dùng 404 nếu ca không tồn tại, 400 nếu ca chưa đóng, còn lại 500
+                var message = ex.Message ?? string.Empty;
+                if (message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+                {
+                    return NotFound(new { message });
+                }
+                if (message.Contains("chưa được đóng", StringComparison.OrdinalIgnoreCase))
+                {
+                    return BadRequest(new { message });
+                }
+                return StatusCode(500, new { message });
             }
         }
 

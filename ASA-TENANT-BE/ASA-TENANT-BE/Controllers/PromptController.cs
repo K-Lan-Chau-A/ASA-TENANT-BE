@@ -33,21 +33,62 @@ namespace ASA_TENANT_BE.Controllers
         [HttpPost]
         public async Task<ActionResult<PromptResponse>> Create([FromBody] PromptRequest request)
         {
-            var result = await _promptService.CreateAsync(request);
-            return Ok(result);
+            try
+            {
+                var result = await _promptService.CreateAsync(request);
+                if (!result.Success || result.Data == null)
+                {
+                    return BadRequest(result);
+                }
+                return StatusCode(201, result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
         [HttpPut("{id}")]
         public async Task<ActionResult<PromptResponse>> Update(long id, [FromBody] PromptRequest request)
         {
-            var result = await _promptService.UpdateAsync(id, request);
-            return Ok(result);
+            try
+            {
+                var result = await _promptService.UpdateAsync(id, request);
+                if (!result.Success)
+                {
+                    if (string.Equals(result.Message, "Prompt not found", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return NotFound(result);
+                    }
+                    return BadRequest(result);
+                }
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
 
         [HttpDelete("{id}")]
         public async Task<ActionResult<bool>> Delete(long id)
         {
-            var result = await _promptService.DeleteAsync(id);
-            return Ok(result);
+            try
+            {
+                var result = await _promptService.DeleteAsync(id);
+                if (!result.Success || result.Data == false)
+                {
+                    if (string.Equals(result.Message, "Prompt not found", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return NotFound(result);
+                    }
+                    return BadRequest(result);
+                }
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
 
     }

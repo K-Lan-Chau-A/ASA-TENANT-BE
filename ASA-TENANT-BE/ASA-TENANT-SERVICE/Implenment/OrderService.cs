@@ -145,10 +145,14 @@ namespace ASA_TENANT_SERVICE.Implenment
                 // Set CreatedAt to current time for expiration tracking
                 entity.CreatedAt = DateTime.UtcNow;
                 
-                // Set status theo phương thức thanh toán
-                // Status: 0 = Chờ thanh toán, 1 = Đã thanh toán, 2 = Đã hủy
+                // Xác định trạng thái thanh toán theo yêu cầu: chỉ ghi nhận kết quả khi
+                // - status = 1 (Paid) hoặc
+                // - paymentMethod = Cash
+                // Status: 0 = Pending, 1 = Paid, 2 = Cancelled
                 var isCash = request.PaymentMethod == PaymentMethodEnum.Cash;
-                entity.Status = (short)(isCash ? OrderStatus.Paid : OrderStatus.Pending);
+                var isPaidInput = request.Status == (short)OrderStatus.Paid;
+                var shouldFinalize = isPaidInput || isCash;
+                entity.Status = shouldFinalize ? (short)OrderStatus.Paid : (request.Status ?? (short)OrderStatus.Pending);
                 
                 // Xử lý voucherId: nếu = 0 hoặc không hợp lệ thì set null
                 if (request.VoucherId.HasValue && request.VoucherId.Value <= 0)
@@ -190,12 +194,11 @@ namespace ASA_TENANT_SERVICE.Implenment
                 if (normalizedDiscount > 100m) normalizedDiscount = 100m;
                 entity.Discount = normalizedDiscount;
 
-                // Tạo OrderDetails nếu có và tính tổng BasePrice
+                // Chỉ tạo OrderDetails, tính toán giá, trừ kho, ghi chú, cộng spent... khi shouldFinalize = true
                 var createdOrderDetails = new List<OrderDetailResponse>();
                 decimal totalProductPrice = 0m; // Tổng tiền sản phẩm (chưa giảm giá)
                 decimal grossRevenueTotal = 0m; // Tổng giá bán gốc (không khuyến mãi, không chiết khấu)
-                
-                if (request.OrderDetails != null && request.OrderDetails.Any())
+                if (shouldFinalize && request.OrderDetails != null && request.OrderDetails.Any())
                 {
                     // BƯỚC 1: KIỂM TRA TẤT CẢ SẢN PHẨM TRƯỚC KHI TẠO ORDER
                     var stockValidationResults = new List<(Product Product, int QuantityToDeduct)>();
@@ -592,20 +595,23 @@ namespace ASA_TENANT_SERVICE.Implenment
                 // Cập nhật Order với pricing information
                 await _orderRepo.UpdateAsync(entity);
 
-                // Nếu payment method là Cash và có customerId, cập nhật spent và rank của customer
-                if (isCash && entity.CustomerId.HasValue && entity.FinalPrice > 0)
+                if (shouldFinalize)
                 {
-                    Console.WriteLine($"Updating customer {entity.CustomerId.Value} spent with order total: {entity.FinalPrice} (Cash payment)");
-                    await _customerService.UpdateCustomerSpentAndRankAsync(entity.CustomerId.Value, entity.FinalPrice ?? 0);
-                }
-
-                // Gửi email hóa đơn nếu FE yêu cầu và có customer hợp lệ
-                if (isCash && (request.IsSendInvoice ?? false) && entity.CustomerId.HasValue)
-                {
-                    var customer = await _customerRepo.GetByIdAsync(entity.CustomerId.Value);
-                    if (customer != null && !string.IsNullOrWhiteSpace(customer.Email))
+                    // Nếu payment method là Cash hoặc status=Paid và có customerId, cập nhật spent và rank của customer
+                    if (entity.CustomerId.HasValue && entity.FinalPrice > 0)
                     {
-                        await SendOrderConfirmationEmailAsync(entity, createdOrderDetails);
+                        Console.WriteLine($"Updating customer {entity.CustomerId.Value} spent with order total: {entity.FinalPrice} (Finalize order)");
+                        await _customerService.UpdateCustomerSpentAndRankAsync(entity.CustomerId.Value, entity.FinalPrice ?? 0);
+                    }
+
+                    // Gửi email hóa đơn nếu FE yêu cầu và có customer hợp lệ
+                    if ((request.IsSendInvoice ?? false) && entity.CustomerId.HasValue)
+                    {
+                        var customer = await _customerRepo.GetByIdAsync(entity.CustomerId.Value);
+                        if (customer != null && !string.IsNullOrWhiteSpace(customer.Email))
+                        {
+                            await SendOrderConfirmationEmailAsync(entity, createdOrderDetails);
+                        }
                     }
                 }
 
@@ -845,11 +851,254 @@ namespace ASA_TENANT_SERVICE.Implenment
                         Data = null
                     };
                 }
+                // Map các trường cơ bản
                 _mapper.Map(request, existing);
+
+                // Nếu status=Paid hoặc paymentMethod=Cash, thực hiện finalize tương tự Create
+                var isCashUpdate = request.PaymentMethod == PaymentMethodEnum.Cash;
+                var isPaidUpdate = request.Status == (short)OrderStatus.Paid;
+                var shouldFinalizeUpdate = isCashUpdate || isPaidUpdate;
+
+                var createdOrderDetails = new List<OrderDetailResponse>();
+                decimal totalProductPrice = 0m;
+                decimal grossRevenueTotal = 0m;
+                var discountAmount = 0m;
+                var voucherAmount = 0m;
+                var rankBenefitAmount = 0m;
+                var discountNotes = new List<string>();
+
+                if (shouldFinalizeUpdate && request.OrderDetails != null && request.OrderDetails.Any())
+                {
+                    // Validate tồn kho trước
+                    var stockValidationResults = new List<(Product Product, int QuantityToDeduct)>();
+                    foreach (var od in request.OrderDetails)
+                    {
+                        if (od.ProductId.HasValue)
+                        {
+                            var product = await _productRepo.GetByIdAsync(od.ProductId.Value);
+                            if (product != null && product.Quantity.HasValue)
+                            {
+                                int quantityToDeduct = od.Quantity ?? 0;
+                                if (od.ProductUnitId.HasValue && od.ProductUnitId.Value > 0)
+                                {
+                                    var productUnit = await _productUnitRepo.GetByIdAsync(od.ProductUnitId.Value);
+                                    if (productUnit?.ConversionFactor > 0)
+                                    {
+                                        quantityToDeduct = (int)(quantityToDeduct * productUnit.ConversionFactor.Value);
+                                    }
+                                }
+                                if (product.Quantity.Value < quantityToDeduct)
+                                {
+                                    return new ApiResponse<OrderResponse>
+                                    {
+                                        Success = false,
+                                        Message = $"Insufficient stock for product '{product.ProductName}'. Required={quantityToDeduct}, Available={product.Quantity.Value}",
+                                        Data = null
+                                    };
+                                }
+                                stockValidationResults.Add((product, quantityToDeduct));
+                            }
+                            else
+                            {
+                                return new ApiResponse<OrderResponse>
+                                {
+                                    Success = false,
+                                    Message = $"Product with ID {od.ProductId.Value} not found or has no quantity",
+                                    Data = null
+                                };
+                            }
+                        }
+                    }
+
+                    // Tạo order detail và inventory transaction
+                    foreach (var od in request.OrderDetails)
+                    {
+                        var odReq = new OrderDetailRequest
+                        {
+                            Quantity = od.Quantity,
+                            ProductUnitId = od.ProductUnitId,
+                            ProductId = od.ProductId
+                        };
+                        var odResult = await _orderDetailService.CreateAsync(odReq, existing.OrderId);
+                        if (!odResult.Success || odResult.Data == null)
+                        {
+                            return new ApiResponse<OrderResponse>
+                            {
+                                Success = false,
+                                Message = "Failed to create order detail",
+                                Data = null
+                            };
+                        }
+                        createdOrderDetails.Add(odResult.Data);
+                        await CreateInventoryTransactionForOrderDetail(odReq, existing);
+                    }
+
+                    // Gross revenue và promotion price
+                    foreach (var d in createdOrderDetails)
+                    {
+                        if (d.ProductId > 0 && d.Quantity > 0)
+                        {
+                            decimal originalUnitPrice = 0m;
+                            if (d.ProductUnitId > 0)
+                            {
+                                var puOriginal = await _productUnitRepo.GetByIdAsync(d.ProductUnitId);
+                                if (puOriginal?.Price != null) originalUnitPrice = puOriginal.Price.Value;
+                            }
+                            if (originalUnitPrice == 0m)
+                            {
+                                var p = await _productRepo.GetByIdAsync(d.ProductId);
+                                if (p?.Price != null) originalUnitPrice = p.Price.Value;
+                            }
+                            if (originalUnitPrice > 0m) grossRevenueTotal += originalUnitPrice * d.Quantity;
+
+                            if (d.BasePrice > 0)
+                            {
+                                var originalUnit = d.BasePrice / d.Quantity;
+                                long? unitIdForPromo = null;
+                                if (d.ProductUnitId > 0)
+                                {
+                                    var pu = await _productUnitRepo.GetByIdAsync(d.ProductUnitId);
+                                    unitIdForPromo = pu?.UnitId;
+                                }
+                                var promoPrice = await CalculatePromotionUnitPriceAsync(d.ProductId, existing.ShopId, unitIdForPromo, originalUnit);
+                                decimal newBase = d.BasePrice;
+                                if (promoPrice.HasValue && promoPrice.Value < originalUnit)
+                                {
+                                    newBase = promoPrice.Value * d.Quantity;
+                                    await _orderDetailService.UpdateBasePriceAsync(d.OrderDetailId, newBase);
+                                }
+                                d.BasePrice = newBase;
+                                totalProductPrice += newBase;
+                            }
+                        }
+                    }
+
+                    existing.TotalPrice = totalProductPrice;
+                    existing.GrossRevenue = grossRevenueTotal;
+
+                    // Discount %
+                    var normalizedDiscount = request.Discount ?? 0m;
+                    if (normalizedDiscount < 0m) normalizedDiscount = 0m;
+                    if (normalizedDiscount > 100m) normalizedDiscount = 100m;
+                    existing.Discount = normalizedDiscount;
+                    if (existing.Discount.HasValue && existing.Discount.Value > 0)
+                    {
+                        discountAmount = totalProductPrice * (existing.Discount.Value / 100m);
+                        discountNotes.Add($"Giảm {existing.Discount.Value:F2}% từ chiết khấu: {discountAmount:N0} đ");
+                    }
+
+                    // Voucher
+                    if (request.VoucherId.HasValue && request.VoucherId.Value > 0)
+                    {
+                        var voucher = await _voucherRepo.GetByIdAsync(request.VoucherId.Value);
+                        if (voucher == null)
+                        {
+                            return new ApiResponse<OrderResponse> { Success = false, Message = "Voucher not found", Data = null };
+                        }
+                        if (voucher.Expired.HasValue && voucher.Expired.Value < DateTime.UtcNow)
+                        {
+                            return new ApiResponse<OrderResponse> { Success = false, Message = "Voucher expired", Data = null };
+                        }
+                        if (voucher.ShopId.HasValue && voucher.ShopId.Value != request.ShopId)
+                        {
+                            return new ApiResponse<OrderResponse> { Success = false, Message = "Voucher is not valid for this shop", Data = null };
+                        }
+                        if (voucher.Type == 1 && voucher.Value.HasValue)
+                        {
+                            voucherAmount = voucher.Value.Value;
+                            discountNotes.Add($"Voucher {voucher.Code}: Giảm tổng đơn {voucherAmount:N0} đ");
+                        }
+                        else if (voucher.Type == 2 && voucher.Value.HasValue)
+                        {
+                            var rate = voucher.Value.Value;
+                            if (rate < 0m) rate = 0m; if (rate > 100m) rate = 100m;
+                            voucherAmount = totalProductPrice * (rate / 100m);
+                            discountNotes.Add($"Voucher {voucher.Code}: Giảm {rate:F2}% = {voucherAmount:N0} đ");
+                        }
+                    }
+
+                    // Rank benefit
+                    if (request.CustomerId.HasValue)
+                    {
+                        var customer = await _customerRepo.GetByIdAsync(request.CustomerId.Value);
+                        if (customer?.Rank?.Benefit.HasValue == true)
+                        {
+                            var rankBenefitRate = (decimal)customer.Rank.Benefit.Value;
+                            rankBenefitAmount = totalProductPrice * rankBenefitRate;
+                            discountNotes.Add($"Chiết khấu khách hàng {customer.Rank.RankName}: Giảm {rankBenefitRate * 100:F2}% = {rankBenefitAmount:N0} đ");
+                        }
+                    }
+
+                    existing.TotalDiscount = discountAmount + voucherAmount + rankBenefitAmount;
+                    existing.FinalPrice = existing.TotalPrice - existing.TotalDiscount;
+                    if (existing.FinalPrice < 0) existing.FinalPrice = 0;
+                    if (discountNotes.Any()) existing.Note = string.Join("; ", discountNotes);
+
+                    // Phân bổ discount toàn cục vào từng OrderDetail và tính profit
+                    if ((existing.TotalDiscount ?? 0m) > 0 && totalProductPrice > 0 && createdOrderDetails.Any())
+                    {
+                        var discountRatio = totalProductPrice > 0 ? ((existing.TotalDiscount ?? 0m) / totalProductPrice) : 0m;
+                        foreach (var orderDetail in createdOrderDetails)
+                        {
+                            if (orderDetail.BasePrice > 0)
+                            {
+                                var itemDiscount = orderDetail.BasePrice * discountRatio;
+                                var finalPrice = orderDetail.BasePrice - itemDiscount;
+
+                                // Tính profit = finalPrice - (cost theo đơn vị) * quantity
+                                var product = await _productRepo.GetByIdAsync(orderDetail.ProductId);
+                                var cost = product?.Cost ?? 0m;
+                                var quantity = orderDetail.Quantity;
+                                decimal conversionFactor = 1m;
+                                if (orderDetail.ProductUnitId > 0)
+                                {
+                                    var puForCost = await _productUnitRepo.GetByIdAsync(orderDetail.ProductUnitId);
+                                    if (puForCost?.ConversionFactor != null && puForCost.ConversionFactor.Value > 0)
+                                        conversionFactor = puForCost.ConversionFactor.Value;
+                                }
+                                var profit = finalPrice - (cost * conversionFactor * quantity);
+
+                                // Cập nhật DB và đồng bộ response
+                                await _orderDetailService.UpdateOrderDetailPricingAsync(orderDetail.OrderDetailId, itemDiscount, finalPrice, profit);
+                                orderDetail.DiscountAmount = itemDiscount;
+                                orderDetail.FinalPrice = finalPrice;
+                                orderDetail.Profit = profit;
+
+                                // Cập nhật InventoryTransaction profit
+                                await UpdateInventoryTransactionProfit(orderDetail.OrderDetailId, profit);
+                            }
+                        }
+                    }
+
+                    // Trừ tồn kho
+                    foreach (var (product, qty) in stockValidationResults)
+                    {
+                        product.Quantity = Math.Max(0, (product.Quantity.Value - qty));
+                        var threshold = product.IsLow ?? 0;
+                        var currentQty = product.Quantity ?? 0;
+                        if (currentQty > threshold && (product.IsLowStockNotified ?? false))
+                        {
+                            product.IsLowStockNotified = false;
+                        }
+                        await _productRepo.UpdateAsync(product);
+                    }
+                }
+
                 var affected = await _orderRepo.UpdateAsync(existing);
                 if (affected > 0)
                 {
+                    // Cập nhật spent/email khi finalize trong update
+                    if (shouldFinalizeUpdate && existing.CustomerId.HasValue && existing.FinalPrice > 0)
+                    {
+                        await _customerService.UpdateCustomerSpentAndRankAsync(existing.CustomerId.Value, existing.FinalPrice ?? 0);
+                        if ((request.IsSendInvoice ?? false))
+                        {
+                            await SendOrderConfirmationEmailAsync(existing, createdOrderDetails);
+                        }
+                    }
+
                     var response = _mapper.Map<OrderResponse>(existing);
+                    response.OrderDetails = createdOrderDetails.Any() ? createdOrderDetails : response.OrderDetails;
                     return new ApiResponse<OrderResponse>
                     {
                         Success = true,

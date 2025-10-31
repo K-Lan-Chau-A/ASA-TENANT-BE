@@ -15,5 +15,6 @@ namespace ASA_TENANT_SERVICE.Interface
         Task<ApiResponse<ProductResponse>> CreateAsync(ProductRequest request);
         Task<ApiResponse<ProductResponse>> UpdateAsync(long id, ProductUpdateRequest request);
         Task<ApiResponse<bool>> DeleteAsync(long id, long shopid);
+        Task<ApiResponse<bool>> ActivateAsync(long id, long shopid);
     }
 }

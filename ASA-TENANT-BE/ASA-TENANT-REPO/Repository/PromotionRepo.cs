@@ -18,7 +18,12 @@ namespace ASA_TENANT_REPO.Repository
          
         public IQueryable<Promotion> GetFiltered(Promotion filter)
         {
-            var query = _context.Promotions.Include(p => p.PromotionProducts).ThenInclude(pp => pp.Product).AsQueryable();
+            var query = _context.Promotions
+                .Include(p => p.PromotionProducts)
+                    .ThenInclude(pp => pp.Product)
+                .Include(p => p.PromotionProducts)
+                    .ThenInclude(pp => pp.Unit)
+                .AsQueryable();
             if (filter.PromotionId > 0)
                 query = query.Where(x => x.PromotionId == filter.PromotionId);
             if (filter.StartDate != null)

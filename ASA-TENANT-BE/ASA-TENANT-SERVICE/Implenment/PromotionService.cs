@@ -96,13 +96,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                     // map sang response
                     var response = _mapper.Map<PromotionResponse>(entity);
 
-                    // set danh sách product response trả về
-                    if (promotionProducts.Any())
-                    {
-                        response.Products = promotionProducts
-                            .Select(pp => pp.ProductId)
-                            .ToHashSet();
-                    }
+                    // giữ nguyên response, Products đã được loại bỏ
 
                     return new ApiResponse<PromotionResponse>
                     {
@@ -284,12 +278,7 @@ namespace ASA_TENANT_SERVICE.Implenment
 
                     // map sang response
                     var response = _mapper.Map<PromotionResponse>(existing);
-                    if (promotionProducts.Any())
-                    {
-                        response.Products = promotionProducts
-                            .Select(pp => pp.ProductId)
-                            .ToHashSet();
-                    }
+                    // giữ nguyên response, Products đã được loại bỏ
 
                     return new ApiResponse<PromotionResponse>
                     {

@@ -19,6 +19,6 @@ namespace ASA_TENANT_SERVICE.DTOs.Response
         public string Name { get; set; }
         public long? ShopId { get; set; }
 
-        public HashSet<long>? Products { get; set; }
+        public IEnumerable<PromotionAppliedProductResponse>? AppliedProducts { get; set; }
     }
 }

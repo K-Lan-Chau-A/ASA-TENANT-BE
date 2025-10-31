@@ -286,6 +286,38 @@ namespace ASA_TENANT_SERVICE.Implenment
             }
         }
 
+        public async Task<ApiResponse<bool>> ActivateAsync(long id, long shopid)
+        {
+            try
+            {
+                var existing = await _productRepo.GetByIdAsync(id);
+                if (existing == null)
+                    return new ApiResponse<bool>
+                    {
+                        Success = false,
+                        Message = "Product not found",
+                        Data = false
+                    };
+
+                var affected = await _productRepo.ActivateProduct(id, shopid);
+                return new ApiResponse<bool>
+                {
+                    Success = affected,
+                    Message = affected ? "Activate successfully" : "Activate failed",
+                    Data = affected
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = $"Error: {ex.Message}",
+                    Data = false
+                };
+            }
+        }
+
         public async Task<PagedResponse<ProductResponse>> GetFilteredProductsAsync(ProductGetRequest Filter, int page, int pageSize)
         {
             var filter = _mapper.Map<Product>(Filter);
@@ -365,6 +397,10 @@ namespace ASA_TENANT_SERVICE.Implenment
                             Data = null
                         };
                     }
+
+                    // Explicitly set FK and navigation to ensure category updates and response reflects it
+                    existing.CategoryId = request.CategoryId.Value;
+                    existing.Category = category;
                 }
 
                 // Map dữ liệu từ DTO sang entity, bỏ Id

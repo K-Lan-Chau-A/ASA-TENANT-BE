@@ -89,7 +89,7 @@ namespace ASA_TENANT_BE.Controllers
 
         [HttpDelete("{id}")]
         [Authorize(Roles = "1")] // Admin only
-        public async Task<ActionResult<bool>> Delete(long id, long shopid)
+        public async Task<ActionResult<bool>> Delete(long id, [FromQuery] long shopid)
         {
             try
             {
@@ -102,7 +102,30 @@ namespace ASA_TENANT_BE.Controllers
                     }
                     return BadRequest(result);
                 }
-                return NoContent();
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
+        [HttpPut("{id}/status")]
+        [Authorize(Roles = "1")] // Admin only
+        public async Task<ActionResult<bool>> activate(long id, [FromQuery] long shopid)
+        {
+            try
+            {
+                var result = await _productService.ActivateAsync(id, shopid);
+                if (!result.Success || result.Data == false)
+                {
+                    if (string.Equals(result.Message, "Product not found", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return NotFound(result);
+                    }
+                    return BadRequest(result);
+                }
+                return Ok(result);
             }
             catch (Exception ex)
             {

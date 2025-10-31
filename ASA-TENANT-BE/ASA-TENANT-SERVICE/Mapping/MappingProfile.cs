@@ -83,11 +83,15 @@ namespace ASA_TENANT_SERVICE.Mapping
             // Promotion Mappings
             CreateMap<Promotion, PromotionResponse>()
                 .ForMember(dest => dest.Type, opt => opt.MapFrom(src => (short?)src.Type))
-                 .ForMember(dest => dest.Products,
-            opt => opt.MapFrom(src =>
-            src.PromotionProducts != null
-                ? src.PromotionProducts.Select(pp => pp.ProductId).ToHashSet()
-                : new HashSet<long>()))
+                .ForMember(dest => dest.AppliedProducts, opt => opt.MapFrom(src =>
+                    src.PromotionProducts != null
+                        ? src.PromotionProducts.Select(pp => new PromotionAppliedProductResponse
+                        {
+                            ProductId = pp.ProductId,
+                            ProductName = pp.Product != null ? pp.Product.ProductName : null,
+                            UnitName = pp.Unit != null ? pp.Unit.Name : null
+                        })
+                        : new List<PromotionAppliedProductResponse>()))
                 .ReverseMap()
                 .ForMember(dest => dest.Type, opt => opt.MapFrom(src => (PromotionType)src.Type));
             CreateMap<PromotionRequest, Promotion>()

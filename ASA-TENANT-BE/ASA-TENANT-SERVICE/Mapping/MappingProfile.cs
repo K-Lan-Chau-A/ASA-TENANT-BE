@@ -83,11 +83,15 @@ namespace ASA_TENANT_SERVICE.Mapping
             // Promotion Mappings
             CreateMap<Promotion, PromotionResponse>()
                 .ForMember(dest => dest.Type, opt => opt.MapFrom(src => (short?)src.Type))
-                 .ForMember(dest => dest.Products,
-            opt => opt.MapFrom(src =>
-            src.PromotionProducts != null
-                ? src.PromotionProducts.Select(pp => pp.ProductId).ToHashSet()
-                : new HashSet<long>()))
+                .ForMember(dest => dest.AppliedProducts, opt => opt.MapFrom(src =>
+                    src.PromotionProducts != null
+                        ? src.PromotionProducts.Select(pp => new PromotionAppliedProductResponse
+                        {
+                            ProductId = pp.ProductId,
+                            ProductName = pp.Product != null ? pp.Product.ProductName : null,
+                            UnitName = pp.Unit != null ? pp.Unit.Name : null
+                        })
+                        : new List<PromotionAppliedProductResponse>()))
                 .ReverseMap()
                 .ForMember(dest => dest.Type, opt => opt.MapFrom(src => (PromotionType)src.Type));
             CreateMap<PromotionRequest, Promotion>()
@@ -118,8 +122,10 @@ namespace ASA_TENANT_SERVICE.Mapping
 
             CreateMap<Order, OrderResponse>().ReverseMap();
             CreateMap<OrderRequest, Order>()
+                .ForMember(dest => dest.PaymentMethod, opt => opt.MapFrom(src => ((int)src.PaymentMethod).ToString()))
                 .ForMember(dest => dest.OrderDetails, opt => opt.Ignore())
-                .ReverseMap();
+                .ReverseMap()
+                .ForMember(dest => dest.PaymentMethod, opt => opt.MapFrom(src => (PaymentMethodEnum)int.Parse(src.PaymentMethod)));
             CreateMap<OrderGetRequest, Order>().ReverseMap();
 
 

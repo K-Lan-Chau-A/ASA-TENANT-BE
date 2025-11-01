@@ -33,21 +33,62 @@ namespace ASA_TENANT_BE.Controllers
         [HttpPost]
         public async Task<ActionResult<LogActivityResponse>> Create([FromBody] LogActivityRequest request)
         {
-            var result = await _logActivityService.CreateAsync(request);
-            return Ok(result);
+            try
+            {
+                var result = await _logActivityService.CreateAsync(request);
+                if (!result.Success || result.Data == null)
+                {
+                    return BadRequest(result);
+                }
+                return StatusCode(201, result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
         [HttpPut("{id}")]
         public async Task<ActionResult<LogActivityResponse>> Update(long id, [FromBody] LogActivityRequest request)
         {
-            var result = await _logActivityService.UpdateAsync(id, request);
-            return Ok(result);
+            try
+            {
+                var result = await _logActivityService.UpdateAsync(id, request);
+                if (!result.Success)
+                {
+                    if (string.Equals(result.Message, "LogActivity not found", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return NotFound(result);
+                    }
+                    return BadRequest(result);
+                }
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
 
         [HttpDelete("{id}")]
         public async Task<ActionResult<bool>> Delete(long id)
         {
-            var result = await _logActivityService.DeleteAsync(id);
-            return Ok(result);
+            try
+            {
+                var result = await _logActivityService.DeleteAsync(id);
+                if (!result.Success || result.Data == false)
+                {
+                    if (string.Equals(result.Message, "LogActivity not found", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return NotFound(result);
+                    }
+                    return BadRequest(result);
+                }
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
 
     }

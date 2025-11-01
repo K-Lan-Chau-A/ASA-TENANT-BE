@@ -20,7 +20,7 @@ namespace ASA_TENANT_SERVICE.DTOs.Request
         [EnumDataType(typeof(PromotionType))]
         public PromotionType Type { get; set; }
         public short? Status { get; set; }
-        public HashSet<long>? ProductIds { get; set; }
+        public HashSet<long>? ProductUnitIds { get; set; }
     }
 
     public class PromotionGetRequest

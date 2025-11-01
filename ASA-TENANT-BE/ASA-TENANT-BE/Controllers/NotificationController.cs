@@ -33,35 +33,98 @@ namespace ASA_TENANT_BE.Controllers
         [HttpPost]
         public async Task<ActionResult<NotificationResponse>> Create([FromBody] NotificationRequest request)
         {
-            var result = await _notificationService.CreateAsync(request);
-            return Ok(result);
+            try
+            {
+                var result = await _notificationService.CreateAsync(request);
+                if (!result.Success || result.Data == null)
+                {
+                    return BadRequest(result);
+                }
+                return StatusCode(201, result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
         [HttpPut("{id}")]
         public async Task<ActionResult<NotificationResponse>> Update(long id, [FromBody] NotificationRequest request)
         {
-            var result = await _notificationService.UpdateAsync(id, request);
-            return Ok(result);
+            try
+            {
+                var result = await _notificationService.UpdateAsync(id, request);
+                if (!result.Success)
+                {
+                    if (string.Equals(result.Message, "Notification not found", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return NotFound(result);
+                    }
+                    return BadRequest(result);
+                }
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
 
         [HttpDelete("{id}")]
         public async Task<ActionResult<bool>> Delete(long id)
         {
-            var result = await _notificationService.DeleteAsync(id);
-            return Ok(result);
+            try
+            {
+                var result = await _notificationService.DeleteAsync(id);
+                if (!result.Success || result.Data == false)
+                {
+                    if (string.Equals(result.Message, "Notification not found", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return NotFound(result);
+                    }
+                    return BadRequest(result);
+                }
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
 
         [HttpPut("{id}/read")]
         public async Task<ActionResult<ApiResponse<bool>>> MarkAsRead(long id)
         {
-            var result = await _notificationService.MarkAsReadAsync(id);
-            return Ok(result);
+            try
+            {
+                var result = await _notificationService.MarkAsReadAsync(id);
+                if (!result.Success || result.Data == false)
+                {
+                    if (string.Equals(result.Message, "Notification not found", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return NotFound(result);
+                    }
+                    return BadRequest(result);
+                }
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
 
         [HttpPut("users/{userId}/read-all")]
         public async Task<ActionResult<ApiResponse<int>>> MarkAllAsReadByUser(long userId)
         {
-            var result = await _notificationService.MarkAllAsReadByUserAsync(userId);
-            return Ok(result);
+            try
+            {
+                var result = await _notificationService.MarkAllAsReadByUserAsync(userId);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
 
         [HttpPost("broadcast")]

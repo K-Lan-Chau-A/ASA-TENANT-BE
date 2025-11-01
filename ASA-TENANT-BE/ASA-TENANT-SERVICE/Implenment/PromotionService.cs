@@ -19,12 +19,14 @@ namespace ASA_TENANT_SERVICE.Implenment
     {
         private readonly PromotionRepo _promotionRepo;
         private readonly PromotionProductRepo _promotionProductRepo;
+        private readonly ProductUnitRepo _productUnitRepo;
         private readonly IMapper _mapper;
-        public PromotionService(PromotionRepo promotionRepo, IMapper mapper, PromotionProductRepo promotionProductRepo)
+        public PromotionService(PromotionRepo promotionRepo, IMapper mapper, PromotionProductRepo promotionProductRepo, ProductUnitRepo productUnitRepo)
         {
             _promotionRepo = promotionRepo;
             _mapper = mapper;
             _promotionProductRepo = promotionProductRepo;
+            _productUnitRepo = productUnitRepo;
         }
 
         public async Task<ApiResponse<PromotionResponse>> CreateAsync(PromotionRequest request)
@@ -40,19 +42,25 @@ namespace ASA_TENANT_SERVICE.Implenment
                         Data = null
                     };
                 }
-                if (request.ProductIds != null && request.ProductIds.Any())
+                if (request.ProductUnitIds != null && request.ProductUnitIds.Any())
                 {
-                    var invalidIds = await _promotionRepo.GetInvalidProductIdsAsync(request.ProductIds);
-                    if (invalidIds.Any())
+                    // Validate product_unit ids exist and belong to shop
+                    var validPuIds = await _productUnitRepo.GetFiltered(new ProductUnit { ShopId = request.ShopId })
+                        .Where(pu => request.ProductUnitIds.Contains(pu.ProductUnitId))
+                        .Select(pu => pu.ProductUnitId)
+                        .ToListAsync();
+                    var invalidPuIds = request.ProductUnitIds.Except(validPuIds).ToList();
+                    if (invalidPuIds.Any())
                     {
                         return new ApiResponse<PromotionResponse>
                         {
                             Success = false,
-                            Message = $"Invalid product id(s): {string.Join(", ", invalidIds)}",
+                            Message = $"Invalid product_unit id(s): {string.Join(", ", invalidPuIds)}",
                             Data = null
                         };
                     }
                 }
+                
                 // map request sang entity Promotion
                 var entity = _mapper.Map<Promotion>(request);
 
@@ -63,32 +71,32 @@ namespace ASA_TENANT_SERVICE.Implenment
                 {
                     var promotionProducts = new List<PromotionProduct>();
 
-                    // nếu có danh sách product
-                    if (request.ProductIds != null && request.ProductIds.Any())
+                    // nếu FE truyền ProductUnitIds => tạo theo product_unit
+                    if (request.ProductUnitIds != null && request.ProductUnitIds.Any())
                     {
-                        foreach (var productId in request.ProductIds)
+                        var productUnits = await _productUnitRepo.GetFiltered(new ProductUnit { ShopId = request.ShopId })
+                            .Where(pu => request.ProductUnitIds.Contains(pu.ProductUnitId))
+                            .Select(pu => new { pu.ProductUnitId, pu.ProductId, pu.UnitId })
+                            .ToListAsync();
+
+                        foreach (var pu in productUnits)
                         {
                             var pp = new PromotionProduct
                             {
                                 PromotionId = entity.PromotionId,
-                                ProductId = productId
+                                ProductId = pu.ProductId ?? 0,
+                                UnitId = pu.UnitId ?? 0
                             };
-
                             await _promotionProductRepo.CreateAsync(pp);
                             promotionProducts.Add(pp);
                         }
                     }
+                    
 
                     // map sang response
                     var response = _mapper.Map<PromotionResponse>(entity);
 
-                    // set danh sách product response trả về
-                    if (promotionProducts.Any())
-                    {
-                        response.Products = promotionProducts
-                            .Select(pp => pp.ProductId)
-                            .ToHashSet();
-                    }
+                    // giữ nguyên response, Products đã được loại bỏ
 
                     return new ApiResponse<PromotionResponse>
                     {
@@ -200,19 +208,24 @@ namespace ASA_TENANT_SERVICE.Implenment
                 }
 
                 // validate product ids
-                if (request.ProductIds != null && request.ProductIds.Any())
+                if (request.ProductUnitIds != null && request.ProductUnitIds.Any())
                 {
-                    var invalidIds = await _promotionRepo.GetInvalidProductIdsAsync(request.ProductIds);
-                    if (invalidIds.Any())
+                    var validPuIds = await _productUnitRepo.GetFiltered(new ProductUnit { ShopId = existing.ShopId ?? 0 })
+                        .Where(pu => request.ProductUnitIds.Contains(pu.ProductUnitId))
+                        .Select(pu => pu.ProductUnitId)
+                        .ToListAsync();
+                    var invalidPuIds = request.ProductUnitIds.Except(validPuIds).ToList();
+                    if (invalidPuIds.Any())
                     {
                         return new ApiResponse<PromotionResponse>
                         {
                             Success = false,
-                            Message = $"Invalid product id(s): {string.Join(", ", invalidIds)}",
+                            Message = $"Invalid product_unit id(s): {string.Join(", ", invalidPuIds)}",
                             Data = null
                         };
                     }
                 }
+                
 
                 // map data từ request sang entity
                 _mapper.Map(request, existing);
@@ -240,30 +253,32 @@ namespace ASA_TENANT_SERVICE.Implenment
                         await _promotionProductRepo.RemoveAsync(op);
                     }
 
-                    // Thêm product mới
-                    if (request.ProductIds != null && request.ProductIds.Any())
-                    {
-                        foreach (var productId in request.ProductIds)
-                        {
-                            var pp = new PromotionProduct
-                            {
-                                PromotionId = existing.PromotionId,
-                                ProductId = productId
-                            };
+                // Thêm product mới
+                if (request.ProductUnitIds != null && request.ProductUnitIds.Any())
+                {
+                    var productUnits = await _productUnitRepo.GetFiltered(new ProductUnit { ShopId = existing.ShopId ?? 0 })
+                        .Where(pu => request.ProductUnitIds.Contains(pu.ProductUnitId))
+                        .Select(pu => new { pu.ProductUnitId, pu.ProductId, pu.UnitId })
+                        .ToListAsync();
 
-                            await _promotionProductRepo.CreateAsync(pp);
-                            promotionProducts.Add(pp);
-                        }
+                    foreach (var pu in productUnits)
+                    {
+                        var pp = new PromotionProduct
+                        {
+                            PromotionId = existing.PromotionId,
+                            ProductId = pu.ProductId ?? 0,
+                            UnitId = pu.UnitId ?? 0
+                        };
+
+                        await _promotionProductRepo.CreateAsync(pp);
+                        promotionProducts.Add(pp);
                     }
+                }
+                
 
                     // map sang response
                     var response = _mapper.Map<PromotionResponse>(existing);
-                    if (promotionProducts.Any())
-                    {
-                        response.Products = promotionProducts
-                            .Select(pp => pp.ProductId)
-                            .ToHashSet();
-                    }
+                    // giữ nguyên response, Products đã được loại bỏ
 
                     return new ApiResponse<PromotionResponse>
                     {

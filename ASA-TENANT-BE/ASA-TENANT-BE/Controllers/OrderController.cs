@@ -33,26 +33,87 @@ public class OrderController : ControllerBase
             }
         }
 
+        [HttpGet("{id}")]
+        public async Task<ActionResult<OrderResponse>> GetById(long id)
+        {
+            try
+            {
+                var result = await _orderService.GetByIdAsync(id);
+                if (!result.Success || result.Data == null)
+                {
+                    return NotFound(result);
+                }
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
         [HttpPost]
         public async Task<ActionResult<OrderResponse>> Create([FromBody] OrderRequest request)
         {
-            var result = await _orderService.CreateAsync(request);
-            return Ok(result);
+            try
+            {
+                var result = await _orderService.CreateAsync(request);
+                if (!result.Success || result.Data == null)
+                {
+                    return BadRequest(result);
+                }
+                var id = result.Data.OrderId;
+                return CreatedAtAction(nameof(GetById), new { id }, result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
 
         [HttpPut("{id}")]
         public async Task<ActionResult<OrderResponse>> Update(long id, [FromBody] OrderRequest request)
         {
-            var result = await _orderService.UpdateAsync(id, request);
-            return Ok(result);
+            try
+            {
+                var result = await _orderService.UpdateAsync(id, request);
+                if (!result.Success)
+                {
+                    // Nếu service báo không tìm thấy
+                    if (string.Equals(result.Message, "Order not found", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return NotFound(result);
+                    }
+                    return BadRequest(result);
+                }
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
 
         [HttpDelete("{id}")]
         [Authorize(Roles = "1")] // Admin only
         public async Task<ActionResult<bool>> Delete(long id)
         {
-            var result = await _orderService.DeleteAsync(id);
-            return Ok(result);
+            try
+            {
+                var result = await _orderService.DeleteAsync(id);
+                if (!result.Success || result.Data == false)
+                {
+                    if (string.Equals(result.Message, "Order not found", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return NotFound(result);
+                    }
+                    return BadRequest(result);
+                }
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
 
         [HttpPost("{id}/cancel")]

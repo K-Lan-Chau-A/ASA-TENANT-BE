@@ -73,6 +73,19 @@ namespace ASA_TENANT_REPO.Repository
             return true;
         }
 
+        public async Task<bool> ActivateProduct(long productId, long shopId)
+        {
+            var product = await _context.Products
+                .FirstOrDefaultAsync(p => p.ProductId == productId && p.ShopId == shopId);
+
+            if (product == null)
+                return false;
+
+            product.Status = 1;
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
         public async Task<List<Product>> GetByShopIdAsync(long shopId)
         {
             return await _context.Products

@@ -39,6 +39,64 @@ namespace ASA_TENANT_SERVICE.Implenment
             {
                 var entity = _mapper.Map<Customer>(request);
 
+                // Normalize inputs
+                var normalizedEmail = (entity.Email ?? string.Empty).Trim().ToLowerInvariant();
+                var normalizedPhone = (entity.Phone ?? string.Empty).Trim();
+
+                // Duplicate checks per shop
+                if (!string.IsNullOrWhiteSpace(normalizedEmail))
+                {
+                    var emailExists = await _context.Customers
+                        .AnyAsync(c => c.ShopId == request.ShopId && c.Email != null && c.Email.ToLower() == normalizedEmail);
+                    if (emailExists)
+                    {
+                        return new ApiResponse<CustomerResponse>
+                        {
+                            Success = false,
+                            Message = "Email already exists",
+                            Data = null
+                        };
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(normalizedPhone))
+                {
+                    var phoneExists = await _context.Customers
+                        .AnyAsync(c => c.ShopId == request.ShopId && c.Phone != null && c.Phone == normalizedPhone);
+                    if (phoneExists)
+                    {
+                        return new ApiResponse<CustomerResponse>
+                        {
+                            Success = false,
+                            Message = "Phone already exists",
+                            Data = null
+                        };
+                    }
+                }
+
+                // persist normalized values
+                entity.Email = string.IsNullOrWhiteSpace(normalizedEmail) ? null : normalizedEmail;
+                entity.Phone = string.IsNullOrWhiteSpace(normalizedPhone) ? null : normalizedPhone;
+
+                // Auto-assign RankId: pick the rank with lowest Benefit for this shop; if no ranks, keep null
+                if (request.ShopId > 0)
+                {
+                    var lowestBenefitRank = await _context.Ranks
+                        .Where(r => r.ShopId == request.ShopId)
+                        .OrderBy(r => r.Benefit)
+                        .FirstOrDefaultAsync();
+
+                    entity.RankId = lowestBenefitRank?.RankId;
+                }
+                else
+                {
+                    entity.RankId = null;
+                }
+
+                // Defaults: Spent = 0, Status = 1 when not provided by FE
+                entity.Spent = entity.Spent ?? 0m;
+                entity.Status = entity.Status ?? 1;
+
                 var affected = await _customerRepo.CreateAsync(entity);
 
                 if (affected > 0)

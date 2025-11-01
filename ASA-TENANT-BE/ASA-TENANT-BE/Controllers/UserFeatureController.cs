@@ -32,21 +32,58 @@ namespace ASA_TENANT_BE.Controllers
         [HttpPost]
         public async Task<ActionResult<List<UserFeatureResponse>>> Create([FromBody] UserFeatureRequest request)
         {
-            var result = await _userFeatureService.CreateAsync(request);
-            return Ok(result);
+            try
+            {
+                var result = await _userFeatureService.CreateAsync(request);
+                if (result == null)
+                {
+                    return BadRequest(new { message = "Create failed" });
+                }
+                return StatusCode(201, result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
         [HttpPut()]
         public async Task<ActionResult<List<UserFeatureResponse>>> Update( [FromBody] UserFeatureUpdateRequest request)
         {
-            var result = await _userFeatureService.UpdateAsync(request);
-            return Ok(result);
+            try
+            {
+                var result = await _userFeatureService.UpdateAsync(request);
+                if (result == null)
+                {
+                    return BadRequest(new { message = "Update failed" });
+                }
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
 
         [HttpDelete("{id}")]
         public async Task<ActionResult<bool>> Delete(long id)
         {
-            var result = await _userFeatureService.DeleteAsync(id);
-            return Ok(result);
+            try
+            {
+                var result = await _userFeatureService.DeleteAsync(id);
+                if (!result.Success || result.Data == false)
+                {
+                    if (string.Equals(result.Message, "UserFeature not found", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return NotFound(result);
+                    }
+                    return BadRequest(result);
+                }
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
     }
 }

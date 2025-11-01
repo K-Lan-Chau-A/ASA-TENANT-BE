@@ -61,5 +61,30 @@ namespace ASA_TENANT_BE.Controllers
             localResponse.Data.AccessToken = bePlatformResult.Data.AccessToken;
             return Ok(localResponse);
         }
+
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+        {
+            try
+            {
+                var result = await _authenticationService.ChangePassword(request);
+                
+                if (!result.Success)
+                {
+                    return BadRequest(result);
+                }
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = $"Internal server error: {ex.Message}",
+                    Data = false
+                });
+            }
+        }
     }
 }

@@ -51,7 +51,7 @@ namespace ASA_TENANT_REPO.Repository
         public async Task<List<long>> GetUserFeaturesList(long userId)
         {
             return await _context.UserFeatures
-                .Where(uf => uf.UserId == userId)
+                .Where(uf => uf.UserId == userId && uf.IsEnabled == true)
                 .Select(uf => uf.FeatureId)
                 .Distinct()
                 .ToListAsync();

@@ -787,8 +787,14 @@ namespace ASA_TENANT_SERVICE.Implenment
                     }
                 }
 
+                // Clear OrderDetails trong entity trước khi map để tránh AutoMapper map duplicate
+                var tempOrderDetails = entity.OrderDetails;
+                entity.OrderDetails = null;
                 var response = _mapper.Map<OrderResponse>(entity);
-                response.OrderDetails = createdOrderDetails;
+                // Restore OrderDetails trong entity (nếu cần cho logic khác)
+                entity.OrderDetails = tempOrderDetails;
+                // Chỉ dùng createdOrderDetails, không dùng OrderDetails từ entity
+                response.OrderDetails = createdOrderDetails ?? new List<OrderDetailResponse>();
                 return new ApiResponse<OrderResponse>
                 {
                     Success = true,

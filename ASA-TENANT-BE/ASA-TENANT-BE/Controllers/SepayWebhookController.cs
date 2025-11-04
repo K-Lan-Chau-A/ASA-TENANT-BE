@@ -8,6 +8,10 @@ using ASA_TENANT_SERVICE.DTOs.Request;
 using ASA_TENANT_SERVICE.DTOs.Common;
 using ASA_TENANT_SERVICE.DTOs.Response;
 using ASA_TENANT_REPO.Repository;
+using ASA_TENANT_REPO.Models;
+using ASA_TENANT_SERVICE.Enums;
+using ASA_TENANT_SERVICE.Interface;
+using Microsoft.EntityFrameworkCore;
 
 namespace ASA_TENANT_BE.Controllers
 {
@@ -21,6 +25,16 @@ namespace ASA_TENANT_BE.Controllers
         private readonly ITransactionService _transactionService;
         private readonly IOrderService _orderService;
         private readonly ShopRepo _shopRepo;
+        private readonly OrderRepo _orderRepo;
+        private readonly ProductRepo _productRepo;
+        private readonly ProductUnitRepo _productUnitRepo;
+        private readonly UnitRepo _unitRepo;
+        private readonly UserRepo _userRepo;
+        private readonly IOrderDetailService _orderDetailService;
+        private readonly IInventoryTransactionService _inventoryTransactionService;
+        private readonly INotificationService _notificationService;
+        private readonly IFcmService _fcmService;
+        private readonly IRealtimeNotifier _realtimeNotifier;
 
         // Giả lập storage để tránh xử lý trùng (thay bằng DB thực tế)
         private static readonly HashSet<string> ProcessedTransactions = new();
@@ -31,7 +45,17 @@ namespace ASA_TENANT_BE.Controllers
             IHubContext<NotificationHub> hubContext,
             ITransactionService transactionService,
             IOrderService orderService,
-            ShopRepo shopRepo)
+            ShopRepo shopRepo,
+            OrderRepo orderRepo,
+            ProductRepo productRepo,
+            ProductUnitRepo productUnitRepo,
+            UnitRepo unitRepo,
+            UserRepo userRepo,
+            IOrderDetailService orderDetailService,
+            IInventoryTransactionService inventoryTransactionService,
+            INotificationService notificationService,
+            IFcmService fcmService,
+            IRealtimeNotifier realtimeNotifier)
         {
             _logger = logger;
             _config = config;
@@ -39,6 +63,16 @@ namespace ASA_TENANT_BE.Controllers
             _transactionService = transactionService;
             _orderService = orderService;
             _shopRepo = shopRepo;
+            _orderRepo = orderRepo;
+            _productRepo = productRepo;
+            _productUnitRepo = productUnitRepo;
+            _unitRepo = unitRepo;
+            _userRepo = userRepo;
+            _orderDetailService = orderDetailService;
+            _inventoryTransactionService = inventoryTransactionService;
+            _notificationService = notificationService;
+            _fcmService = fcmService;
+            _realtimeNotifier = realtimeNotifier;
         }
 
         // Model map từ payload SePay (cập nhật theo tài liệu/payload mẫu)
@@ -272,6 +306,139 @@ namespace ASA_TENANT_BE.Controllers
                     _logger.LogWarning("Không thể cập nhật status Order {OrderId}: {Message}", 
                         order.OrderId, updateStatusResult.Message);
                 }
+                else
+                {
+                    // Thực hiện các bước finalize còn lại cho BankTransfer: phân bổ discount/profit, tạo inventory, trừ kho, notify
+                    try
+                    {
+                        var existing = await _orderRepo.GetFiltered(new Order { OrderId = order.OrderId })
+                            .Include(o => o.OrderDetails)
+                            .FirstOrDefaultAsync();
+                        if (existing != null && existing.OrderDetails != null && existing.OrderDetails.Any())
+                        {
+                            decimal totalBase = existing.OrderDetails.Sum(d => d.BasePrice);
+                            var discountTotal = existing.TotalDiscount ?? 0m;
+                            var discountRatio = totalBase > 0 ? (discountTotal / totalBase) : 0m;
+
+                            foreach (var d in existing.OrderDetails)
+                            {
+                                var basePrice = d.BasePrice;
+                                if (basePrice > 0)
+                                {
+                                    var itemDiscount = basePrice * discountRatio;
+                                    var finalPrice = basePrice - itemDiscount;
+
+                                    // Tính profit
+                                    var product = await _productRepo.GetByIdAsync(d.ProductId);
+                                    var cost = product?.Cost ?? 0m;
+                                    var quantity = d.Quantity;
+                                    decimal conversionFactor = 1m;
+                                    if (d.ProductUnitId > 0)
+                                    {
+                                        var puForCost = await _productUnitRepo.GetByIdAsync(d.ProductUnitId);
+                                        if (puForCost?.ConversionFactor != null && puForCost.ConversionFactor.Value > 0)
+                                            conversionFactor = puForCost.ConversionFactor.Value;
+                                    }
+                                    var profit = finalPrice - (cost * conversionFactor * quantity);
+
+                                    await _orderDetailService.UpdateOrderDetailPricingAsync(d.OrderDetailId, itemDiscount, finalPrice, profit);
+                                }
+
+                                // Tạo InventoryTransaction cho mỗi chi tiết
+                                if (d.ProductUnitId > 0 && d.ProductId > 0)
+                                {
+                                    int qtyToDeduct = d.Quantity;
+                                    var productUnit = await _productUnitRepo.GetByIdAsync(d.ProductUnitId);
+                                    if (productUnit?.ConversionFactor != null && productUnit.ConversionFactor.Value > 0)
+                                        qtyToDeduct = (int)(qtyToDeduct * productUnit.ConversionFactor.Value);
+
+                                    await _inventoryTransactionService.CreateAsync(new InventoryTransactionRequest
+                                    {
+                                        Type = (int)InventoryTransactionType.Sale,
+                                        ProductId = d.ProductId,
+                                        OrderId = existing.OrderId,
+                                        UnitId = productUnit?.UnitId ?? 0L,
+                                        Quantity = qtyToDeduct,
+                                        Price = 0,
+                                        ShopId = existing.ShopId ?? 0
+                                    });
+
+                                    // Trừ kho
+                                    var productToDeduct = await _productRepo.GetByIdAsync(d.ProductId);
+                                    if (productToDeduct?.Quantity != null)
+                                    {
+                                        productToDeduct.Quantity = Math.Max(0, (productToDeduct.Quantity.Value - qtyToDeduct));
+                                        await _productRepo.UpdateAsync(productToDeduct);
+
+                                        // Low stock notify
+                                        var threshold = productToDeduct.IsLow ?? 0;
+                                        var currentQty = productToDeduct.Quantity ?? 0;
+                                        if (currentQty <= threshold && !(productToDeduct.IsLowStockNotified ?? false))
+                                        {
+                                            var title = "Cảnh báo sắp hết hàng";
+                                            string unitName = string.Empty;
+                                            if (productToDeduct.UnitIdFk.HasValue)
+                                            {
+                                                var unit = await _unitRepo.GetByIdAsync(productToDeduct.UnitIdFk.Value);
+                                                unitName = unit?.Name ?? string.Empty;
+                                            }
+                                            var content = $"Sản phẩm {productToDeduct.ProductName} chỉ còn {currentQty} {unitName} (Mức cảnh báo: {threshold}).";
+
+                                            productToDeduct.IsLowStockNotified = true;
+                                            await _productRepo.UpdateAsync(productToDeduct);
+
+                                            var shopUsers = await _userRepo.GetFiltered(new User { ShopId = existing.ShopId, Status = 1 })
+                                                .Select(u => u.UserId)
+                                                .ToListAsync();
+                                            foreach (var userId in shopUsers)
+                                            {
+                                                await _notificationService.CreateAsync(new NotificationRequest
+                                                {
+                                                    ShopId = existing.ShopId,
+                                                    UserId = userId,
+                                                    Title = title,
+                                                    Content = content,
+                                                    Type = (short)NotificationType.Warning,
+                                                    IsRead = false,
+                                                    CreatedAt = DateTime.UtcNow
+                                                });
+                                            }
+
+                                            if (existing.ShopId.HasValue)
+                                            {
+                                                var payloadLow = new
+                                                {
+                                                    type = (short)NotificationType.Warning,
+                                                    shopId = existing.ShopId,
+                                                    productId = productToDeduct.ProductId,
+                                                    productName = productToDeduct.ProductName,
+                                                    currentQuantity = currentQty,
+                                                    threshold,
+                                                    title,
+                                                    content,
+                                                    createdAt = DateTime.UtcNow
+                                                };
+                                                await _realtimeNotifier.EmitLowStockAlertToShop(existing.ShopId.Value, payloadLow);
+                                                var usersInShop = await _userRepo.GetFiltered(new User { ShopId = existing.ShopId })
+                                                    .Select(u => u.UserId)
+                                                    .ToListAsync();
+                                                if (usersInShop.Count > 0)
+                                                {
+                                                    await _fcmService.SendNotificationToManyUsersAsync(usersInShop, title, content);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Finalize logic in SePay callback failed for Order {OrderId}", order.OrderId);
+                    }
+                }
+                
 
                 ProcessedTransactions.Add(payload.id.ToString());
 

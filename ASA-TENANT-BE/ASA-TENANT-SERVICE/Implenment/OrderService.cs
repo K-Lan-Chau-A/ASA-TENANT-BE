@@ -912,6 +912,12 @@ namespace ASA_TENANT_SERVICE.Implenment
                     };
                 }
 
+                // Nếu yêu cầu hủy đơn thì dùng luồng hủy chuẩn để hoàn kho/xóa giao dịch
+                if (status == (short)OrderStatus.Cancelled)
+                {
+                    return await CancelOrderAsync(id, "Đơn hàng bị hủy");
+                }
+
                 // Kiểm tra nếu status chuyển từ pending (0) sang paid (1) và có customerId
                 var wasPending = existing.Status == (short)OrderStatus.Pending;
                 var isNowPaid = status == (short)OrderStatus.Paid;
@@ -1032,10 +1038,11 @@ namespace ASA_TENANT_SERVICE.Implenment
                 // Map các trường cơ bản
                 _mapper.Map(request, existing);
 
-                // Nếu status=Paid hoặc paymentMethod=Cash, thực hiện finalize tương tự Create
+                // Chỉ finalize khi đơn đang Pending và được chuyển sang Paid/Cash (tránh trừ kho lần 2)
+                var wasPending = existing.Status == (short)OrderStatus.Pending;
                 var isCashUpdate = request.PaymentMethod == PaymentMethodEnum.Cash;
                 var isPaidUpdate = request.Status == (short)OrderStatus.Paid;
-                var shouldFinalizeUpdate = isCashUpdate || isPaidUpdate;
+                var shouldFinalizeUpdate = wasPending && (isCashUpdate || isPaidUpdate);
 
                 var createdOrderDetails = new List<OrderDetailResponse>();
                 decimal totalProductPrice = 0m;
@@ -1261,6 +1268,15 @@ namespace ASA_TENANT_SERVICE.Implenment
                         await _productRepo.UpdateAsync(product);
                     }
                 }
+                // Cập nhật status đúng theo kết quả xử lý
+                if (shouldFinalizeUpdate)
+                {
+                    existing.Status = (short)OrderStatus.Paid;
+                }
+                else if (request.Status.HasValue)
+                {
+                    existing.Status = request.Status.Value;
+                }
 
                 var affected = await _orderRepo.UpdateAsync(existing);
                 if (affected > 0)
@@ -1324,22 +1340,34 @@ namespace ASA_TENANT_SERVICE.Implenment
                     };
                 }
 
-                // Kiểm tra xem đơn hàng có thể hủy không (chỉ hủy được khi status = 0 - chờ thanh toán)
-                if (existing.Status != 0)
+                // Nếu đã hủy rồi thì trả về luôn
+                if (existing.Status == (short)OrderStatus.Cancelled)
                 {
                     return new ApiResponse<OrderResponse>
                     {
                         Success = false,
-                        Message = $"Cannot cancel order with status {existing.Status}. Only pending orders can be cancelled.",
-                        Data = null
+                        Message = "Order already cancelled",
+                        Data = _mapper.Map<OrderResponse>(existing)
                     };
                 }
 
+                // Lấy các InventoryTransaction để biết có từng xuất kho hay chưa
+                var inventoryTransactions = await _context.InventoryTransactions
+                    .Where(it => it.OrderId == existing.OrderId)
+                    .ToListAsync();
+                var hadInventoryTransactions = inventoryTransactions.Any();
+                var shouldRestoreStock = hadInventoryTransactions || existing.Status == (short)OrderStatus.Paid;
+
                 // Xóa các InventoryTransaction đã tạo khi tạo đơn hàng
-                await DeleteInventoryTransactionsForOrder(existing.OrderId);
+                if (hadInventoryTransactions)
+                {
+                    _context.InventoryTransactions.RemoveRange(inventoryTransactions);
+                    await _context.SaveChangesAsync();
+                    Console.WriteLine($"Đã xóa {inventoryTransactions.Count} InventoryTransaction của đơn hàng #{existing.OrderId}");
+                }
                 
-                // Hoàn lại số lượng sản phẩm đã trừ tồn kho
-                if (existing.OrderDetails != null && existing.OrderDetails.Any())
+                // Hoàn lại số lượng sản phẩm đã trừ tồn kho (chỉ khi thực sự đã trừ kho)
+                if (shouldRestoreStock && existing.OrderDetails != null && existing.OrderDetails.Any())
                 {
                     foreach (var orderDetail in existing.OrderDetails)
                     {
@@ -1371,7 +1399,7 @@ namespace ASA_TENANT_SERVICE.Implenment
                 }
 
                 // Cập nhật status thành 2 (Đã hủy) và note với lý do hủy
-                existing.Status = 2;
+                existing.Status = (short)OrderStatus.Cancelled;
                 if (!string.IsNullOrEmpty(reason))
                 {
                     existing.Note = string.IsNullOrEmpty(existing.Note) ? reason : $"{existing.Note} | {reason}";

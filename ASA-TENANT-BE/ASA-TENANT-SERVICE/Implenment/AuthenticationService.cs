@@ -4,6 +4,7 @@ using ASA_TENANT_SERVICE.DTOs.Response;
 using ASA_TENANT_SERVICE.Interface;
 using ASA_TENANT_SERVICE.Enums;
 using AutoMapper;
+using ASA_TENANT_REPO.Repository;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,10 +17,12 @@ namespace ASA_TENANT_SERVICE.Implenment
     {
         private readonly IUserService _userService;
         private readonly IMapper _mapper;
-        public AuthenticationService(IUserService userService, IMapper mapper)
+        private readonly UserRepo _userRepo;
+        public AuthenticationService(IUserService userService, IMapper mapper, UserRepo userRepo)
         {
             _userService = userService;
             _mapper = mapper;
+            _userRepo = userRepo;
         }
         public async Task<ApiResponse<LoginResponse>> CheckLogin(LoginRequest loginRequest)
         {
@@ -84,6 +87,87 @@ namespace ASA_TENANT_SERVICE.Implenment
                     Success = false,
                     Message = $"Error: {ex.Message}",
                     Data = null
+                };
+            }
+        }
+
+        public async Task<ApiResponse<bool>> ChangePassword(ChangePasswordRequest changePasswordRequest)
+        {
+            try
+            {
+                if (changePasswordRequest == null)
+                {
+                    return new ApiResponse<bool>
+                    {
+                        Success = false,
+                        Message = "Request không hợp lệ",
+                        Data = false
+                    };
+                }
+
+                // Kiểm tra mật khẩu mới và xác nhận mật khẩu phải khớp
+                if (changePasswordRequest.NewPassword != changePasswordRequest.ConfirmPassword)
+                {
+                    return new ApiResponse<bool>
+                    {
+                        Success = false,
+                        Message = "Mật khẩu nhập lại không khớp",
+                        Data = false
+                    };
+                }
+
+                // Lấy thông tin user
+                var user = await _userService.GetUserbyUserId(changePasswordRequest.UserId);
+                if (user == null)
+                {
+                    return new ApiResponse<bool>
+                    {
+                        Success = false,
+                        Message = "Không tìm thấy người dùng",
+                        Data = false
+                    };
+                }
+
+                // Kiểm tra mật khẩu cũ có đúng không
+                var isOldPasswordValid = BCrypt.Net.BCrypt.Verify(changePasswordRequest.OldPassword, user.Password);
+                if (!isOldPasswordValid)
+                {
+                    return new ApiResponse<bool>
+                    {
+                        Success = false,
+                        Message = "Mật khẩu cũ không đúng",
+                        Data = false
+                    };
+                }
+
+                // Hash mật khẩu mới và cập nhật
+                user.Password = _userService.HashPassword(changePasswordRequest.NewPassword);
+                var affected = await _userRepo.UpdateAsync(user);
+
+                if (affected > 0)
+                {
+                    return new ApiResponse<bool>
+                    {
+                        Success = true,
+                        Message = "Đổi mật khẩu thành công",
+                        Data = true
+                    };
+                }
+
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "Đổi mật khẩu thất bại",
+                    Data = false
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = $"Error: {ex.Message}",
+                    Data = false
                 };
             }
         }

@@ -12,5 +12,6 @@ namespace ASA_TENANT_SERVICE.Interface
     public interface IAuthenticationService
     {
         Task<ApiResponse<LoginResponse>> CheckLogin(LoginRequest loginRequest);
+        Task<ApiResponse<bool>> ChangePassword(ChangePasswordRequest changePasswordRequest);
     }
 }

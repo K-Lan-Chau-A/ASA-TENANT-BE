@@ -1,7 +1,9 @@
-﻿using ASA_TENANT_SERVICE.DTOs.Request;
+﻿using ASA_TENANT_BE.CustomAttribute;
+using ASA_TENANT_SERVICE.DTOs.Request;
 using ASA_TENANT_SERVICE.DTOs.Response;
 using ASA_TENANT_SERVICE.Implenment;
 using ASA_TENANT_SERVICE.Interface;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,6 +11,8 @@ namespace ASA_TENANT_BE.Controllers
 {
     [Route("api/ranks")]
     [ApiController]
+    [Authorize]
+    [RequireFeature(9)] // Quản lí rank giống khách hàng
     public class RankController : ControllerBase
     {
         private readonly IRankService _rankService;

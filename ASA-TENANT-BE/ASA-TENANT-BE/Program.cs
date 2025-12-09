@@ -207,7 +207,8 @@ builder.Services.AddCors(options =>
                     "http://localhost:5500",
                     "https://asa-web-app-tawny.vercel.app",
                     "https://asa-fe-three.vercel.app",
-                    "https://asa-admin-mu.vercel.app"
+                    "https://asa-admin-mu.vercel.app",
+                    "https://asa.systems"
                  )
                 .AllowAnyHeader()
                 .AllowAnyMethod()
